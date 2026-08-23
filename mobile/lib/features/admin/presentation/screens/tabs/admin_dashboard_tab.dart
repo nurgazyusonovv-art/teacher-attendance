@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../data/repositories/admin_mobile_repository.dart';
@@ -29,6 +30,14 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         _dashboardData = data;
         _isLoading = false;
       });
+    }
+  }
+
+  String _formatHeaderDate(DateTime dt) {
+    try {
+      return DateFormat('d-MMMM yyyy, EEEE', 'ky').format(dt);
+    } catch (_) {
+      return '${dt.day}.${dt.month}.${dt.year}';
     }
   }
 
@@ -164,7 +173,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         children: [
           // Header Date
           Text(
-            'Бүгүнкү дата: ${DateFormat("d-MMMM yyyy, EEEE", "ky").format(DateTime.now())}',
+            'Бүгүнкү дата: ${_formatHeaderDate(DateTime.now())}',
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
           ),
           const SizedBox(height: 12),
@@ -230,6 +239,19 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(
+                  onTap: () {
+                    final item = TeacherItemModel(
+                      id: r['teacher_id'] as String,
+                      userId: '',
+                      schoolId: r['school_id'] as String? ?? '',
+                      fullName: r['teacher_name'] as String? ?? 'Мугалим',
+                      email: '',
+                      username: '',
+                      employeeCode: r['employee_code'] as String? ?? '',
+                      isActive: true,
+                    );
+                    context.push('/admin/teacher-detail', extra: item);
+                  },
                   leading: CircleAvatar(
                     backgroundColor: statusColor.withValues(alpha: 0.15),
                     child: Icon(

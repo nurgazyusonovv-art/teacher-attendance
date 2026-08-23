@@ -26,13 +26,14 @@ class TeacherItemModel {
   });
 
   factory TeacherItemModel.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
     return TeacherItemModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
       schoolId: json['school_id'] as String,
-      fullName: json['full_name'] as String? ?? 'Мугалим',
-      email: json['email'] as String? ?? '',
-      username: json['username'] as String? ?? '',
+      fullName: user?['full_name'] as String? ?? json['full_name'] as String? ?? 'Мугалим',
+      email: user?['email'] as String? ?? json['email'] as String? ?? '',
+      username: user?['username'] as String? ?? json['username'] as String? ?? '',
       phone: json['phone'] as String?,
       employeeCode: json['employee_code'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
@@ -107,10 +108,12 @@ class AdminMobileRepository {
     try {
       final options = await _getAuthOptions();
       final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/teachers/',
+        '${AppConstants.defaultBaseUrl}/teachers',
         options: options,
       );
-      return (response.data as List)
+      final raw = response.data;
+      final List list = raw is Map ? (raw['items'] as List? ?? []) : (raw as List? ?? []);
+      return list
           .map((i) => TeacherItemModel.fromJson(i as Map<String, dynamic>))
           .toList();
     } catch (_) {
@@ -129,7 +132,7 @@ class AdminMobileRepository {
     try {
       final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/teachers/',
+        '${AppConstants.defaultBaseUrl}/teachers',
         data: {
           'full_name': fullName,
           'username': username,
@@ -149,7 +152,7 @@ class AdminMobileRepository {
   Future<bool> toggleTeacherActive(String teacherId, bool isActive) async {
     try {
       final options = await _getAuthOptions();
-      final response = await _dio.put(
+      final response = await _dio.patch(
         '${AppConstants.defaultBaseUrl}/teachers/$teacherId',
         data: {'is_active': isActive},
         options: options,
@@ -165,10 +168,12 @@ class AdminMobileRepository {
     try {
       final options = await _getAuthOptions();
       final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/schedules/',
+        '${AppConstants.defaultBaseUrl}/schedules',
         options: options,
       );
-      return (response.data as List)
+      final raw = response.data;
+      final List list = raw is List ? raw : (raw is Map ? (raw['items'] as List? ?? []) : []);
+      return list
           .map((i) => WorkScheduleItemModel.fromJson(i as Map<String, dynamic>))
           .toList();
     } catch (_) {
@@ -236,6 +241,85 @@ class AdminMobileRepository {
       return response.data as Map<String, dynamic>;
     } catch (_) {
       return null;
+    }
+  }
+
+  // 6. Teacher specific history
+  Future<List<Map<String, dynamic>>> getTeacherHistory({
+    required String teacherId,
+    int? year,
+    int? month,
+  }) async {
+    try {
+      final options = await _getAuthOptions();
+      final response = await _dio.get(
+        '${AppConstants.defaultBaseUrl}/attendance/teacher/$teacherId/history',
+        queryParameters: {
+          'year': ?year,
+          'month': ?month,
+        },
+        options: options,
+      );
+      final list = response.data as List? ?? [];
+      return list.map((e) => e as Map<String, dynamic>).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // 7. Teacher specific schedules
+  Future<List<WorkScheduleItemModel>> getTeacherSchedules({required String teacherId}) async {
+    try {
+      final options = await _getAuthOptions();
+      final response = await _dio.get(
+        '${AppConstants.defaultBaseUrl}/schedules',
+        queryParameters: {'teacher_id': teacherId},
+        options: options,
+      );
+      final raw = response.data;
+      final List list = raw is Map ? (raw['schedules'] as List? ?? []) : (raw is List ? raw : []);
+      return list
+          .map((i) => WorkScheduleItemModel.fromJson(i as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> saveTeacherSchedule({
+    required String teacherId,
+    required WorkScheduleItemModel schedule,
+  }) async {
+    try {
+      final options = await _getAuthOptions();
+      final response = await _dio.post(
+        '${AppConstants.defaultBaseUrl}/schedules',
+        data: {
+          'teacher_id': teacherId,
+          'day_of_week': schedule.dayOfWeek,
+          'start_time': schedule.startTime,
+          'end_time': schedule.endTime,
+          'grace_minutes': schedule.graceMinutes,
+          'is_day_off': schedule.isDayOff,
+        },
+        options: options,
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteTeacherSchedule(String scheduleId) async {
+    try {
+      final options = await _getAuthOptions();
+      final response = await _dio.delete(
+        '${AppConstants.defaultBaseUrl}/schedules/$scheduleId',
+        options: options,
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 }

@@ -78,6 +78,22 @@ async def get_my_history(
     )
 
 
+@router.get("/teacher/{teacher_id}/history", response_model=List[DailyAttendanceRead], summary="Мугалимдин катышуу тарыхын алуу (Админ)")
+async def get_teacher_history_for_admin(
+    teacher_id: str,
+    year: Optional[int] = Query(None, description="Жыл боюнча чыпка"),
+    month: Optional[int] = Query(None, description="Ай боюнча чыпка (1-12)"),
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_active_admin),
+):
+    return await AttendanceService.get_teacher_history(
+        db=db,
+        teacher_id=teacher_id,
+        year=year,
+        month=month,
+    )
+
+
 @router.get("/dashboard/today", response_model=AdminDashboardSummary, summary="Бүгүнкү катышуу дашборду (Админ)")
 async def get_today_dashboard(
     target_date: Optional[date] = Query(None, description="Кароо күнү (демейки: бүгүн)"),

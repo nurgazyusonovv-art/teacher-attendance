@@ -1,5 +1,7 @@
 import 'package:go_router/go_router.dart';
+import '../features/admin/data/repositories/admin_mobile_repository.dart';
 import '../features/admin/presentation/screens/admin_main_screen.dart';
+import '../features/admin/presentation/screens/teacher_detail_screen.dart';
 import '../features/attendance/presentation/screens/home_screen.dart';
 import '../features/attendance/presentation/screens/qr_scanner_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -20,6 +22,13 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/admin',
       builder: (context, state) => const AdminMainScreen(),
+    ),
+    GoRoute(
+      path: '/admin/teacher-detail',
+      builder: (context, state) {
+        final teacher = state.extra as TeacherItemModel;
+        return TeacherDetailScreen(teacher: teacher);
+      },
     ),
     GoRoute(
       path: '/scanner',

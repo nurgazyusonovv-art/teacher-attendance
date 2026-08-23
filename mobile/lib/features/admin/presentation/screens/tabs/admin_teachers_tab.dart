@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../data/repositories/admin_mobile_repository.dart';
 
@@ -193,6 +194,7 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 10),
                         child: ListTile(
+                          onTap: () => context.push('/admin/teacher-detail', extra: t),
                           leading: CircleAvatar(
                             backgroundColor: t.isActive ? AppTheme.primaryColor.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.2),
                             child: Text(
