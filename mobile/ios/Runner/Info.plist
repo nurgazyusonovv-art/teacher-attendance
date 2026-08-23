@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Мектептин QR-кодун сканерлөө үчүн камерага уруксат керек.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Мектептин аймагында экениңизди аныктоо үчүн геолокацияга уруксат керек.</string>
 </dict>
 </plist>

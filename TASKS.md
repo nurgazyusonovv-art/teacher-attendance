@@ -80,14 +80,14 @@ Acceptance:
 
 ## PHASE 3 — School settings
 
-- [ ] School profile
-- [ ] timezone
-- [ ] latitude
-- [ ] longitude
-- [ ] allowed radius
-- [ ] maximum GPS accuracy
-- [ ] default start/end time
-- [ ] grace period
+- [x] School profile
+- [x] timezone
+- [x] latitude
+- [x] longitude
+- [x] allowed radius
+- [x] maximum GPS accuracy
+- [x] default start/end time
+- [x] grace period
 
 Acceptance:
 - settings admin гана өзгөртөт
@@ -99,12 +99,12 @@ Acceptance:
 
 ### Admin
 
-- [ ] Teachers list
-- [ ] Add teacher
-- [ ] Edit teacher
-- [ ] Activate/deactivate
-- [ ] Reset temporary password
-- [ ] Teacher detail
+- [x] Teachers list
+- [x] Add teacher
+- [x] Edit teacher
+- [x] Activate/deactivate
+- [x] Reset temporary password
+- [x] Teacher detail
 
 Fields:
 - full name
@@ -122,13 +122,13 @@ Acceptance:
 
 ## PHASE 5 — Schedule
 
-- [ ] Weekly work schedule
-- [ ] Monday–Sunday
-- [ ] day off
-- [ ] start time
-- [ ] end time
-- [ ] grace minutes
-- [ ] individual override
+- [x] Weekly work schedule
+- [x] Monday–Sunday
+- [x] day off
+- [x] start time
+- [x] end time
+- [x] grace minutes
+- [x] individual override
 
 Acceptance:
 - backend конкреттүү күнгө schedule чыгарат
@@ -138,11 +138,11 @@ Acceptance:
 
 ## PHASE 6 — QR
 
-- [ ] School QR credential генерация
-- [ ] QR payload format
-- [ ] Admin QR view
-- [ ] Printable QR export кийин
-- [ ] QR validation endpoint/service
+- [x] School QR credential генерация
+- [x] QR payload format
+- [x] Admin QR view
+- [x] Printable QR export кийин
+- [x] QR validation endpoint/service
 
 Payload example:
 

@@ -51,7 +51,9 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
-    stmt = select(User).where(User.id == user_id)
+    from sqlalchemy.orm import selectinload
+
+    stmt = select(User).options(selectinload(User.teacher_profile)).where(User.id == user_id)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
