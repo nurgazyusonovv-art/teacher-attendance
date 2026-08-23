@@ -4,6 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.db.session import get_db
 from app.core.config import settings
 from app.core.security import decode_token
@@ -99,7 +100,7 @@ async def get_current_active_teacher(
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
-    stmt = select(Teacher).where(Teacher.user_id == current_user.id)
+    stmt = select(Teacher).options(selectinload(Teacher.user)).where(Teacher.user_id == current_user.id)
     result = await db.execute(stmt)
     teacher = result.scalar_one_or_none()
 

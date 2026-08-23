@@ -165,18 +165,18 @@ Acceptance:
 
 ### Mobile
 
-- [ ] Location permission flow
-- [ ] Precise location guidance
-- [ ] Current position
-- [ ] Accuracy reading
-- [ ] Permission denied UI
-- [ ] Location service disabled UI
+- [x] Location permission flow
+- [x] Precise location guidance
+- [x] Current position
+- [x] Accuracy reading
+- [x] Permission denied UI
+- [x] Location service disabled UI
 
 ### Backend
 
-- [ ] Haversine distance service
-- [ ] radius validation
-- [ ] accuracy validation
+- [x] Haversine distance service
+- [x] radius validation
+- [x] accuracy validation
 
 Acceptance:
 - raw GPS attendance record'до сакталбайт
@@ -186,12 +186,12 @@ Acceptance:
 
 ## PHASE 8 — QR Scanner
 
-- [ ] Camera permission
-- [ ] QR Scanner screen
-- [ ] valid payload parse
-- [ ] loading state
-- [ ] prevent double-submit
-- [ ] scan result UI
+- [x] Camera permission
+- [x] QR Scanner screen
+- [x] valid payload parse
+- [x] loading state
+- [x] prevent double-submit
+- [x] scan result UI
 
 Acceptance:
 - бир scan бир request
@@ -202,19 +202,19 @@ Acceptance:
 
 ## PHASE 9 — Check-in
 
-- [ ] `/attendance/check-in`
-- [ ] JWT verify
-- [ ] teacher active check
-- [ ] QR validate
-- [ ] geofence validate
-- [ ] schedule resolve
-- [ ] server time
-- [ ] status calculation
-- [ ] late minutes
-- [ ] duplicate protection
-- [ ] event save
-- [ ] daily record update
-- [ ] response DTO
+- [x] `/attendance/check-in`
+- [x] JWT verify
+- [x] teacher active check
+- [x] QR validate
+- [x] geofence validate
+- [x] schedule resolve
+- [x] server time
+- [x] status calculation
+- [x] late minutes
+- [x] duplicate protection
+- [x] event save
+- [x] daily record update
+- [x] response DTO
 
 Acceptance examples:
 
@@ -227,12 +227,12 @@ Acceptance examples:
 
 ## PHASE 10 — Check-out
 
-- [ ] `/attendance/check-out`
-- [ ] same QR/location validation
-- [ ] require existing check-in
-- [ ] duplicate check-out protection
-- [ ] save server time
-- [ ] calculate worked duration
+- [x] `/attendance/check-out`
+- [x] same QR/location validation
+- [x] require existing check-in
+- [x] duplicate check-out protection
+- [x] save server time
+- [x] calculate worked duration
 
 Acceptance:
 - check-out жок check-in болбосо reject
@@ -242,24 +242,24 @@ Acceptance:
 
 ## PHASE 11 — Teacher Home
 
-- [ ] Greeting
-- [ ] today date
-- [ ] schedule
-- [ ] current attendance status
-- [ ] Scan QR button
-- [ ] check-in time
-- [ ] check-out time
-- [ ] late minutes
-- [ ] monthly summary
+- [x] Greeting
+- [x] today date
+- [x] schedule
+- [x] current attendance status
+- [x] Scan QR button
+- [x] check-in time
+- [x] check-out time
+- [x] late minutes
+- [x] monthly summary
 
 ---
 
 ## PHASE 12 — Teacher History
 
-- [ ] Attendance list
-- [ ] Month filter
-- [ ] Status filter
-- [ ] Detail screen
+- [x] Attendance list
+- [x] Month filter
+- [x] Status filter
+- [x] Detail screen
 
 Show:
 - date
@@ -276,12 +276,12 @@ Do not show:
 
 ## PHASE 13 — Admin Today Dashboard
 
-- [ ] KPI cards
-- [ ] attendance table
-- [ ] search
-- [ ] status filters
-- [ ] late sort
-- [ ] teacher detail navigation
+- [x] KPI cards
+- [x] attendance table
+- [x] search
+- [x] status filters
+- [x] late sort
+- [x] teacher detail navigation
 
 KPI:
 - total
@@ -294,24 +294,24 @@ KPI:
 
 ## PHASE 14 — Reports
 
-- [ ] Date range
-- [ ] Teacher filter
-- [ ] Status filter
-- [ ] Summary
-- [ ] Monthly report
-- [ ] CSV export
-- [ ] PDF export Phase 2 optional
+- [x] Date range
+- [x] Teacher filter
+- [x] Status filter
+- [x] Summary
+- [x] Monthly report
+- [x] CSV export
+- [x] PDF export Phase 2 optional
 
 ---
 
 ## PHASE 15 — Manual correction
 
-- [ ] Admin correction modal/page
-- [ ] reason required
-- [ ] old value audit
-- [ ] new value audit
-- [ ] admin id
-- [ ] timestamp
+- [x] Admin correction modal/page
+- [x] reason required
+- [x] old value audit
+- [x] new value audit
+- [x] admin id
+- [x] timestamp
 
 Acceptance:
 - silent edit жок

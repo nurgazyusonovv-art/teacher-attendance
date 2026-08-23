@@ -23,6 +23,9 @@ def get_today_date_in_school_timezone(tz_name: str | None = None) -> date:
     return current_time_in_school_timezone(tz_name).date()
 
 
+today_date_in_school_timezone = get_today_date_in_school_timezone
+
+
 def to_school_timezone(dt: datetime, tz_name: str | None = None) -> datetime:
     """Converts a naive or aware datetime to the school timezone."""
     tz = get_school_timezone(tz_name)
