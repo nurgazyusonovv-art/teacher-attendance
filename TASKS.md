@@ -52,24 +52,24 @@ Acceptance:
 
 ### Backend
 
-- [ ] Admin/Teacher login
-- [ ] password hashing
-- [ ] JWT access token
-- [ ] refresh token
-- [ ] `/auth/me`
-- [ ] role guard
+- [x] Admin/Teacher login
+- [x] password hashing
+- [x] JWT access token
+- [x] refresh token
+- [x] `/auth/me`
+- [x] role guard
 
 ### Mobile
 
-- [ ] Login UI
-- [ ] token secure storage
-- [ ] auto session restore
-- [ ] logout
+- [x] Login UI
+- [x] token secure storage
+- [x] auto session restore
+- [x] logout
 
 ### Admin
 
-- [ ] Admin login
-- [ ] protected routes
+- [x] Admin login
+- [x] protected routes
 
 Acceptance:
 - teacher admin endpoint ачпайт

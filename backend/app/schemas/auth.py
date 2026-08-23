@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from app.models.enums import UserRole
 
 
@@ -13,6 +13,8 @@ class RefreshTokenRequest(BaseModel):
 
 
 class UserInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     email: EmailStr
     username: str
@@ -22,6 +24,3 @@ class UserInfo(BaseModel):
     is_demo: bool
     school_id: Optional[str] = None
     teacher_id: Optional[str] = None
-
-    class Config:
-        from_attributes = True

@@ -1,6 +1,6 @@
 from datetime import datetime, date, time
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.enums import AttendanceEventType, AttendanceStatus
 
 
@@ -29,6 +29,8 @@ class AttendanceCheckOutRequest(BaseModel):
 
 
 class AttendanceEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     teacher_id: str
     school_id: str
@@ -41,11 +43,10 @@ class AttendanceEventResponse(BaseModel):
     location_verified: bool
     qr_verified: bool
 
-    class Config:
-        from_attributes = True
-
 
 class DailyAttendanceSummaryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     teacher_id: str
     school_id: str
@@ -56,6 +57,3 @@ class DailyAttendanceSummaryResponse(BaseModel):
     late_minutes: int
     worked_minutes: int
     is_manually_corrected: bool
-
-    class Config:
-        from_attributes = True
