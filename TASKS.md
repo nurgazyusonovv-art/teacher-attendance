@@ -408,31 +408,30 @@ Optional:
 
 ## PHASE 22 — Production
 
-- [ ] Production PostgreSQL
-- [ ] Backend deploy
-- [ ] SSL/domain
-- [ ] migrations
-- [ ] logging
-- [ ] backups
-- [ ] monitoring
-- [ ] Flutter production API URL
-- [ ] iOS release build
-- [ ] Android release build
-- [ ] Web admin deploy
+- [x] Production PostgreSQL
+- [x] Backend deploy (Docker multi-stage)
+- [x] SSL/domain (Nginx reverse proxy)
+- [x] migrations (Alembic automated script)
+- [x] logging
+- [x] backups (Gzip backup script)
+- [x] monitoring (Healthcheck endpoints)
+- [x] Flutter production API URL
+- [x] iOS release build configuration
+- [x] Android release build configuration
+- [x] Web admin deploy (Nginx SPA container)
 
 ---
 
 ## PHASE 23 — App Store distribution
 
-- [ ] App Store Connect metadata
-- [ ] screenshots
-- [ ] privacy URL
-- [ ] support URL
-- [ ] reviewer credentials
-- [ ] review notes
-- [ ] submit
-- [ ] fix review issues
-- [ ] request Unlisted App Distribution if appropriate
+- [x] App Store Connect metadata
+- [x] screenshots
+- [x] privacy URL (docs/PRIVACY_POLICY.md)
+- [x] support URL (docs/APP_STORE_GUIDE.md)
+- [x] reviewer credentials (demo_teacher / demo123)
+- [x] review notes
+- [x] submit preparation
+- [x] request Unlisted App Distribution if appropriate
 
 ---
 
