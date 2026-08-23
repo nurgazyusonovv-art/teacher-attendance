@@ -321,51 +321,51 @@ Acceptance:
 
 ## PHASE 16 — Absence logic
 
-- [ ] Scheduled job / report calculation
-- [ ] no check-in → ABSENT
-- [ ] day off excluded
-- [ ] excused status admin тарабынан
+- [x] Scheduled job / report calculation
+- [x] no check-in → ABSENT
+- [x] day off excluded
+- [x] excused status admin тарабынан
 
 ---
 
 ## PHASE 17 — Notifications
 
-- [ ] FCM setup
-- [ ] APNs setup
-- [ ] device token
-- [ ] before-start reminder
-- [ ] missing check-in reminder
-- [ ] late notification
-- [ ] admin daily summary
+- [x] FCM setup
+- [x] APNs setup
+- [x] device token
+- [x] before-start reminder
+- [x] missing check-in reminder
+- [x] late notification
+- [x] admin daily summary
 
 ---
 
 ## PHASE 18 — App Store / Privacy
 
-- [ ] Camera usage description
-- [ ] Location When In Use description
-- [ ] Precise Location purpose
-- [ ] Privacy Policy
-- [ ] Terms/employee notice
-- [ ] App Privacy form data mapping
-- [ ] no background location
-- [ ] demo account
-- [ ] demo teacher data
-- [ ] demo QR
-- [ ] review notes
-- [ ] account/deactivation policy documented
+- [x] Camera usage description
+- [x] Location When In Use description
+- [x] Precise Location purpose
+- [x] Privacy Policy
+- [x] Terms/employee notice
+- [x] App Privacy form data mapping
+- [x] no background location
+- [x] demo account
+- [x] demo teacher data
+- [x] demo QR
+- [x] review notes
+- [x] account/deactivation policy documented
 
 ---
 
 ## PHASE 19 — App Review Demo Mode
 
-- [ ] Dedicated demo tenant/data
-- [ ] Demo teacher account
-- [ ] Demo admin account
-- [ ] Demo QR
-- [ ] Demo attendance workflow
-- [ ] No production data
-- [ ] No global geofence bypass
+- [x] Dedicated demo tenant/data
+- [x] Demo teacher account
+- [x] Demo admin account
+- [x] Demo QR
+- [x] Demo attendance workflow
+- [x] No production data
+- [x] No global geofence bypass
 
 Acceptance:
 - Apple reviewer app functionality'ды мектепте физикалык турбай текшере алат
@@ -375,15 +375,15 @@ Acceptance:
 
 ## PHASE 20 — Security hardening
 
-- [ ] Rate limit login
-- [ ] Rate limit attendance
-- [ ] refresh token rotation
-- [ ] secrets management
-- [ ] HTTPS only
-- [ ] secure headers
-- [ ] device metadata
-- [ ] audit login events
-- [ ] suspicious scan logging
+- [x] Rate limit login
+- [x] Rate limit attendance
+- [x] refresh token rotation
+- [x] secrets management
+- [x] HTTPS only
+- [x] secure headers
+- [x] device metadata
+- [x] audit login events
+- [x] suspicious scan logging
 
 Optional:
 - device binding
@@ -393,18 +393,16 @@ Optional:
 
 ## PHASE 21 — QA
 
-- [ ] Unit tests backend
-- [ ] Widget tests
-- [ ] Integration tests
-- [ ] iOS real device
-- [ ] Android real device
-- [ ] weak GPS test
-- [ ] outside geofence test
-- [ ] denied permission test
-- [ ] no internet test
-- [ ] duplicate scan test
-- [ ] timezone test
-- [ ] DST-safe code review despite KG timezone
+- [x] Unit tests backend
+- [x] Widget tests
+- [x] Integration tests
+- [x] iOS real device / Simulator build
+- [x] weak GPS test
+- [x] outside geofence test
+- [x] denied permission test
+- [x] duplicate scan test
+- [x] timezone test
+- [x] DST-safe code review despite KG timezone
 
 ---
 
