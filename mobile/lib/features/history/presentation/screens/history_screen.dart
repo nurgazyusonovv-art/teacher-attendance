@@ -81,7 +81,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     final onTimeRate = totalDays > 0 ? ((onTimeCount / totalDays) * 100).toStringAsFixed(0) : '0';
 
-    final totalLateMinutes = _records.fold<int>(0, (sum, r) => sum + r.lateMinutes);
+    final totalLateMinutes = _records.fold<int>(0, (sum, r) => sum + r.totalLateMinutes);
     final totalWorkedMinutes = _records.fold<int>(0, (sum, r) => sum + r.workedMinutes);
 
     final lateHours = totalLateMinutes ~/ 60;
@@ -345,9 +345,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 Color statusColor = AppTheme.successColor;
                 String statusText = 'Өз убагында';
 
-                if (r.status == 'LATE') {
+                if (r.status == 'LATE' || r.totalLateMinutes > 0) {
                   statusColor = Colors.orange;
-                  statusText = 'Кечиккен (+${r.lateMinutes} мүн)';
+                  statusText = 'Кечиккен (+${r.totalLateMinutes} мүн)';
                 } else if (r.status == 'EXCUSED') {
                   statusColor = Colors.blue;
                   statusText = 'Себептүү';
@@ -445,6 +445,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   ),
                               ],
                             ),
+                            if (r.lessonDelays.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: r.lessonDelays.map((ld) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Text(
+                                      '${ld.lessonNumber}-сабак: ${ld.delayMinutes}м',
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ],
                         ),
                       ),

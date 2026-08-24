@@ -413,6 +413,89 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 14),
 
+                        // Today's Lesson Delays (if any)
+                        if (_todayStatus != null && _todayStatus!.lessonDelays.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB), // Amber soft background
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFFDE68A)),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x06000000), blurRadius: 12, offset: Offset(0, 3)),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.timer_outlined, size: 18, color: Colors.orange),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Сабактардагы кечигүүлөр',
+                                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                                        ),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Жалпы: ${_todayStatus!.totalLateMinutes} мүнөт',
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                ..._todayStatus!.lessonDelays.map((ld) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '${ld.lessonNumber}-сабак',
+                                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '${ld.delayMinutes} мүнөт кечиккен',
+                                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF78350F)),
+                                        ),
+                                        if (ld.reason != null && ld.reason!.isNotEmpty) ...[
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              '(${ld.reason})',
+                                              style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E), fontStyle: FontStyle.italic),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+
                         // Quick Navigation Actions
                         Row(
                           children: [

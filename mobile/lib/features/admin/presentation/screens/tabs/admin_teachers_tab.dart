@@ -141,7 +141,10 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
                           ],
                         ),
                         child: InkWell(
-                          onTap: () => context.push('/admin/teacher-detail', extra: t),
+                          onTap: () async {
+                            await context.push('/admin/teacher-detail', extra: t);
+                            _loadTeachers();
+                          },
                           borderRadius: BorderRadius.circular(18),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

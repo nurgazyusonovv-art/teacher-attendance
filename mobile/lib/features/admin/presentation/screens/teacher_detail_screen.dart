@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/datetime_utils.dart';
 import '../../../../core/widgets/ios_time_picker.dart';
 import '../../data/repositories/admin_mobile_repository.dart';
 
@@ -16,16 +17,21 @@ class TeacherDetailScreen extends StatefulWidget {
 class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTickerProviderStateMixin {
   final AdminMobileRepository _repository = AdminMobileRepository();
   late TabController _tabController;
+  late TeacherItemModel _currentTeacher;
   late bool _isActive;
 
   // Schedules state
   List<WorkScheduleItemModel> _teacherSchedules = [];
   bool _isLoadingSchedules = true;
 
+  // Lesson Delays state
+  List<LessonDelayModel> _lessonDelays = [];
+  bool _isLoadingDelays = true;
+
   // History & Statistics state
   List<Map<String, dynamic>> _historyRecords = [];
   bool _isLoadingHistory = true;
-  final DateTime _selectedMonth = DateTime.now();
+  DateTime _selectedMonth = DateTime.now();
 
   final List<String> _dayNames = [
     'Дүйшөмбү',
@@ -40,9 +46,11 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _currentTeacher = widget.teacher;
     _isActive = widget.teacher.isActive;
     _loadTeacherSchedules();
+    _loadLessonDelays();
     _loadTeacherHistory();
   }
 
@@ -54,7 +62,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
 
   Future<void> _loadTeacherSchedules() async {
     setState(() => _isLoadingSchedules = true);
-    final list = await _repository.getTeacherSchedules(teacherId: widget.teacher.id);
+    final list = await _repository.getTeacherSchedules(teacherId: _currentTeacher.id);
     if (mounted) {
       setState(() {
         _teacherSchedules = list;
@@ -63,10 +71,25 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
     }
   }
 
+  Future<void> _loadLessonDelays() async {
+    setState(() => _isLoadingDelays = true);
+    final list = await _repository.getLessonDelays(
+      teacherId: _currentTeacher.id,
+      year: _selectedMonth.year,
+      month: _selectedMonth.month,
+    );
+    if (mounted) {
+      setState(() {
+        _lessonDelays = list;
+        _isLoadingDelays = false;
+      });
+    }
+  }
+
   Future<void> _loadTeacherHistory() async {
     setState(() => _isLoadingHistory = true);
     final list = await _repository.getTeacherHistory(
-      teacherId: widget.teacher.id,
+      teacherId: _currentTeacher.id,
       year: _selectedMonth.year,
       month: _selectedMonth.month,
     );
@@ -88,6 +111,449 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
     }
   }
 
+  // --- TEACHER EDIT MODAL ---
+  void _showEditTeacherDialog() {
+    final nameController = TextEditingController(text: _currentTeacher.fullName);
+    final subjectController = TextEditingController(text: _currentTeacher.subject ?? '');
+    final phoneController = TextEditingController(text: _currentTeacher.phone ?? '');
+    final codeController = TextEditingController(text: _currentTeacher.employeeCode);
+    final passController = TextEditingController();
+    bool activeVal = _isActive;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_note_rounded, color: AppTheme.primaryColor, size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Мугалимди оңдоо', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Аты-жөнү *',
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: subjectController,
+                  decoration: const InputDecoration(
+                    labelText: 'Окуткан предмети',
+                    prefixIcon: Icon(Icons.menu_book_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Телефон номери',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: codeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Табель / кызматкер коду *',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Жаңы сырсөз (кааласаңыз)',
+                    hintText: 'Өзгөртпөө үчүн бош калтырыңыз',
+                    prefixIcon: Icon(Icons.lock_outline_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  title: const Text('Активдүү статус', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  value: activeVal,
+                  contentPadding: EdgeInsets.zero,
+                  activeTrackColor: AppTheme.successColor.withValues(alpha: 0.5),
+                  activeThumbColor: AppTheme.successColor,
+                  onChanged: (val) => setModalState(() => activeVal = val),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Жокко чыгаруу', style: TextStyle(color: Color(0xFF64748B))),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameController.text.trim();
+                final code = codeController.text.trim();
+                if (name.isEmpty || code.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Аты-жөнү жана коду бош болбошу керек!'), backgroundColor: Colors.red),
+                  );
+                  return;
+                }
+
+                final messenger = ScaffoldMessenger.of(context);
+                final (success, errorMsg) = await _repository.updateTeacher(
+                  teacherId: _currentTeacher.id,
+                  fullName: name,
+                  subject: subjectController.text.trim(),
+                  phone: phoneController.text.trim(),
+                  employeeCode: code,
+                  password: passController.text.trim().isNotEmpty ? passController.text.trim() : null,
+                  isActive: activeVal,
+                );
+
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (success) {
+                  setState(() {
+                    _currentTeacher = _currentTeacher.copyWith(
+                      fullName: name,
+                      subject: subjectController.text.trim(),
+                      phone: phoneController.text.trim(),
+                      employeeCode: code,
+                      isActive: activeVal,
+                    );
+                    _isActive = activeVal;
+                  });
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Мугалимдин маалыматы ийгиликтүү өзгөртүлдү!'), backgroundColor: AppTheme.successColor),
+                  );
+                } else {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(errorMsg ?? 'Ката кетти'), backgroundColor: Colors.red),
+                  );
+                }
+              },
+              child: const Text('Сактоо'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- TEACHER DELETE / DEACTIVATE MODAL ---
+  void _showDeleteTeacherDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Text('Мугалимди өчүрүү', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          '${_currentTeacher.fullName} аттуу мугалимди базадан толук өчүрүүнү каалайсызбы же убактылуу деактивациялайсызбы?',
+          style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Жокко чыгаруу', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          OutlinedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              final ok = await _repository.toggleTeacherActive(_currentTeacher.id, false);
+              if (ok) {
+                setState(() => _isActive = false);
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Мугалим деактивацияланды'), backgroundColor: Colors.orange),
+                );
+              }
+            },
+            child: const Text('Деактивациялоо', style: TextStyle(color: Colors.orange)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              final (ok, err) = await _repository.deleteTeacher(_currentTeacher.id, hardDelete: true);
+              if (ok) {
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Мугалим базадан толук өчүрүлдү!'), backgroundColor: AppTheme.successColor),
+                );
+                if (mounted) Navigator.pop(context, true);
+              } else {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(err ?? 'Өчүрүүдө ката кетти'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Толук өчүрүү'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- ADD LESSON DELAY MODAL ---
+  void _showAddLessonDelayDialog() {
+    int selectedLesson = 1;
+    int selectedMinutes = 10;
+    final reasonController = TextEditingController();
+    DateTime pickedDate = DateTime.now();
+    final customMinutesController = TextEditingController(text: '10');
+
+    final presetMinutes = [5, 10, 15, 20, 30, 45];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.timer_outlined, color: Colors.orange, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Сабакка кечигүү белгилөө', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                          Text('Канчанчы сабак жана канча мүнөт кечиккени', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Date selector
+                const Text('Датасы:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: pickedDate,
+                      firstDate: DateTime(2025),
+                      lastDate: DateTime(2030),
+                    );
+                    if (d != null) setModalState(() => pickedDate = d);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.borderColor),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          DateTimeUtils.formatKyrgyzDate(pickedDate),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: AppTheme.textPrimary),
+                        ),
+                        const Icon(Icons.calendar_today_rounded, size: 18, color: AppTheme.primaryColor),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Lesson number selector (1..8)
+                const Text('Кайсы сабакка кечикти:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(8, (i) {
+                    final lessonNum = i + 1;
+                    final isSel = selectedLesson == lessonNum;
+                    return InkWell(
+                      onTap: () => setModalState(() => selectedLesson = lessonNum),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSel ? AppTheme.primaryColor : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isSel ? AppTheme.primaryColor : AppTheme.borderColor),
+                        ),
+                        child: Text(
+                          '$lessonNum-сабак',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                            color: isSel ? Colors.white : AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+
+                // Delay minutes selector
+                const Text('Кечиккен убактысы (мүнөт):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: presetMinutes.map((mins) {
+                    final isSel = selectedMinutes == mins;
+                    return InkWell(
+                      onTap: () {
+                        setModalState(() {
+                          selectedMinutes = mins;
+                          customMinutesController.text = mins.toString();
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: isSel ? Colors.orange : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isSel ? Colors.orange : AppTheme.borderColor),
+                        ),
+                        child: Text(
+                          '$mins мүнөт',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                            color: isSel ? Colors.white : AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customMinutesController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Же кол менен жазыңыз (мүнөт)',
+                    suffixText: 'мин',
+                  ),
+                  onChanged: (val) {
+                    final parsed = int.tryParse(val);
+                    if (parsed != null && parsed > 0) {
+                      setModalState(() => selectedMinutes = parsed);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Reason input
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    labelText: 'Кечигүүнүн себеби (кааласаңыз)',
+                    hintText: 'Мис: Жол тыгыны, Себепсиз, Журнал...',
+                    prefixIcon: Icon(Icons.comment_outlined),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Save button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
+                    onPressed: () async {
+                      final mins = int.tryParse(customMinutesController.text.trim()) ?? selectedMinutes;
+                      if (mins <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Кечигүү мүнөтүн туура жазыңыз!'), backgroundColor: Colors.red),
+                        );
+                        return;
+                      }
+
+                      final dateStr = DateFormat('yyyy-MM-dd').format(pickedDate);
+                      final messenger = ScaffoldMessenger.of(context);
+
+                      final (ok, err) = await _repository.addLessonDelay(
+                        teacherId: _currentTeacher.id,
+                        date: dateStr,
+                        lessonNumber: selectedLesson,
+                        delayMinutes: mins,
+                        reason: reasonController.text.trim().isNotEmpty ? reasonController.text.trim() : null,
+                      );
+
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (ok) {
+                        _loadLessonDelays();
+                        _loadTeacherHistory();
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('$selectedLesson-сабакка $mins мүнөт кечигүү сакталды!'),
+                            backgroundColor: AppTheme.successColor,
+                          ),
+                        );
+                      } else {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text(err ?? 'Кечигүүнү сактоодо ката кетти'), backgroundColor: Colors.red),
+                        );
+                      }
+                    },
+                    child: const Text('Кечигүүнү сактоо', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- SCHEDULE EDIT DIALOG ---
   void _showEditScheduleDialog(int dayIdx) {
     final existing = _teacherSchedules.firstWhere(
       (s) => s.dayOfWeek == dayIdx,
@@ -189,7 +655,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
 
                 final messenger = ScaffoldMessenger.of(context);
                 final success = await _repository.saveTeacherSchedule(
-                  teacherId: widget.teacher.id,
+                  teacherId: _currentTeacher.id,
                   schedule: schedule,
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
@@ -249,39 +715,42 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                     DropdownMenuItem(value: 'EXCUSED', child: Text('Себептүү (EXCUSED) - Кабыл алуу')),
                     DropdownMenuItem(value: 'ON_TIME', child: Text('Өз убагында')),
                     DropdownMenuItem(value: 'LATE', child: Text('Кечиккен')),
-                    DropdownMenuItem(value: 'ABSENT', child: Text('Себепсиз келген жок')),
+                    DropdownMenuItem(value: 'ABSENT', child: Text('Келген эмес (Себепсиз)')),
                   ],
                   onChanged: (val) {
                     if (val != null) setModalState(() => selectedStatus = val);
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
+                const Text('Келүү / Кетүү убактысын тактоо:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: checkInController,
-                        decoration: const InputDecoration(labelText: 'Келүү (08:00)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(labelText: 'Келүү (HH:mm)', border: OutlineInputBorder()),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: checkOutController,
-                        decoration: const InputDecoration(labelText: 'Кетүү (17:00)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(labelText: 'Кетүү (HH:mm)', border: OutlineInputBorder()),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
+                const Text('Оңдоонун себеби / Буйрук негизи:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const SizedBox(height: 8),
                 TextField(
                   controller: reasonController,
+                  maxLines: 2,
                   decoration: const InputDecoration(
-                    labelText: 'Түшүндүрмө же Админдин жообу *',
-                    hintText: 'Мис: Справка көрсөттү, кабыл алынды',
+                    hintText: 'Мис: Ооруп жатат, справка көрсөттү, иш сапар...',
                     border: OutlineInputBorder(),
                   ),
-                  maxLines: 2,
                 ),
               ],
             ),
@@ -290,31 +759,44 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Жокко чыгаруу')),
             ElevatedButton(
               onPressed: () async {
-                if (reasonController.text.trim().length < 3) {
+                final reason = reasonController.text.trim();
+                if (reason.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Жооптун же себептин текстин жазыңыз!')),
+                    const SnackBar(content: Text('Оңдоонун себебин сөзсүз жазыңыз!'), backgroundColor: Colors.red),
                   );
                   return;
                 }
+
+                String? checkInIso;
+                String? checkOutIso;
                 final dateStr = record['date'] as String;
-                final checkInIso = checkInController.text.trim().isNotEmpty ? '${dateStr}T${checkInController.text.trim()}:00' : null;
-                final checkOutIso = checkOutController.text.trim().isNotEmpty ? '${dateStr}T${checkOutController.text.trim()}:00' : null;
+
+                if (checkInController.text.trim().isNotEmpty) {
+                  checkInIso = '${dateStr}T${checkInController.text.trim()}:00';
+                }
+                if (checkOutController.text.trim().isNotEmpty) {
+                  checkOutIso = '${dateStr}T${checkOutController.text.trim()}:00';
+                }
 
                 final messenger = ScaffoldMessenger.of(context);
-                final success = await _repository.manualCorrection(
-                  teacherId: widget.teacher.id,
+                final ok = await _repository.manualCorrection(
+                  teacherId: _currentTeacher.id,
                   targetDate: dateStr,
                   status: selectedStatus,
-                  reason: reasonController.text.trim(),
+                  reason: reason,
                   checkInTime: checkInIso,
                   checkOutTime: checkOutIso,
                 );
 
                 if (ctx.mounted) Navigator.pop(ctx);
-                if (success) {
+                if (ok) {
                   _loadTeacherHistory();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Жооп жана статус ийгиликтүү сакталды!'), backgroundColor: AppTheme.successColor),
+                    const SnackBar(content: Text('Катышуу статусу оңдолду!'), backgroundColor: AppTheme.successColor),
+                  );
+                } else {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Оңдоодо ката кетти'), backgroundColor: Colors.red),
                   );
                 }
               },
@@ -331,22 +813,36 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(widget.teacher.fullName, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(_currentTeacher.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_note_rounded, color: AppTheme.primaryColor),
+            tooltip: 'Мугалимди оңдоо',
+            onPressed: _showEditTeacherDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+            tooltip: 'Өчүрүү',
+            onPressed: _showDeleteTeacherDialog,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppTheme.primaryColor,
-          unselectedLabelColor: AppTheme.textSecondary,
+          unselectedLabelColor: const Color(0xFF64748B),
           indicatorColor: AppTheme.primaryColor,
           indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
           tabs: const [
-            Tab(icon: Icon(Icons.schedule_rounded), text: 'Жеке График'),
-            Tab(icon: Icon(Icons.analytics_rounded), text: 'Статистика & Тарых'),
+            Tab(icon: Icon(Icons.access_time_filled_rounded, size: 20), text: 'График'),
+            Tab(icon: Icon(Icons.timer_outlined, size: 20), text: 'Кечигүүлөр'),
+            Tab(icon: Icon(Icons.calendar_month_rounded, size: 20), text: 'Тарых'),
           ],
         ),
       ),
       body: Column(
         children: [
-          // Teacher Header Info Card
+          // Teacher Info Banner
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -356,7 +852,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                   radius: 24,
                   backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.15),
                   child: Text(
-                    widget.teacher.fullName.isNotEmpty ? widget.teacher.fullName[0] : 'М',
+                    _currentTeacher.fullName.isNotEmpty ? _currentTeacher.fullName[0] : 'М',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                   ),
                 ),
@@ -366,7 +862,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.teacher.fullName,
+                        _currentTeacher.fullName,
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -376,11 +872,11 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                         spacing: 6,
                         runSpacing: 2,
                         children: [
-                          Text('Код: ${widget.teacher.employeeCode}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
-                          Text('•  Логин: ${widget.teacher.username}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
+                          Text('Код: ${_currentTeacher.employeeCode}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
+                          Text('•  Логин: ${_currentTeacher.username}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
                         ],
                       ),
-                      if (widget.teacher.subject != null && widget.teacher.subject!.isNotEmpty)
+                      if (_currentTeacher.subject != null && _currentTeacher.subject!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Row(
@@ -389,7 +885,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  'Сабагы: ${widget.teacher.subject!}',
+                                  'Сабагы: ${_currentTeacher.subject!}',
                                   style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryColor),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -398,10 +894,10 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                             ],
                           ),
                         ),
-                      if (widget.teacher.phone != null && widget.teacher.phone!.isNotEmpty)
+                      if (_currentTeacher.phone != null && _currentTeacher.phone!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text('Тел: ${widget.teacher.phone}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                          child: Text('Тел: ${_currentTeacher.phone}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
                         ),
                     ],
                   ),
@@ -415,7 +911,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                       activeTrackColor: AppTheme.successColor.withValues(alpha: 0.5),
                       activeThumbColor: AppTheme.successColor,
                       onChanged: (val) async {
-                        final ok = await _repository.toggleTeacherActive(widget.teacher.id, val);
+                        final ok = await _repository.toggleTeacherActive(_currentTeacher.id, val);
                         if (ok) setState(() => _isActive = val);
                       },
                     ),
@@ -433,6 +929,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
               controller: _tabController,
               children: [
                 _buildScheduleTab(),
+                _buildLessonDelaysTab(),
                 _buildHistoryAndAnalyticsTab(),
               ],
             ),
@@ -541,204 +1038,363 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
     );
   }
 
-  // TAB 2: History & Analytics
+  // TAB 2: Lesson Delays
+  Widget _buildLessonDelaysTab() {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddLessonDelayDialog,
+        icon: const Icon(Icons.add_alarm_rounded),
+        label: const Text('Кечигүү кошуу'),
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+      ),
+      body: _isLoadingDelays
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                // Header card
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: Colors.orange, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Сабактардагы кечигүүлөр мугалимдин экранында көрүнүп, жалпы кечигүү убактысына кошулат.',
+                          style: TextStyle(fontSize: 12, color: Colors.orange.shade900, height: 1.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                if (_lessonDelays.isEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 20),
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.borderColor),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.alarm_off_rounded, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Сабакка кечигүүлөр катталган эмес',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Кечигүү кошуу үчүн төмөнкү баскычты басыңыз',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ..._lessonDelays.map((delay) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.borderColor),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x04000000), blurRadius: 6, offset: Offset(0, 2)),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${delay.lessonNumber}-сабак',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      '${delay.delayMinutes} мүнөт кечикти',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.red),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      delay.date,
+                                      style: const TextStyle(fontSize: 11.5, color: AppTheme.textMuted),
+                                    ),
+                                  ],
+                                ),
+                                if (delay.reason != null && delay.reason!.isNotEmpty) ...[
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Себеби: ${delay.reason}',
+                                    style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                            tooltip: 'Өчүрүү',
+                            onPressed: () async {
+                              final messenger = ScaffoldMessenger.of(context);
+                              final ok = await _repository.deleteLessonDelay(delay.id);
+                              if (ok) {
+                                _loadLessonDelays();
+                                _loadTeacherHistory();
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('Сабак кечигүүсү өчүрүлдү'), backgroundColor: AppTheme.successColor),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                const SizedBox(height: 80),
+              ],
+            ),
+    );
+  }
+
+  // TAB 3: History & Analytics
   Widget _buildHistoryAndAnalyticsTab() {
     if (_isLoadingHistory) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final totalDays = _historyRecords.length;
-    final onTimeCount = _historyRecords.where((r) => r['status'] == 'ON_TIME').length;
-    final lateCount = _historyRecords.where((r) => r['status'] == 'LATE').length;
-    final excusedCount = _historyRecords.where((r) => r['status'] == 'EXCUSED').length;
-    final totalLateMinutes = _historyRecords.fold<int>(0, (acc, r) => acc + ((r['late_minutes'] as int?) ?? 0));
-    final totalWorkedMinutes = _historyRecords.fold<int>(0, (acc, r) => acc + ((r['worked_minutes'] as int?) ?? 0));
+    final onTimeDays = _historyRecords.where((r) => r['status'] == 'ON_TIME').length;
+    final lateDays = _historyRecords.where((r) => r['status'] == 'LATE').length;
+    final absentDays = _historyRecords.where((r) => r['status'] == 'ABSENT').length;
+    final excusedDays = _historyRecords.where((r) => r['status'] == 'EXCUSED').length;
 
-    final lateHours = totalLateMinutes ~/ 60;
-    final lateMins = totalLateMinutes % 60;
-    final workedHours = totalWorkedMinutes ~/ 60;
-    final workedMins = totalWorkedMinutes % 60;
+    final attendancePercent = totalDays > 0 ? (((onTimeDays + lateDays + excusedDays) / totalDays) * 100).toInt() : 0;
+    final totalWorkedMinutes = _historyRecords.fold<int>(0, (sum, r) => sum + (r['worked_minutes'] as int? ?? 0));
+    final totalWorkedHours = (totalWorkedMinutes / 60).toStringAsFixed(1);
+    final totalLateMinutes = _historyRecords.fold<int>(0, (sum, r) => sum + (r['total_late_minutes'] as int? ?? r['late_minutes'] as int? ?? 0));
 
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        // Monthly Summary Analytics Card
-        Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppTheme.borderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _loadTeacherHistory();
+        await _loadLessonDelays();
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          // Month Selector
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${_selectedMonth.year}-жыл, ${_selectedMonth.month}-айдын көрсөткүчү',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Icon(Icons.bar_chart_rounded, color: AppTheme.primaryColor, size: 20),
-                ],
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded),
+                onPressed: () {
+                  setState(() {
+                    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+                  });
+                  _loadTeacherHistory();
+                  _loadLessonDelays();
+                },
               ),
-              const Divider(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatCol('Жалпы күндөр', '$totalDays', AppTheme.primaryColor),
-                  _buildStatCol('Өз убагында', '$onTimeCount', AppTheme.successColor),
-                  _buildStatCol('Кечикти', '$lateCount', Colors.orange),
-                  _buildStatCol('Себептүү', '$excusedCount', Colors.blue),
-                ],
+              Text(
+                DateTimeUtils.formatKyrgyzMonthYear(_selectedMonth),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Кечигүү: ${lateHours > 0 ? "$lateHours с " : ""}$lateMins мүн',
-                        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11.5),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Иштеди: $workedHours с $workedMins мүн',
-                        style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontSize: 11.5),
-                        textAlign: TextAlign.end,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded),
+                onPressed: () {
+                  setState(() {
+                    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+                  });
+                  _loadTeacherHistory();
+                  _loadLessonDelays();
+                },
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Каттоо тарыхы жана Жооптор',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: Color(0xFF0F172A)),
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              onPressed: _loadTeacherHistory,
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
+          // KPI Summary Cards
+          Row(
+            children: [
+              Expanded(child: _buildKpiCard('Катышуу', '$attendancePercent%', AppTheme.primaryColor)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildKpiCard('Иштеген убакыт', '${totalWorkedHours}с', AppTheme.successColor)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildKpiCard('Жалпы кечигүү', '${totalLateMinutes}м', Colors.orange)),
+            ],
+          ),
+          const SizedBox(height: 16),
 
-        if (_historyRecords.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(28.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderColor),
-            ),
-            child: const Center(child: Text('Бул айда катышуу жазуулары жок', style: TextStyle(color: AppTheme.textSecondary))),
-          )
-        else
-          ..._historyRecords.map((r) {
-            final status = r['status'] as String? ?? 'ON_TIME';
-            Color color = AppTheme.successColor;
-            String label = 'Өз убагында';
+          const Text('Күндөлүк катышуу журналы', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 8),
 
-            if (status == 'LATE') {
-              color = Colors.orange;
-              label = 'Кечиккен (+${r["late_minutes"]} мүн)';
-            } else if (status == 'EXCUSED') {
-              color = Colors.blue;
-              label = 'Себептүү';
-            } else if (status == 'ABSENT') {
-              color = Colors.grey;
-              label = 'Келген жок';
-            }
+          if (_historyRecords.isEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 20),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.borderColor)),
+              child: const Center(child: Text('Бул айда катышуу маалыматы жок', style: TextStyle(color: AppTheme.textSecondary))),
+            )
+          else
+            ..._historyRecords.map((r) {
+              final status = r['status'] as String? ?? 'ON_TIME';
+              final isCorrected = r['is_manually_corrected'] as bool? ?? false;
+              final checkIn = _formatTime(r['check_in_time']);
+              final checkOut = _formatTime(r['check_out_time']);
+              final rawLateMins = r['late_minutes'] as int? ?? 0;
+              final rawTotalLate = r['total_late_minutes'] as int? ?? rawLateMins;
+              final lessonDelaysList = (r['lesson_delays'] as List? ?? [])
+                  .map((e) => LessonDelayModel.fromJson(e as Map<String, dynamic>))
+                  .toList();
 
-            final checkIn = _formatTime(r['check_in_time']);
-            final checkOut = _formatTime(r['check_out_time']);
-            final reason = r['correction_reason'] as String?;
+              Color badgeColor;
+              String statusText;
+              switch (status) {
+                case 'ON_TIME':
+                  badgeColor = AppTheme.successColor;
+                  statusText = 'Өз убагында';
+                  break;
+                case 'LATE':
+                  badgeColor = Colors.orange;
+                  statusText = 'Кечиккен ($rawTotalLate мүн)';
+                  break;
+                case 'EXCUSED':
+                  badgeColor = Colors.blue;
+                  statusText = 'Себептүү';
+                  break;
+                case 'ABSENT':
+                default:
+                  badgeColor = Colors.red;
+                  statusText = 'Келген жок';
+                  break;
+              }
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.borderColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        r['date'] as String? ?? '',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                        child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10.5)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Text('Келүү: $checkIn', style: const TextStyle(fontSize: 12.5)),
-                      const SizedBox(width: 10),
-                      Text('Кетүү: $checkOut', style: const TextStyle(fontSize: 12.5)),
-                      const Spacer(),
-                      OutlinedButton(
-                        onPressed: () => _showExcuseReplyDialog(r),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          visualDensity: VisualDensity.compact,
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(r['date'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                          child: Text(statusText, style: TextStyle(color: badgeColor, fontWeight: FontWeight.bold, fontSize: 11)),
                         ),
-                        child: const Text('Оңдоо / Жооп', style: TextStyle(fontSize: 11)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.login_rounded, size: 14, color: AppTheme.textMuted),
+                        const SizedBox(width: 4),
+                        Text('Келүү: $checkIn', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        const SizedBox(width: 14),
+                        const Icon(Icons.logout_rounded, size: 14, color: AppTheme.textMuted),
+                        const SizedBox(width: 4),
+                        Text('Кетүү: $checkOut', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        const Spacer(),
+                        InkWell(
+                          onTap: () => _showExcuseReplyDialog(r),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.edit, size: 12, color: AppTheme.primaryColor),
+                                SizedBox(width: 3),
+                                Text('Оңдоо', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (lessonDelaysList.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: lessonDelaysList.map((ld) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                            ),
+                            child: Text(
+                              '${ld.lessonNumber}-сабак: ${ld.delayMinutes}м',
+                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.orange),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ],
-                  ),
-                  if (reason != null && reason.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Себеби: $reason',
-                      style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFF64748B)),
-                    ),
+                    if (isCorrected && r['correction_reason'] != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Оңдолгон себеби: ${r["correction_reason"]}',
+                        style: const TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            );
-          }),
-      ],
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatCol(String label, String val, Color col) {
-    return Column(
-      children: [
-        Text(val, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: col)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
-      ],
+  Widget _buildKpiCard(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.borderColor),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: color)),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary), textAlign: TextAlign.center),
+        ],
+      ),
     );
   }
 }

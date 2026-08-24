@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage_service.dart';
+import '../../../admin/data/repositories/admin_mobile_repository.dart';
 
 class DailyAttendanceModel {
   final String id;
@@ -12,6 +13,9 @@ class DailyAttendanceModel {
   final int workedMinutes;
   final bool isManuallyCorrected;
   final String? correctionReason;
+  final List<LessonDelayModel> lessonDelays;
+  final int lessonLateMinutes;
+  final int totalLateMinutes;
 
   DailyAttendanceModel({
     required this.id,
@@ -23,19 +27,33 @@ class DailyAttendanceModel {
     required this.workedMinutes,
     required this.isManuallyCorrected,
     this.correctionReason,
+    this.lessonDelays = const [],
+    this.lessonLateMinutes = 0,
+    this.totalLateMinutes = 0,
   });
 
   factory DailyAttendanceModel.fromJson(Map<String, dynamic> json) {
+    final rawDelays = json['lesson_delays'] as List? ?? [];
+    final delays = rawDelays
+        .map((e) => LessonDelayModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final lateMins = json['late_minutes'] as int? ?? 0;
+    final lessonLateMins = json['lesson_late_minutes'] as int? ?? delays.fold<int>(0, (sum, d) => sum + d.delayMinutes);
+    final totalLateMins = json['total_late_minutes'] as int? ?? (lateMins + lessonLateMins);
+
     return DailyAttendanceModel(
       id: json['id'] as String,
       date: json['date'] as String,
       checkInTime: json['check_in_time'] as String?,
       checkOutTime: json['check_out_time'] as String?,
       status: json['status'] as String? ?? 'ON_TIME',
-      lateMinutes: json['late_minutes'] as int? ?? 0,
+      lateMinutes: lateMins,
       workedMinutes: json['worked_minutes'] as int? ?? 0,
       isManuallyCorrected: json['is_manually_corrected'] as bool? ?? false,
       correctionReason: json['correction_reason'] as String?,
+      lessonDelays: delays,
+      lessonLateMinutes: lessonLateMins,
+      totalLateMinutes: totalLateMins,
     );
   }
 }
@@ -52,6 +70,9 @@ class TodayStatusModel {
   final String? scheduledStart;
   final String? scheduledEnd;
   final bool isDayOff;
+  final List<LessonDelayModel> lessonDelays;
+  final int lessonLateMinutes;
+  final int totalLateMinutes;
 
   TodayStatusModel({
     required this.date,
@@ -65,9 +86,20 @@ class TodayStatusModel {
     this.scheduledStart,
     this.scheduledEnd,
     required this.isDayOff,
+    this.lessonDelays = const [],
+    this.lessonLateMinutes = 0,
+    this.totalLateMinutes = 0,
   });
 
   factory TodayStatusModel.fromJson(Map<String, dynamic> json) {
+    final rawDelays = json['lesson_delays'] as List? ?? [];
+    final delays = rawDelays
+        .map((e) => LessonDelayModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final lateMins = json['late_minutes'] as int? ?? 0;
+    final lessonLateMins = json['lesson_late_minutes'] as int? ?? delays.fold<int>(0, (sum, d) => sum + d.delayMinutes);
+    final totalLateMins = json['total_late_minutes'] as int? ?? (lateMins + lessonLateMins);
+
     return TodayStatusModel(
       date: json['date'] as String,
       hasCheckedIn: json['has_checked_in'] as bool? ?? false,
@@ -75,11 +107,14 @@ class TodayStatusModel {
       checkInTime: json['check_in_time'] as String?,
       checkOutTime: json['check_out_time'] as String?,
       status: json['status'] as String?,
-      lateMinutes: json['late_minutes'] as int? ?? 0,
+      lateMinutes: lateMins,
       workedMinutes: json['worked_minutes'] as int? ?? 0,
       scheduledStart: json['scheduled_start'] as String?,
       scheduledEnd: json['scheduled_end'] as String?,
       isDayOff: json['is_day_off'] as bool? ?? false,
+      lessonDelays: delays,
+      lessonLateMinutes: lessonLateMins,
+      totalLateMinutes: totalLateMins,
     );
   }
 }

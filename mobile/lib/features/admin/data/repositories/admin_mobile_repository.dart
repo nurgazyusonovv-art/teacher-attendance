@@ -42,6 +42,32 @@ class TeacherItemModel {
       isActive: json['is_active'] as bool? ?? true,
     );
   }
+
+  TeacherItemModel copyWith({
+    String? id,
+    String? userId,
+    String? schoolId,
+    String? fullName,
+    String? email,
+    String? username,
+    String? phone,
+    String? subject,
+    String? employeeCode,
+    bool? isActive,
+  }) {
+    return TeacherItemModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      schoolId: schoolId ?? this.schoolId,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      username: username ?? this.username,
+      phone: phone ?? this.phone,
+      subject: subject ?? this.subject,
+      employeeCode: employeeCode ?? this.employeeCode,
+      isActive: isActive ?? this.isActive,
+    );
+  }
 }
 
 class WorkScheduleItemModel {
@@ -73,6 +99,44 @@ class WorkScheduleItemModel {
   }
 }
 
+class LessonDelayModel {
+  final String id;
+  final String teacherId;
+  final String schoolId;
+  final String date;
+  final int lessonNumber;
+  final int delayMinutes;
+  final String? reason;
+  final String? teacherName;
+  final String createdAt;
+
+  LessonDelayModel({
+    required this.id,
+    required this.teacherId,
+    required this.schoolId,
+    required this.date,
+    required this.lessonNumber,
+    required this.delayMinutes,
+    this.reason,
+    this.teacherName,
+    required this.createdAt,
+  });
+
+  factory LessonDelayModel.fromJson(Map<String, dynamic> json) {
+    return LessonDelayModel(
+      id: json['id'] as String? ?? '',
+      teacherId: json['teacher_id'] as String? ?? '',
+      schoolId: json['school_id'] as String? ?? '',
+      date: json['date'] as String? ?? '',
+      lessonNumber: json['lesson_number'] as int? ?? 1,
+      delayMinutes: json['delay_minutes'] as int? ?? 0,
+      reason: json['reason'] as String?,
+      teacherName: json['teacher_name'] as String?,
+      createdAt: json['created_at'] as String? ?? '',
+    );
+  }
+}
+
 class AdminMobileRepository {
   final ApiClient _apiClient;
 
@@ -82,9 +146,12 @@ class AdminMobileRepository {
   Dio get _dio => _apiClient.dio;
 
   // 1. Dashboard
-  Future<Map<String, dynamic>?> getTodayDashboard() async {
+  Future<Map<String, dynamic>?> getTodayDashboard({String? targetDate}) async {
     try {
-      final response = await _dio.get('/attendance/dashboard/today');
+      final response = await _dio.get(
+        '/attendance/dashboard/today',
+        queryParameters: targetDate != null ? {'target_date': targetDate} : null,
+      );
       return response.data as Map<String, dynamic>;
     } catch (_) {
       return null;
@@ -141,6 +208,66 @@ class AdminMobileRepository {
     }
   }
 
+  Future<(bool, String?)> updateTeacher({
+    required String teacherId,
+    String? fullName,
+    String? subject,
+    String? phone,
+    String? employeeCode,
+    String? password,
+    bool? isActive,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (fullName != null && fullName.isNotEmpty) data['full_name'] = fullName;
+      if (subject != null) data['subject'] = subject;
+      if (phone != null) data['phone_number'] = phone;
+      if (employeeCode != null && employeeCode.isNotEmpty) data['employee_code'] = employeeCode;
+      if (password != null && password.trim().isNotEmpty) data['password'] = password.trim();
+      if (isActive != null) data['is_active'] = isActive;
+
+      final response = await _dio.patch(
+        '/teachers/$teacherId',
+        data: data,
+      );
+      if (response.statusCode == 200) {
+        return (true, null);
+      }
+      return (false, 'Ката: ${response.statusCode}');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Мугалимдин маалыматын өзгөртүүдө ката кетти');
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  Future<(bool, String?)> deleteTeacher(String teacherId, {bool hardDelete = true}) async {
+    try {
+      final response = await _dio.delete(
+        '/teachers/$teacherId',
+        queryParameters: {'hard_delete': hardDelete},
+      );
+      if (response.statusCode == 200) {
+        return (true, null);
+      }
+      return (false, 'Ката: ${response.statusCode}');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Мугалимди өчүрүүдө ката кетти');
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
   Future<bool> toggleTeacherActive(String teacherId, bool isActive) async {
     try {
       final response = await _dio.patch(
@@ -153,7 +280,76 @@ class AdminMobileRepository {
     }
   }
 
-  // 3. Schedules
+  // 3. Lesson Delays (Сабактардагы кечигүүлөр)
+  Future<(bool, String?)> addLessonDelay({
+    required String teacherId,
+    required String date,
+    required int lessonNumber,
+    required int delayMinutes,
+    String? reason,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/attendance/lesson-delays',
+        data: {
+          'teacher_id': teacherId,
+          'date': date,
+          'lesson_number': lessonNumber,
+          'delay_minutes': delayMinutes,
+          'reason': reason,
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return (true, null);
+      }
+      return (false, 'Ката: ${response.statusCode}');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Сабак кечигүүсүн кошууда ката кетти');
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  Future<List<LessonDelayModel>> getLessonDelays({
+    required String teacherId,
+    String? date,
+    int? year,
+    int? month,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/attendance/lesson-delays',
+        queryParameters: {
+          'teacher_id': teacherId,
+          if (date != null) 'target_date': date,
+          if (year != null) 'year': year,
+          if (month != null) 'month': month,
+        },
+      );
+      final List list = response.data as List? ?? [];
+      return list
+          .map((i) => LessonDelayModel.fromJson(i as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> deleteLessonDelay(String delayId) async {
+    try {
+      final response = await _dio.delete('/attendance/lesson-delays/$delayId');
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // 4. Schedules
   Future<List<WorkScheduleItemModel>> getWeeklySchedules() async {
     try {
       final response = await _dio.get('/schedules');
@@ -195,7 +391,7 @@ class AdminMobileRepository {
     }
   }
 
-  // 4. Manual attendance correction
+  // 5. Manual attendance correction
   Future<bool> manualCorrection({
     required String teacherId,
     required String targetDate,
@@ -222,7 +418,7 @@ class AdminMobileRepository {
     }
   }
 
-  // 5. School QR & Settings
+  // 6. School QR & Settings
   Future<Map<String, dynamic>?> getSchoolQr() async {
     try {
       final response = await _dio.get('/qr/current');
@@ -286,7 +482,7 @@ class AdminMobileRepository {
     }
   }
 
-  // 6. Teacher specific history
+  // 7. Teacher specific history
   Future<List<Map<String, dynamic>>> getTeacherHistory({
     required String teacherId,
     int? year,
@@ -296,8 +492,8 @@ class AdminMobileRepository {
       final response = await _dio.get(
         '/attendance/teacher/$teacherId/history',
         queryParameters: {
-          'year': ?year,
-          'month': ?month,
+          if (year != null) 'year': year,
+          if (month != null) 'month': month,
         },
       );
       final list = response.data as List? ?? [];
@@ -307,7 +503,7 @@ class AdminMobileRepository {
     }
   }
 
-  // 7. Teacher specific schedules
+  // 8. Teacher specific schedules
   Future<List<WorkScheduleItemModel>> getTeacherSchedules({required String teacherId}) async {
     try {
       final response = await _dio.get(
