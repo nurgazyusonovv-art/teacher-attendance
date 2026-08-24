@@ -237,6 +237,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 28),
 
                 // Logout Button
+                // App Logo & Version Card
+                Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 3)),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.asset('assets/images/app_logo.png', fit: BoxFit.cover),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Мугалим Каттоо v1.0.0',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        '№1 Орто Мектептин расмий системасы',
+                        style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 ElevatedButton.icon(
                   onPressed: () {
                     showDialog(

@@ -96,7 +96,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
     setState(() => _isLoading = true);
     final messenger = ScaffoldMessenger.of(context);
 
-    final success = await _repository.createTeacher(
+    final (success, errorMsg) = await _repository.createTeacher(
       fullName: _nameController.text.trim(),
       username: _usernameController.text.trim(),
       subject: _subjectController.text.trim(),
@@ -117,8 +117,8 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
         context.pop(true);
       } else {
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Ката кетти. Логин кайталанбашы керек.'),
+          SnackBar(
+            content: Text(errorMsg ?? 'Ката кетти. Кайра аракет кылыңыз.'),
             backgroundColor: AppTheme.errorColor,
           ),
         );

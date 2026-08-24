@@ -37,6 +37,13 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 14, top: 8, bottom: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset('assets/images/app_logo.png', fit: BoxFit.cover),
+          ),
+        ),
         title: Text(_titles[_currentIndex]),
         actions: [
           IconButton(

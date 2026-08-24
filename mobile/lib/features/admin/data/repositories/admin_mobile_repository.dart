@@ -124,7 +124,7 @@ class AdminMobileRepository {
     }
   }
 
-  Future<bool> createTeacher({
+  Future<(bool, String?)> createTeacher({
     required String fullName,
     required String username,
     required String subject,
@@ -146,9 +146,19 @@ class AdminMobileRepository {
         },
         options: options,
       );
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (_) {
-      return false;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return (true, null);
+      }
+      return (false, 'Ката: ${response.statusCode}');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Серверге туташууда ката кетти');
+    } catch (e) {
+      return (false, e.toString());
     }
   }
 
@@ -184,23 +194,33 @@ class AdminMobileRepository {
     }
   }
 
-  Future<bool> updateSchedule(WorkScheduleItemModel schedule) async {
+  Future<(bool, String?)> updateSchedule(WorkScheduleItemModel schedule) async {
     try {
       final options = await _getAuthOptions();
       final response = await _dio.post(
         '${AppConstants.defaultBaseUrl}/schedules',
         data: {
           'day_of_week': schedule.dayOfWeek,
-          'start_time': schedule.startTime,
-          'end_time': schedule.endTime,
+          'start_time': schedule.startTime ?? '08:00:00',
+          'end_time': schedule.endTime ?? '17:00:00',
           'grace_minutes': schedule.graceMinutes,
           'is_day_off': schedule.isDayOff,
         },
         options: options,
       );
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (_) {
-      return false;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return (true, null);
+      }
+      return (false, 'Ката: ${response.statusCode}');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Серверге туташууда ката кетти');
+    } catch (e) {
+      return (false, e.toString());
     }
   }
 

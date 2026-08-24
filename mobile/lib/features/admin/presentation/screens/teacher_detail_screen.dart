@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/ios_time_picker.dart';
 import '../../data/repositories/admin_mobile_repository.dart';
 
 class TeacherDetailScreen extends StatefulWidget {
@@ -139,7 +140,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                     ),
                     contentPadding: EdgeInsets.zero,
                     onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: startTime);
+                      final picked = await showIosTimePicker(context: context, initialTime: startTime, title: 'Келүү убактысы');
                       if (picked != null) setModalState(() => startTime = picked);
                     },
                   ),
@@ -152,7 +153,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                     ),
                     contentPadding: EdgeInsets.zero,
                     onTap: () async {
-                      final picked = await showTimePicker(context: context, initialTime: endTime);
+                      final picked = await showIosTimePicker(context: context, initialTime: endTime, title: 'Кетүү убактысы');
                       if (picked != null) setModalState(() => endTime = picked);
                     },
                   ),

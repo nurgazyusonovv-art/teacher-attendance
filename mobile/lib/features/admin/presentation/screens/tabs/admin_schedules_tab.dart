@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/widgets/ios_time_picker.dart';
 import '../../../data/repositories/admin_mobile_repository.dart';
 
 class AdminSchedulesTab extends StatefulWidget {
@@ -162,16 +163,17 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
               const SizedBox(height: 14),
 
               if (!isDayOff) ...[
-                // Time Selectors Row
+                // iOS-Style Time Selectors Row
                 Row(
                   children: [
                     // Start Time Picker
                     Expanded(
                       child: InkWell(
                         onTap: () async {
-                          final picked = await showTimePicker(
+                          final picked = await showIosTimePicker(
                             context: context,
                             initialTime: startTime,
+                            title: 'Келүү убактысы',
                           );
                           if (picked != null) {
                             setModalState(() => startTime = picked);
@@ -196,9 +198,15 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              Text(
-                                '${startTime.hour.toString().padLeft(2, "0")}:${startTime.minute.toString().padLeft(2, "0")}',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${startTime.hour.toString().padLeft(2, "0")}:${startTime.minute.toString().padLeft(2, "0")}',
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                                  ),
+                                  const Icon(Icons.unfold_more_rounded, size: 18, color: AppTheme.textMuted),
+                                ],
                               ),
                             ],
                           ),
@@ -211,9 +219,10 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
                     Expanded(
                       child: InkWell(
                         onTap: () async {
-                          final picked = await showTimePicker(
+                          final picked = await showIosTimePicker(
                             context: context,
                             initialTime: endTime,
+                            title: 'Кетүү убактысы',
                           );
                           if (picked != null) {
                             setModalState(() => endTime = picked);
@@ -238,9 +247,15 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              Text(
-                                '${endTime.hour.toString().padLeft(2, "0")}:${endTime.minute.toString().padLeft(2, "0")}',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${endTime.hour.toString().padLeft(2, "0")}:${endTime.minute.toString().padLeft(2, "0")}',
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                                  ),
+                                  const Icon(Icons.unfold_more_rounded, size: 18, color: AppTheme.textMuted),
+                                ],
                               ),
                             ],
                           ),
@@ -307,7 +322,7 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
                         );
 
                         final messenger = ScaffoldMessenger.of(context);
-                        final success = await _repository.updateSchedule(updated);
+                        final (success, errorMsg) = await _repository.updateSchedule(updated);
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (success) {
                           _loadSchedules();
@@ -319,8 +334,8 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
                           );
                         } else {
                           messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Графикти сактоодо ката кетти'),
+                            SnackBar(
+                              content: Text(errorMsg ?? 'Графикти сактоодо ката кетти'),
                               backgroundColor: AppTheme.errorColor,
                             ),
                           );

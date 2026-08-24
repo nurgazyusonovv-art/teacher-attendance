@@ -65,7 +65,13 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Мугалим Каттоо'),
-        leading: const Icon(Icons.school_rounded, color: AppTheme.primaryColor),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 14, top: 8, bottom: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset('assets/images/app_logo.png', fit: BoxFit.cover),
+          ),
+        ),
         actions: [
           IconButton(
             icon: Container(
