@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:teacher_mobile/core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/storage/secure_storage_service.dart';
 
 class DailyAttendanceModel {
   final String id;
@@ -85,23 +85,12 @@ class TodayStatusModel {
 }
 
 class AttendanceRepository {
-  final Dio _dio;
-  final FlutterSecureStorage _storage;
+  final ApiClient _apiClient;
 
-  AttendanceRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ?? Dio(),
-        _storage = storage ?? const FlutterSecureStorage();
+  AttendanceRepository({ApiClient? apiClient})
+      : _apiClient = apiClient ?? ApiClient(storageService: SecureStorageService());
 
-  Future<Options> _getAuthOptions() async {
-    final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-  }
+  Dio get _dio => _apiClient.dio;
 
   Future<DailyAttendanceModel> checkIn({
     required String schoolId,
@@ -112,9 +101,8 @@ class AttendanceRepository {
     String? deviceInfo,
   }) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/attendance/check-in',
+        '/attendance/check-in',
         data: {
           'school_id': schoolId,
           'qr_token': qrToken,
@@ -123,7 +111,6 @@ class AttendanceRepository {
           'accuracy': accuracy,
           'device_info': deviceInfo,
         },
-        options: options,
       );
       return DailyAttendanceModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -144,9 +131,8 @@ class AttendanceRepository {
     String? deviceInfo,
   }) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/attendance/check-out',
+        '/attendance/check-out',
         data: {
           'school_id': schoolId,
           'qr_token': qrToken,
@@ -155,7 +141,6 @@ class AttendanceRepository {
           'accuracy': accuracy,
           'device_info': deviceInfo,
         },
-        options: options,
       );
       return DailyAttendanceModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -169,11 +154,7 @@ class AttendanceRepository {
 
   Future<TodayStatusModel?> getTodayStatus() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/attendance/today',
-        options: options,
-      );
+      final response = await _dio.get('/attendance/today');
       return TodayStatusModel.fromJson(response.data as Map<String, dynamic>);
     } catch (_) {
       return null;
@@ -182,15 +163,13 @@ class AttendanceRepository {
 
   Future<List<DailyAttendanceModel>> getMyHistory({int? year, int? month}) async {
     try {
-      final options = await _getAuthOptions();
       final queryParams = <String, dynamic>{};
       if (year != null) queryParams['year'] = year;
       if (month != null) queryParams['month'] = month;
 
       final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/attendance/my-history',
+        '/attendance/my-history',
         queryParameters: queryParams,
-        options: options,
       );
       final list = (response.data as List)
           .map((i) => DailyAttendanceModel.fromJson(i as Map<String, dynamic>))

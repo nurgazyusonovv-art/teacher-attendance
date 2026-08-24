@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:teacher_mobile/core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/storage/secure_storage_service.dart';
 
 class TeacherProfileData {
   final String id;
@@ -61,31 +61,16 @@ class MobileScheduleItem {
 }
 
 class ProfileRepository {
-  final Dio _dio;
-  final FlutterSecureStorage _storage;
+  final ApiClient _apiClient;
 
-  ProfileRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ?? Dio(),
-        _storage = storage ?? const FlutterSecureStorage();
+  ProfileRepository({ApiClient? apiClient})
+      : _apiClient = apiClient ?? ApiClient(storageService: SecureStorageService());
 
-  Future<Options> _getAuthOptions() async {
-    final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-  }
+  Dio get _dio => _apiClient.dio;
 
   Future<TeacherProfileData?> getMyProfile() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/teachers/me',
-        options: options,
-      );
+      final response = await _dio.get('/teachers/me');
       if (response.data == null) return null;
       return TeacherProfileData.fromJson(response.data as Map<String, dynamic>);
     } catch (_) {
@@ -95,11 +80,7 @@ class ProfileRepository {
 
   Future<List<MobileScheduleItem>> getMySchedules() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/schedules',
-        options: options,
-      );
+      final response = await _dio.get('/schedules');
       final list = (response.data['schedules'] as List)
           .map((s) => MobileScheduleItem.fromJson(s as Map<String, dynamic>))
           .toList();

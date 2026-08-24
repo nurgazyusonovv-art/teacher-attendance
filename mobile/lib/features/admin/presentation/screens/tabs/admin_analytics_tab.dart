@@ -97,15 +97,21 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.edit_location_alt_rounded, color: AppTheme.primaryColor, size: 22),
-                        SizedBox(width: 8),
-                        Text(
-                          'Мектептин Жайгашуусу жана Геозона',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.textPrimary),
-                        ),
-                      ],
+                    const Expanded(
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_location_alt_rounded, color: AppTheme.primaryColor, size: 22),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Мектептин Жайгашуусу жана Геозона',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppTheme.textPrimary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
@@ -134,10 +140,15 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Туруктуу жайы (GPS Координаталар):',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                    const Expanded(
+                      child: Text(
+                        'Туруктуу жайы (GPS):',
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    const SizedBox(width: 6),
                     InkWell(
                       onTap: isDetectingGps
                           ? null
