@@ -16,13 +16,28 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
 
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _subjectController = TextEditingController();
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController(text: 'teacher123');
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+
+  static const List<String> _commonSubjects = [
+    'Башталгыч класс',
+    'Кыргыз тили',
+    'Математика',
+    'Орус тили',
+    'Англис тили',
+    'Информатика',
+    'Тарых',
+    'Физика',
+    'Химия',
+    'Биология',
+    'География',
+    'Дене тарбия',
+  ];
 
   @override
   void initState() {
@@ -43,7 +58,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
   void dispose() {
     _nameController.dispose();
     _usernameController.dispose();
-    _emailController.dispose();
+    _subjectController.dispose();
     _phoneController.dispose();
     _codeController.dispose();
     _passwordController.dispose();
@@ -55,9 +70,6 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
       final translit = _transliterate(val.trim().toLowerCase());
       if (translit.isNotEmpty) {
         _usernameController.text = translit;
-        if (_emailController.text.isEmpty || _emailController.text.endsWith('@school.edu.kg')) {
-          _emailController.text = '$translit@school.edu.kg';
-        }
       }
     }
   }
@@ -87,7 +99,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
     final success = await _repository.createTeacher(
       fullName: _nameController.text.trim(),
       username: _usernameController.text.trim(),
-      email: _emailController.text.trim(),
+      subject: _subjectController.text.trim(),
       phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
       employeeCode: _codeController.text.trim(),
       password: _passwordController.text.trim(),
@@ -106,7 +118,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
       } else {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('Ката кетти. Логин же Email кайталанбашы керек.'),
+            content: Text('Ката кетти. Логин кайталанбашы керек.'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
@@ -176,7 +188,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // Card 1: Personal Information
+                // Card 1: Personal & Subject Information
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -193,7 +205,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Жеке маалыматтар',
+                              'Жеке маалыматтар жана Предмети',
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -213,6 +225,53 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                           prefixIcon: Icon(Icons.person_outline_rounded),
                         ),
                         validator: (v) => v == null || v.trim().isEmpty ? 'Мугалимдин аты-жөнүн жазыңыз' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('Окуткан предмети (Сабагы) *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _subjectController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          hintText: 'Мис: Математика, Кыргыз тили',
+                          prefixIcon: Icon(Icons.menu_book_rounded),
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Окуткан предметин жазыңыз' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      // Quick Subject Chips
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _commonSubjects.map((sub) {
+                          final isSelected = _subjectController.text == sub;
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                _subjectController.text = sub;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppTheme.primaryColor : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected ? AppTheme.primaryColor : AppTheme.borderColor,
+                                ),
+                              ),
+                              child: Text(
+                                sub,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected ? Colors.white : AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                       const SizedBox(height: 12),
                       const Text('Табель коду *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
@@ -281,19 +340,6 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                         validator: (v) => v == null || v.trim().isEmpty ? 'Логинди жазыңыз' : null,
                       ),
                       const SizedBox(height: 12),
-                      const Text('Электрондук дарек (Email) *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          hintText: 'uson@school.edu.kg',
-                          prefixIcon: Icon(Icons.mail_outline_rounded),
-                        ),
-                        validator: (v) => v == null || !v.contains('@') ? 'Туура Email дарек жазыңыз' : null,
-                      ),
-                      const SizedBox(height: 12),
                       const Text('Сырсөз *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
                       const SizedBox(height: 6),
                       TextFormField(
@@ -332,7 +378,7 @@ class _AddTeacherScreenState extends State<AddTeacherScreen> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Кошулган мугалим өзүнүн логини жана сырсөзү менен тиркемеге кирип, дароо QR-кодду сканерлей алат.',
+                          'Мугалим кошулгандан кийин өзүнүн логини жана сырсөзү менен тиркемеге кирип, дароо QR-кодду сканерлей алат.',
                           style: TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF), height: 1.3),
                         ),
                       ),

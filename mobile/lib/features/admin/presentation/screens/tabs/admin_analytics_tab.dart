@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../data/repositories/admin_mobile_repository.dart';
 
@@ -185,6 +186,17 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                       ),
                       Text('Мектеп ID: $schoolId', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () => context.push('/admin/qr-code'),
+                  icon: const Icon(Icons.qr_code_rounded, size: 18),
+                  label: const Text('QR-кодду ачуу жана көрсөтүү', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ],

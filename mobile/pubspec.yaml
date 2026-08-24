@@ -21,6 +21,7 @@ dependencies:
   permission_handler: ^11.4.0
   intl: ^0.20.2
   equatable: ^2.0.7
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

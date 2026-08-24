@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import '../features/admin/data/repositories/admin_mobile_repository.dart';
 import '../features/admin/presentation/screens/add_teacher_screen.dart';
 import '../features/admin/presentation/screens/admin_main_screen.dart';
+import '../features/admin/presentation/screens/admin_qr_code_screen.dart';
 import '../features/admin/presentation/screens/teacher_detail_screen.dart';
 import '../features/attendance/presentation/screens/home_screen.dart';
 import '../features/attendance/presentation/screens/qr_scanner_screen.dart';
@@ -34,6 +35,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/admin/add-teacher',
       builder: (context, state) => const AddTeacherScreen(),
+    ),
+    GoRoute(
+      path: '/admin/qr-code',
+      builder: (context, state) => const AdminQrCodeScreen(),
     ),
     GoRoute(
       path: '/scanner',

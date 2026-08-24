@@ -1,33 +1,22 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-
 class AppConstants {
   static String? _customBaseUrl;
+
+  static const String productionApiUrl = 'https://teacher-attendance-api-hfh2.onrender.com/api/v1';
 
   static String get defaultBaseUrl {
     if (_customBaseUrl != null && _customBaseUrl!.trim().isNotEmpty) {
       return _customBaseUrl!.trim();
     }
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api/v1';
-    }
-    if (Platform.isIOS) {
-      // iOS Simulator routes directly through localhost loopback
-      return 'http://127.0.0.1:8000/api/v1';
-    }
-    if (Platform.isAndroid) {
-      // Android Real Device / Local Wi-Fi
-      return 'http://10.18.114.217:8000/api/v1';
-    }
-    return 'http://127.0.0.1:8000/api/v1';
+    // Production Cloud API URL (Render.com + Supabase)
+    return productionApiUrl;
   }
 
   static set defaultBaseUrl(String url) {
     _customBaseUrl = url;
   }
 
-  static const int connectTimeoutSeconds = 15;
-  static const int receiveTimeoutSeconds = 15;
+  static const int connectTimeoutSeconds = 30;
+  static const int receiveTimeoutSeconds = 30;
 
   // Storage Keys
   static const String keyAccessToken = 'teacher_access_token';

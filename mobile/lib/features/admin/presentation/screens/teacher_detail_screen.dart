@@ -379,6 +379,24 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                           Text('•  Логин: ${widget.teacher.username}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
                         ],
                       ),
+                      if (widget.teacher.subject != null && widget.teacher.subject!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.menu_book_rounded, size: 12, color: AppTheme.primaryColor),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Сабагы: ${widget.teacher.subject!}',
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryColor),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       if (widget.teacher.phone != null && widget.teacher.phone!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),

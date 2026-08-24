@@ -10,6 +10,7 @@ class TeacherItemModel {
   final String email;
   final String username;
   final String? phone;
+  final String? subject;
   final String employeeCode;
   final bool isActive;
 
@@ -21,6 +22,7 @@ class TeacherItemModel {
     required this.email,
     required this.username,
     this.phone,
+    this.subject,
     required this.employeeCode,
     required this.isActive,
   });
@@ -29,12 +31,13 @@ class TeacherItemModel {
     final user = json['user'] as Map<String, dynamic>?;
     return TeacherItemModel(
       id: json['id'] as String,
-      userId: json['user_id'] as String,
-      schoolId: json['school_id'] as String,
-      fullName: user?['full_name'] as String? ?? json['full_name'] as String? ?? 'Мугалим',
-      email: user?['email'] as String? ?? json['email'] as String? ?? '',
-      username: user?['username'] as String? ?? json['username'] as String? ?? '',
-      phone: json['phone'] as String?,
+      userId: json['user_id'] as String? ?? user?['id'] as String? ?? '',
+      schoolId: json['school_id'] as String? ?? '',
+      fullName: json['full_name'] as String? ?? user?['full_name'] as String? ?? 'Мугалим',
+      email: json['email'] as String? ?? user?['email'] as String? ?? '',
+      username: json['username'] as String? ?? user?['username'] as String? ?? '',
+      phone: json['phone_number'] as String? ?? json['phone'] as String?,
+      subject: json['subject'] as String?,
       employeeCode: json['employee_code'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
     );
@@ -124,7 +127,7 @@ class AdminMobileRepository {
   Future<bool> createTeacher({
     required String fullName,
     required String username,
-    required String email,
+    required String subject,
     required String password,
     required String employeeCode,
     String? phone,
@@ -136,10 +139,10 @@ class AdminMobileRepository {
         data: {
           'full_name': fullName,
           'username': username,
-          'email': email,
+          'subject': subject,
           'password': password,
           'employee_code': employeeCode,
-          'phone': phone,
+          'phone_number': phone,
         },
         options: options,
       );
@@ -172,7 +175,7 @@ class AdminMobileRepository {
         options: options,
       );
       final raw = response.data;
-      final List list = raw is List ? raw : (raw is Map ? (raw['items'] as List? ?? []) : []);
+      final List list = raw is Map ? (raw['schedules'] as List? ?? []) : (raw is List ? raw : []);
       return list
           .map((i) => WorkScheduleItemModel.fromJson(i as Map<String, dynamic>))
           .toList();
@@ -185,7 +188,7 @@ class AdminMobileRepository {
     try {
       final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/schedules/',
+        '${AppConstants.defaultBaseUrl}/schedules',
         data: {
           'day_of_week': schedule.dayOfWeek,
           'start_time': schedule.startTime,
@@ -195,7 +198,7 @@ class AdminMobileRepository {
         },
         options: options,
       );
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (_) {
       return false;
     }
@@ -236,6 +239,19 @@ class AdminMobileRepository {
       final options = await _getAuthOptions();
       final response = await _dio.get(
         '${AppConstants.defaultBaseUrl}/qr/current',
+        options: options,
+      );
+      return response.data as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> rotateSchoolQr(String schoolId) async {
+    try {
+      final options = await _getAuthOptions();
+      final response = await _dio.post(
+        '${AppConstants.defaultBaseUrl}/qr/$schoolId/rotate',
         options: options,
       );
       return response.data as Map<String, dynamic>;

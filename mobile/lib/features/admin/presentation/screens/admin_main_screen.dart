@@ -29,7 +29,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     'Админ Дашборд',
     'Мугалимдерди башкаруу',
     'Жумуш Графиктери',
-    'Аналитика & QR-код',
+    'Аналитика & Отчет',
   ];
 
   @override
@@ -39,6 +39,19 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
         actions: [
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+              ),
+              child: const Icon(Icons.qr_code_rounded, color: AppTheme.primaryColor, size: 18),
+            ),
+            tooltip: 'Мектептин QR-коду',
+            onPressed: () => context.push('/admin/qr-code'),
+          ),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(7),

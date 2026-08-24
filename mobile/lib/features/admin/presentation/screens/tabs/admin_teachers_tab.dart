@@ -195,6 +195,24 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
                                           ),
                                         ],
                                       ),
+                                      if (t.subject != null && t.subject!.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 3),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.menu_book_rounded, size: 12, color: AppTheme.primaryColor),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  t.subject!,
+                                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryColor),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       if (t.phone != null && t.phone!.isNotEmpty)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 2),
