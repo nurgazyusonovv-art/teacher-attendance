@@ -9,10 +9,15 @@ import '../features/attendance/presentation/screens/qr_scanner_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/history/presentation/screens/history_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/splash/presentation/screens/splash_screen.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/splash',
   routes: [
+    GoRoute(
+      path: '/splash',
+      builder: (context, state) => const SplashScreen(),
+    ),
     GoRoute(
       path: '/login',
       builder: (context, state) => const LoginScreen(),

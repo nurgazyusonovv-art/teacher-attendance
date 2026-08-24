@@ -280,6 +280,53 @@ class AdminMobileRepository {
     }
   }
 
+  Future<Map<String, dynamic>?> getSchoolSettings() async {
+    try {
+      final options = await _getAuthOptions();
+      final response = await _dio.get(
+        '${AppConstants.defaultBaseUrl}/schools/current',
+        options: options,
+      );
+      return response.data as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<(bool, String?)> updateSchoolSettings({
+    required String schoolId,
+    required String name,
+    double? radius,
+  }) async {
+    try {
+      final options = await _getAuthOptions();
+      final data = <String, dynamic>{
+        'name': name,
+      };
+      if (radius != null) {
+        data['allowed_radius_meters'] = radius;
+      }
+      final response = await _dio.patch(
+        '${AppConstants.defaultBaseUrl}/schools/$schoolId',
+        data: data,
+        options: options,
+      );
+      if (response.statusCode == 200) {
+        return (true, null);
+      }
+      return (false, 'Ката: ${response.statusCode}');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Мектептин атын өзгөртүүдө ката кетти');
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
   // 6. Teacher specific history
   Future<List<Map<String, dynamic>>> getTeacherHistory({
     required String teacherId,

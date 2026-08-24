@@ -15,6 +15,7 @@ import 'package:teacher_mobile/features/attendance/presentation/screens/home_scr
 import 'package:teacher_mobile/features/history/presentation/screens/history_screen.dart';
 import 'package:teacher_mobile/features/profile/presentation/screens/profile_screen.dart';
 import 'package:teacher_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:teacher_mobile/features/splash/presentation/screens/splash_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teacher_mobile/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:teacher_mobile/features/attendance/presentation/cubit/attendance_cubit.dart';
@@ -185,6 +186,17 @@ void main() {
     await tester.pumpWidget(wrapWithTheme(const AdminQrCodeScreen(), size: const Size(320, 640)));
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(AdminQrCodeScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('SplashScreen renders without overflow on small screens', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(wrapWithTheme(const SplashScreen(), size: const Size(320, 640)));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(SplashScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

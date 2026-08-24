@@ -9,11 +9,14 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
   });
 
-  testWidgets('App renders login screen initially', (WidgetTester tester) async {
+  testWidgets('App renders splash screen initially and navigates to login', (WidgetTester tester) async {
     await tester.pumpWidget(const TeacherApp());
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('Мугалим Каттоо'), findsOneWidget);
+
+    // Advance 3 seconds for splash timer
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
     expect(find.text('Кирүү'), findsOneWidget);
   });
 }
