@@ -7,7 +7,14 @@ Future<TimeOfDay?> showIosTimePicker({
   required TimeOfDay initialTime,
   required String title,
 }) async {
-  Duration selectedDuration = Duration(hours: initialTime.hour, minutes: initialTime.minute);
+  final now = DateTime.now();
+  DateTime selectedDateTime = DateTime(
+    now.year,
+    now.month,
+    now.day,
+    initialTime.hour,
+    initialTime.minute,
+  );
 
   return await showCupertinoModalPopup<TimeOfDay>(
     context: context,
@@ -49,8 +56,8 @@ Future<TimeOfDay?> showIosTimePicker({
                     onPressed: () {
                       Navigator.of(ctx).pop(
                         TimeOfDay(
-                          hour: selectedDuration.inHours % 24,
-                          minute: selectedDuration.inMinutes % 60,
+                          hour: selectedDateTime.hour,
+                          minute: selectedDateTime.minute,
                         ),
                       );
                     },
@@ -62,13 +69,14 @@ Future<TimeOfDay?> showIosTimePicker({
                 ],
               ),
             ),
-            // Cupertino Wheel
+            // Cupertino 24-hour Time Wheel
             Expanded(
-              child: CupertinoTimerPicker(
-                mode: CupertinoTimerPickerMode.hm,
-                initialTimerDuration: selectedDuration,
-                onTimerDurationChanged: (Duration newDuration) {
-                  selectedDuration = newDuration;
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.time,
+                use24hFormat: true,
+                initialDateTime: selectedDateTime,
+                onDateTimeChanged: (DateTime newDateTime) {
+                  selectedDateTime = newDateTime;
                 },
               ),
             ),
