@@ -19,7 +19,7 @@ if is_postgres:
         "sslmode": "require",
     }
 
-# Async Engine for FastAPI async requests
+# Async Engine for FastAPI async requests (Powered by asyncpg)
 async_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
@@ -36,20 +36,25 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
-# Synchronous Engine for Alembic migrations or sync operations
-sync_engine = create_engine(
-    settings.SYNC_DATABASE_URL,
-    echo=False,
-    future=True,
-    connect_args=sync_connect_args,
-    pool_pre_ping=True,
-)
+# Synchronous Engine for Alembic migrations or sync operations (Lazy/Safe)
+sync_engine = None
+SyncSessionLocal = None
 
-SyncSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=sync_engine,
-)
+try:
+    sync_engine = create_engine(
+        settings.SYNC_DATABASE_URL,
+        echo=False,
+        future=True,
+        connect_args=sync_connect_args,
+        pool_pre_ping=True,
+    )
+    SyncSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=sync_engine,
+    )
+except Exception as e:
+    print(f"Warning: sync_engine initialization deferred: {e}")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
