@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/datetime_utils.dart';
 import '../../../attendance/data/repositories/attendance_repository.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -46,27 +47,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   String _formatTime(String? isoString) {
-    if (isoString == null || isoString.isEmpty) return '--:--';
-    try {
-      final dt = DateTime.parse(isoString);
-      return DateFormat('HH:mm').format(dt);
-    } catch (_) {
-      return isoString.length >= 5 ? isoString.substring(0, 5) : isoString;
-    }
+    return DateTimeUtils.formatBishkekTime(isoString);
   }
 
   String _formatMonthYear(DateTime dt) {
-    try {
-      return DateFormat('MMMM yyyy', 'ky').format(dt);
-    } catch (_) {
-      return '${dt.month}.${dt.year}';
-    }
+    return DateTimeUtils.formatKyrgyzMonthYear(dt);
   }
 
   String _formatDayOfWeek(String dateStr) {
     try {
       final dt = DateTime.parse(dateStr);
-      return DateFormat('EEE', 'ky').format(dt);
+      return DateTimeUtils.formatShortDay(dt.weekday - 1);
     } catch (_) {
       return '';
     }

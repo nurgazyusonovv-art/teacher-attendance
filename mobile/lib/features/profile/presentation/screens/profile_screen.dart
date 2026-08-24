@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/datetime_utils.dart';
+import '../../../admin/data/repositories/admin_mobile_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../data/repositories/profile_repository.dart';
@@ -15,19 +17,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileRepository _repository = ProfileRepository();
+  final AdminMobileRepository _adminRepository = AdminMobileRepository();
+
   TeacherProfileData? _profile;
   List<MobileScheduleItem> _schedules = [];
+  Map<String, dynamic>? _schoolData;
   bool _isLoading = true;
-
-  final List<String> _dayNames = [
-    'Дүйшөмбү',
-    'Шейшемби',
-    'Шаршемби',
-    'Бейшемби',
-    'Жума',
-    'Ишемби',
-    'Жекшемби',
-  ];
 
   @override
   void initState() {
@@ -36,12 +31,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfileData() async {
+    setState(() => _isLoading = true);
     final profile = await _repository.getMyProfile();
     final schedules = await _repository.getMySchedules();
+    final school = await _adminRepository.getSchoolSettings();
     if (mounted) {
       setState(() {
         _profile = profile;
         _schedules = schedules;
+        _schoolData = school;
         _isLoading = false;
       });
     }
@@ -62,11 +60,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         },
         builder: (context, state) {
           final user = state is Authenticated ? state.user : null;
-          final fullName = user?.fullName ?? _profile?.fullName ?? 'Мугалим';
-          final email = user?.email ?? 'teacher@school.edu.kg';
-          final isDemo = user?.isDemo ?? _profile?.isDemo ?? false;
+          final fullName = _profile?.fullName ?? user?.fullName ?? 'Мугалим';
+          final username = _profile?.username ?? user?.username ?? 'teacher';
+          final email = user?.email ?? '$username@school.edu.kg';
+          final isDemo = _profile?.isDemo ?? user?.isDemo ?? false;
+          final schoolName = _schoolData?['name'] as String? ?? '№1 Орто Мектеп';
+          final radius = (_schoolData?['allowed_radius_meters'] as num?)?.toDouble() ?? 80.0;
+          final subject = _profile?.subject ?? 'Жалпы предмет';
+          final employeeCode = _profile?.employeeCode ?? 'TCH-001';
+          final phone = _profile?.phoneNumber ?? 'Көрсөтүлгөн эмес';
 
-          return SafeArea(
+          return RefreshIndicator(
+            onRefresh: _loadProfileData,
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               children: [
@@ -128,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text('№1 Орто Мектеп', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryLight)),
+                        child: Text(schoolName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryLight)),
                       ),
                     ],
                   ),
@@ -148,19 +153,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildInfoTile(
                         icon: Icons.badge_outlined,
                         title: 'Табель коду',
-                        value: _profile?.employeeCode ?? 'TCH-001',
+                        value: employeeCode,
                       ),
                       const Divider(height: 1),
                       _buildInfoTile(
                         icon: Icons.menu_book_outlined,
                         title: 'Предмети',
-                        value: _profile?.subject ?? 'Математика',
+                        value: subject,
+                      ),
+                      const Divider(height: 1),
+                      _buildInfoTile(
+                        icon: Icons.phone_outlined,
+                        title: 'Телефон',
+                        value: phone,
                       ),
                       const Divider(height: 1),
                       _buildInfoTile(
                         icon: Icons.location_on_outlined,
                         title: 'GPS Текшерүү',
-                        value: 'Haversine (150м)',
+                        value: 'Радиус: ${radius.toInt()}м (Haversine)',
                       ),
                     ],
                   ),
@@ -169,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // Weekly Work Schedule
                 const Text(
-                  'Жумалык иш графиги',
+                  'Жумалык иш графиги (Бишкек уб.)',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 10),
@@ -197,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final isOff = sched?.isDayOff ?? (index == 6);
                             final timeText = isOff
                                 ? 'Дем алыш'
-                                : '${sched != null ? sched.startTime.substring(0, 5) : "08:00"} — ${sched != null ? sched.endTime.substring(0, 5) : "17:00"}';
+                                : '${sched != null ? DateTimeUtils.formatBishkekTime(sched.startTime) : "08:00"} — ${sched != null ? DateTimeUtils.formatBishkekTime(sched.endTime) : "17:00"}';
 
                             return Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -206,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      _dayNames[index],
+                                      DateTimeUtils.getDayName(index),
                                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -223,8 +234,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       timeText,
                                       style: TextStyle(
                                         fontSize: 11.5,
-                                        color: isOff ? AppTheme.textMuted : AppTheme.primaryColor,
-                                        fontWeight: isOff ? FontWeight.normal : FontWeight.bold,
+                                        fontWeight: FontWeight.bold,
+                                        color: isOff ? AppTheme.textSecondary : AppTheme.primaryLight,
                                       ),
                                     ),
                                   ),
@@ -234,82 +245,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           },
                         ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
                 // Logout Button
-                // App Logo & Version Card
-                Center(
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 3)),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.asset('assets/images/app_logo.png', fit: BoxFit.cover),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Мугалим Каттоо v1.0.0',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        '№1 Орто Мектептин расмий системасы',
-                        style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                ElevatedButton.icon(
+                OutlinedButton.icon(
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (dialogCtx) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         title: const Text('Чыгуу', style: TextStyle(fontWeight: FontWeight.bold)),
-                        content: const Text('Чын эле аккаунттан чыгууну каалайсызбы?'),
+                        content: const Text('Сиз чын эле өз аккаунтуңуздан чыгууну каалайсызбы?'),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.pop(dialogCtx),
-                            child: const Text('Жок'),
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Жокко чыгаруу'),
                           ),
                           ElevatedButton(
                             onPressed: () {
-                              Navigator.pop(dialogCtx);
+                              Navigator.pop(ctx);
                               context.read<AuthCubit>().logout();
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.errorColor,
-                              minimumSize: const Size(90, 42),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
-                            child: const Text('Чыгуу'),
+                            child: const Text('Чыгуу', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                           ),
                         ],
                       ),
                     );
                   },
-                  icon: const Icon(Icons.logout_rounded, size: 20),
-                  label: const Text('Аккаунттан чыгуу'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFEF2F2),
-                    foregroundColor: AppTheme.errorColor,
-                    elevation: 0,
-                    side: const BorderSide(color: Color(0xFFFECACA)),
+                  icon: const Icon(Icons.logout_rounded, color: AppTheme.errorColor),
+                  label: const Text('Аккаунттан чыгуу', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.errorColor),
+                    minimumSize: const Size(double.infinity, 48),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           );
@@ -327,23 +302,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icon, size: 18, color: AppTheme.primaryColor),
-          ),
+          Icon(icon, size: 18, color: AppTheme.textSecondary),
           const SizedBox(width: 10),
-          Text(title, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
-          const SizedBox(width: 8),
           Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            flex: 2,
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-              maxLines: 2,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),

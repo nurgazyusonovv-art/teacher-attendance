@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/datetime_utils.dart';
+import '../../../admin/data/repositories/admin_mobile_repository.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/attendance_repository.dart';
 import '../cubit/attendance_cubit.dart';
 import '../cubit/attendance_state.dart';
@@ -18,17 +20,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ProfileRepository _profileRepository = ProfileRepository();
+  final AdminMobileRepository _adminRepository = AdminMobileRepository();
+
   TodayStatusModel? _todayStatus;
+  TeacherProfileData? _teacherProfile;
+  Map<String, dynamic>? _schoolData;
   late Timer _clockTimer;
-  DateTime _currentTime = DateTime.now();
+  DateTime _currentTime = DateTimeUtils.bishkekNow;
 
   @override
   void initState() {
     super.initState();
-    context.read<AttendanceCubit>().loadTodayStatus();
+    _loadAllData();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
-        setState(() => _currentTime = DateTime.now());
+        setState(() => _currentTime = DateTimeUtils.bishkekNow);
       }
     });
   }
@@ -39,23 +46,15 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  String _formatTime(String? isoString) {
-    if (isoString == null || isoString.isEmpty) return '--:--';
-    try {
-      final dt = DateTime.parse(isoString);
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final minute = dt.minute.toString().padLeft(2, '0');
-      return '$hour:$minute';
-    } catch (_) {
-      return isoString.length >= 5 ? isoString.substring(0, 5) : isoString;
-    }
-  }
-
-  String _formatLiveDate(DateTime dt) {
-    try {
-      return DateFormat('d-MMMM yyyy, EEEE', 'ky').format(dt);
-    } catch (_) {
-      return '${dt.day}.${dt.month}.${dt.year}';
+  Future<void> _loadAllData() async {
+    context.read<AttendanceCubit>().loadTodayStatus();
+    final profile = await _profileRepository.getMyProfile();
+    final school = await _adminRepository.getSchoolSettings();
+    if (mounted) {
+      setState(() {
+        _teacherProfile = profile;
+        _schoolData = school;
+      });
     }
   }
 
@@ -93,21 +92,23 @@ class _HomeScreenState extends State<HomeScreen> {
           if (state is AttendanceTodayLoaded) {
             setState(() => _todayStatus = state.status);
           } else if (state is AttendanceActionSuccess) {
-            context.read<AttendanceCubit>().loadTodayStatus();
+            _loadAllData();
           }
         },
         builder: (context, attendanceState) {
           return BlocBuilder<AuthCubit, AuthState>(
             builder: (context, authState) {
-              final teacherName = authState is Authenticated
-                  ? authState.user.fullName
-                  : 'Мугалим';
-              final isDemo = authState is Authenticated ? authState.user.isDemo : false;
+              final teacherName = _teacherProfile?.fullName ??
+                  (authState is Authenticated ? authState.user.fullName : 'Мугалим');
+              final isDemo = _teacherProfile?.isDemo ??
+                  (authState is Authenticated ? authState.user.isDemo : false);
+              final subject = _teacherProfile?.subject;
+              final schoolName = _schoolData?['name'] as String? ?? '№1 Орто Мектеп';
 
               final hasCheckedIn = _todayStatus?.hasCheckedIn ?? false;
               final hasCheckedOut = _todayStatus?.hasCheckedOut ?? false;
-              final checkInTime = _formatTime(_todayStatus?.checkInTime);
-              final checkOutTime = _formatTime(_todayStatus?.checkOutTime);
+              final checkInTime = DateTimeUtils.formatBishkekTime(_todayStatus?.checkInTime);
+              final checkOutTime = DateTimeUtils.formatBishkekTime(_todayStatus?.checkOutTime);
               final lateMinutes = _todayStatus?.lateMinutes ?? 0;
 
               String heroButtonTitle = 'КЕЛҮҮ КАТТОО';
@@ -142,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               return SafeArea(
                 child: RefreshIndicator(
-                  onRefresh: () => context.read<AttendanceCubit>().loadTodayStatus(),
+                  onRefresh: _loadAllData,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -193,9 +194,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                   const SizedBox(height: 2),
-                                  const Text(
-                                    '№1 Орто Мектеп • Мугалим',
-                                    style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                                  Text(
+                                    '$schoolName ${subject != null && subject.isNotEmpty ? "• $subject" : "• Мугалим"}',
+                                    style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -206,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Live Clock & Date Banner
+                        // Live Clock & Date Banner (Asia/Bishkek)
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -229,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(width: 5),
                                         Expanded(
                                           child: Text(
-                                            _formatLiveDate(_currentTime),
+                                            DateTimeUtils.formatKyrgyzDate(_currentTime),
                                             style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
@@ -245,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: const Color(0xFFEFF6FF),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: const Text('Asia/Bishkek', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: AppTheme.primaryLight)),
+                                    child: const Text('Бишкек уб. (UTC+6)', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: AppTheme.primaryLight)),
                                   ),
                                 ],
                               ),
@@ -274,7 +275,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const Icon(Icons.schedule_rounded, size: 13, color: AppTheme.textSecondary),
                                     const SizedBox(width: 5),
                                     Text(
-                                      'Иш: ${_todayStatus?.scheduledStart != null ? "${_todayStatus!.scheduledStart!.substring(0, 5)} — ${_todayStatus!.scheduledEnd!.substring(0, 5)}" : "08:00 — 17:00"}',
+                                      _todayStatus?.isDayOff == true
+                                          ? 'Бүгүн: Дем алыш күнү'
+                                          : 'Иш убактысы: ${_todayStatus?.scheduledStart != null ? "${DateTimeUtils.formatBishkekTime(_todayStatus!.scheduledStart)} — ${DateTimeUtils.formatBishkekTime(_todayStatus!.scheduledEnd)}" : "08:00 — 17:00"}',
                                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -298,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         : '/scanner',
                                   );
                                   if (result == true && context.mounted) {
-                                    context.read<AttendanceCubit>().loadTodayStatus();
+                                    _loadAllData();
                                   }
                                 },
                           borderRadius: BorderRadius.circular(22),
@@ -355,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Today's Check-in / Check-out Status Card
+                        // Today's Check-in / Check-out Status Card (Real Data)
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
