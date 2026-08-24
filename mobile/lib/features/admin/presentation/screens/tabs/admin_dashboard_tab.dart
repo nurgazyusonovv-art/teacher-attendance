@@ -33,14 +33,6 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     }
   }
 
-  String _formatHeaderDate(DateTime dt) {
-    try {
-      return DateFormat('d-MMMM yyyy, EEEE', 'ky').format(dt);
-    } catch (_) {
-      return '${dt.day}.${dt.month}.${dt.year}';
-    }
-  }
-
   String _formatTime(String? isoString) {
     if (isoString == null || isoString.isEmpty) return '--:--';
     try {
@@ -51,9 +43,17 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     }
   }
 
+  String _formatHeaderDate(DateTime dt) {
+    try {
+      return DateFormat('d-MMMM yyyy, EEEE', 'ky').format(dt);
+    } catch (_) {
+      return '${dt.day}.${dt.month}.${dt.year}';
+    }
+  }
+
   void _showManualCorrectionDialog(Map<String, dynamic> record) {
-    String selectedStatus = record['status'] == 'ABSENT' ? 'EXCUSED' : record['status'];
-    final reasonController = TextEditingController();
+    String selectedStatus = record['status'] == 'ABSENT' ? 'EXCUSED' : (record['status'] ?? 'ON_TIME');
+    final reasonController = TextEditingController(text: record['correction_reason'] ?? '');
     final checkInController = TextEditingController(
       text: record['check_in_time'] != null ? _formatTime(record['check_in_time']) : '08:00',
     );
@@ -65,17 +65,21 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          title: Text('${record["teacher_name"] ?? "Мугалим"} — Оңдоо'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            '${record["teacher_name"] ?? "Мугалим"}\nКатышууну оңдоо',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Статусту тандоо:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const Text('Статусту тандоо:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: selectedStatus,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                   items: const [
                     DropdownMenuItem(value: 'ON_TIME', child: Text('Өз убагында')),
                     DropdownMenuItem(value: 'LATE', child: Text('Кечиккен')),
@@ -121,7 +125,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Жокко чыгаруу')),
             ElevatedButton(
               onPressed: () async {
-                if (reasonController.text.trim().length < 4) {
+                if (reasonController.text.trim().length < 3) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Оңдоонун себебин жазыңыз!')),
                   );
@@ -131,6 +135,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 final checkInIso = checkInController.text.trim().isNotEmpty ? '${dateStr}T${checkInController.text.trim()}:00' : null;
                 final checkOutIso = checkOutController.text.trim().isNotEmpty ? '${dateStr}T${checkOutController.text.trim()}:00' : null;
 
+                final messenger = ScaffoldMessenger.of(context);
                 final success = await _repository.manualCorrection(
                   teacherId: record['teacher_id'],
                   targetDate: dateStr,
@@ -143,6 +148,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (success) {
                   _loadData();
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Катышуу ийгиликтүү оңдолду!'), backgroundColor: AppTheme.successColor),
+                  );
                 }
               },
               child: const Text('Сактоо'),
@@ -166,32 +174,74 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final notCheckedIn = _dashboardData?['not_checked_in_count'] ?? 0;
     final records = (_dashboardData?['records'] as List? ?? []);
 
+    final attendancePercentage = total > 0 ? ((checkedIn / total) * 100).toStringAsFixed(0) : '0';
+
     return RefreshIndicator(
       onRefresh: _loadData,
       child: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
         children: [
-          // Header Date
-          Text(
-            'Бүгүнкү дата: ${_formatHeaderDate(DateTime.now())}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+          // Header Date Banner
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppTheme.borderColor),
+              boxShadow: const [
+                BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 2)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.event_available_rounded, color: AppTheme.primaryColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatHeaderDate(DateTime.now()),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Катышуу: $attendancePercentage% ($checkedIn / $total мугалим)',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // KPI Grid (5 Cards)
           GridView.count(
             crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.2,
+            childAspectRatio: 0.95,
             children: [
-              _buildKpiCard('Жалпы', '$total', Icons.people, AppTheme.primaryColor),
-              _buildKpiCard('Келди', '$checkedIn', Icons.login, AppTheme.successColor),
-              _buildKpiCard('Өз убагында', '$onTime', Icons.check_circle, AppTheme.successColor),
-              _buildKpiCard('Кечикти', '$lateCount', Icons.timer, Colors.orange),
-              _buildKpiCard('Келген жок', '$notCheckedIn', Icons.person_off, AppTheme.errorColor),
+              _buildKpiCard('Жалпы', '$total', Icons.people_alt_outlined, AppTheme.primaryColor),
+              _buildKpiCard('Келди', '$checkedIn', Icons.how_to_reg_rounded, AppTheme.successColor),
+              _buildKpiCard('Өз уб.', '$onTime', Icons.check_circle_outline_rounded, AppTheme.successColor),
+              _buildKpiCard('Кечикти', '$lateCount', Icons.alarm_rounded, Colors.orange),
+              _buildKpiCard('Келген жок', '$notCheckedIn', Icons.person_off_outlined, AppTheme.errorColor),
             ],
           ),
           const SizedBox(height: 20),
@@ -200,27 +250,49 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Келүүлөр тизмеси',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              const Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.list_alt_rounded, size: 18, color: AppTheme.primaryColor),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Бүгүнкү келүүлөр тизмеси',
+                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Text('${records.length} мугалим', style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                child: Text('${records.length} мугалим', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           if (records.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Center(child: Text('Азырынча эч ким каттала элек')),
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.borderColor),
+              ),
+              child: const Center(
+                child: Text('Бүгүн азырынча катышуу жазуусу жок', style: TextStyle(color: AppTheme.textSecondary)),
               ),
             )
           else
             ...records.map((r) {
-              final status = r['status'] as String? ?? 'ABSENT';
+              final status = r['status'] ?? 'ON_TIME';
               Color statusColor = AppTheme.successColor;
-              String statusLabel = 'Өз убагында';
+              String statusLabel = 'Өз уб.';
 
               if (status == 'LATE') {
                 statusColor = Colors.orange;
@@ -236,75 +308,138 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               final checkIn = _formatTime(r['check_in_time']);
               final checkOut = _formatTime(r['check_out_time']);
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  onTap: () {
-                    final item = TeacherItemModel(
-                      id: r['teacher_id'] as String,
-                      userId: '',
-                      schoolId: r['school_id'] as String? ?? '',
-                      fullName: r['teacher_name'] as String? ?? 'Мугалим',
-                      email: '',
-                      username: '',
-                      employeeCode: r['employee_code'] as String? ?? '',
-                      isActive: true,
-                    );
-                    context.push('/admin/teacher-detail', extra: item);
-                  },
-                  leading: CircleAvatar(
-                    backgroundColor: statusColor.withValues(alpha: 0.15),
-                    child: Icon(
-                      status == 'ABSENT' ? Icons.person_off : Icons.person,
-                      color: statusColor,
-                    ),
-                  ),
-                  title: Text(
-                    r['teacher_name'] ?? 'Мугалим',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      Text('Келүү: $checkIn  •  Кетүү: $checkOut ($statusLabel)'),
-                      if ((r['late_minutes'] ?? 0) > 0)
-                        Text(
-                          'Кечигүү: +${r["late_minutes"]} мүнөт',
-                          style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
+              return InkWell(
+                onTap: () {
+                  final item = TeacherItemModel(
+                    id: r['teacher_id'] as String,
+                    userId: '',
+                    schoolId: r['school_id'] as String? ?? '',
+                    fullName: r['teacher_name'] as String? ?? 'Мугалим',
+                    email: '',
+                    username: '',
+                    employeeCode: r['employee_code'] as String? ?? '',
+                    isActive: true,
+                  );
+                  context.push('/admin/teacher-detail', extra: item);
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppTheme.borderColor),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x04000000), blurRadius: 6, offset: Offset(0, 2)),
                     ],
                   ),
-                  trailing: OutlinedButton(
-                    onPressed: () => _showManualCorrectionDialog(r),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    child: const Text('Оңдоо', style: TextStyle(fontSize: 12)),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: statusColor.withValues(alpha: 0.12),
+                        child: Icon(
+                          status == 'ABSENT' ? Icons.person_off_rounded : Icons.person_rounded,
+                          color: statusColor,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              r['teacher_name'] ?? 'Мугалим',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Келүү: $checkIn  •  Кетүү: $checkOut',
+                              style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if ((r['late_minutes'] ?? 0) > 0)
+                              Text(
+                                'Кечигүү: +${r["late_minutes"]} мүнөт',
+                                style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 10.5),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              statusLabel,
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          InkWell(
+                            onTap: () => _showManualCorrectionDialog(r),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: AppTheme.borderColor),
+                              ),
+                              child: const Text('Оңдоо', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppTheme.primaryColor)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               );
             }),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildKpiCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      elevation: 1.5,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 4),
-            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-            Text(title, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)), textAlign: TextAlign.center, maxLines: 1),
-          ],
-        ),
+  Widget _buildKpiCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: const [
+          BoxShadow(color: Color(0x04000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(height: 3),
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 9.5, color: AppTheme.textSecondary),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

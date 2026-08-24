@@ -113,24 +113,29 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          title: Text('${widget.teacher.fullName}\n${_dayNames[dayIdx]} графиги'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('${_dayNames[dayIdx]} жеке графиги', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SwitchListTile(
-                  title: const Text('Дем алыш күн (Day Off)'),
+                  title: const Text('Дем алыш күн (Day Off)', style: TextStyle(fontWeight: FontWeight.w600)),
                   value: isDayOff,
                   contentPadding: EdgeInsets.zero,
+                  activeTrackColor: AppTheme.primaryColor.withValues(alpha: 0.5),
+                  activeThumbColor: AppTheme.primaryColor,
                   onChanged: (val) => setModalState(() => isDayOff = val),
                 ),
                 if (!isDayOff) ...[
                   const Divider(),
                   ListTile(
                     title: const Text('Келүү убактысы'),
-                    trailing: Chip(
-                      label: Text('${startTime.hour.toString().padLeft(2, "0")}:${startTime.minute.toString().padLeft(2, "0")}'),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+                      child: Text('${startTime.hour.toString().padLeft(2, "0")}:${startTime.minute.toString().padLeft(2, "0")}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                     ),
                     contentPadding: EdgeInsets.zero,
                     onTap: () async {
@@ -140,8 +145,10 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                   ),
                   ListTile(
                     title: const Text('Кетүү убактысы'),
-                    trailing: Chip(
-                      label: Text('${endTime.hour.toString().padLeft(2, "0")}:${endTime.minute.toString().padLeft(2, "0")}'),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+                      child: Text('${endTime.hour.toString().padLeft(2, "0")}:${endTime.minute.toString().padLeft(2, "0")}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
                     ),
                     contentPadding: EdgeInsets.zero,
                     onTap: () async {
@@ -149,14 +156,13 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                       if (picked != null) setModalState(() => endTime = picked);
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextField(
                     controller: graceController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Жеңилдик убактысы (мүнөт)',
                       hintText: '15',
-                      border: OutlineInputBorder(),
                     ),
                   ),
                 ],
@@ -164,30 +170,14 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
             ),
           ),
           actions: [
-            if (existing.id != null)
-              TextButton(
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  final success = await _repository.deleteTeacherSchedule(existing.id!);
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (success) {
-                    _loadTeacherSchedules();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Мектептин жалпы графигине кайтарылды')),
-                    );
-                  }
-                },
-                child: const Text('Жалпы графикке коюу', style: TextStyle(color: Colors.red)),
-              ),
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Жокко чыгаруу')),
             ElevatedButton(
               onPressed: () async {
-                final messenger = ScaffoldMessenger.of(context);
                 final startStr = isDayOff ? null : '${startTime.hour.toString().padLeft(2, "0")}:${startTime.minute.toString().padLeft(2, "0")}:00';
                 final endStr = isDayOff ? null : '${endTime.hour.toString().padLeft(2, "0")}:${endTime.minute.toString().padLeft(2, "0")}:00';
                 final grace = int.tryParse(graceController.text.trim()) ?? 15;
 
-                final scheduleItem = WorkScheduleItemModel(
+                final schedule = WorkScheduleItemModel(
                   id: existing.id,
                   dayOfWeek: dayIdx,
                   startTime: startStr,
@@ -196,11 +186,11 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                   isDayOff: isDayOff,
                 );
 
+                final messenger = ScaffoldMessenger.of(context);
                 final success = await _repository.saveTeacherSchedule(
                   teacherId: widget.teacher.id,
-                  schedule: scheduleItem,
+                  schedule: schedule,
                 );
-
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (success) {
                   _loadTeacherSchedules();
@@ -217,6 +207,17 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
     );
   }
 
+  void _resetToDefaultSchedule(String scheduleId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await _repository.deleteTeacherSchedule(scheduleId);
+    if (ok) {
+      _loadTeacherSchedules();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Мектептин жалпы графигине кайтарылды!'), backgroundColor: AppTheme.successColor),
+      );
+    }
+  }
+
   void _showExcuseReplyDialog(Map<String, dynamic> record) {
     String selectedStatus = record['status'] == 'ABSENT' ? 'EXCUSED' : (record['status'] as String? ?? 'ON_TIME');
     final reasonController = TextEditingController(text: record['correction_reason'] as String? ?? '');
@@ -231,22 +232,23 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          title: Text('${record["date"]} — Оңдоо / Жооп берүү'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('${record["date"]}\nТүшүндүрмө / Катышууну оңдоо', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Катышуу статусу:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const Text('Статус коюу:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: selectedStatus,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
                   items: const [
-                    DropdownMenuItem(value: 'EXCUSED', child: Text('Себептүү (EXCUSED)')),
-                    DropdownMenuItem(value: 'ON_TIME', child: Text('Өз убагында келди')),
-                    DropdownMenuItem(value: 'LATE', child: Text('Кечиккен деп бекитүү')),
-                    DropdownMenuItem(value: 'ABSENT', child: Text('Келген жок')),
+                    DropdownMenuItem(value: 'EXCUSED', child: Text('Себептүү (EXCUSED) - Кабыл алуу')),
+                    DropdownMenuItem(value: 'ON_TIME', child: Text('Өз убагында')),
+                    DropdownMenuItem(value: 'LATE', child: Text('Кечиккен')),
+                    DropdownMenuItem(value: 'ABSENT', child: Text('Себепсиз келген жок')),
                   ],
                   onChanged: (val) {
                     if (val != null) setModalState(() => selectedStatus = val);
@@ -274,8 +276,8 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                 TextField(
                   controller: reasonController,
                   decoration: const InputDecoration(
-                    labelText: 'Түшүндүрмө / Себеп * (Аудит)',
-                    hintText: 'Мис: Ооруп калгандыгы тууралуу справка',
+                    labelText: 'Түшүндүрмө же Админдин жообу *',
+                    hintText: 'Мис: Справка көрсөттү, кабыл алынды',
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 2,
@@ -289,11 +291,10 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
               onPressed: () async {
                 if (reasonController.text.trim().length < 3) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Себебин же түшүндүрмөсүн жазыңыз')),
+                    const SnackBar(content: Text('Жооптун же себептин текстин жазыңыз!')),
                   );
                   return;
                 }
-
                 final dateStr = record['date'] as String;
                 final checkInIso = checkInController.text.trim().isNotEmpty ? '${dateStr}T${checkInController.text.trim()}:00' : null;
                 final checkOutIso = checkOutController.text.trim().isNotEmpty ? '${dateStr}T${checkOutController.text.trim()}:00' : null;
@@ -312,7 +313,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                 if (success) {
                   _loadTeacherHistory();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Катышуу ийгиликтүү оңдолду!'), backgroundColor: AppTheme.successColor),
+                    const SnackBar(content: Text('Жооп жана статус ийгиликтүү сакталды!'), backgroundColor: AppTheme.successColor),
                   );
                 }
               },
@@ -327,16 +328,18 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(widget.teacher.fullName),
+        title: Text(widget.teacher.fullName, maxLines: 1, overflow: TextOverflow.ellipsis),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
+          labelColor: AppTheme.primaryColor,
+          unselectedLabelColor: AppTheme.textSecondary,
+          indicatorColor: AppTheme.primaryColor,
+          indicatorWeight: 3,
           tabs: const [
-            Tab(icon: Icon(Icons.schedule), text: 'Жеке График'),
-            Tab(icon: Icon(Icons.analytics_outlined), text: 'Статистика & Тарых'),
+            Tab(icon: Icon(Icons.schedule_rounded), text: 'Жеке График'),
+            Tab(icon: Icon(Icons.analytics_rounded), text: 'Статистика & Тарых'),
           ],
         ),
       ),
@@ -344,16 +347,16 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
         children: [
           // Teacher Header Info Card
           Container(
-            color: const Color(0xFFF8FAFC),
+            color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 26,
+                  radius: 24,
                   backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.15),
                   child: Text(
                     widget.teacher.fullName.isNotEmpty ? widget.teacher.fullName[0] : 'М',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -361,14 +364,32 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.teacher.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('Код: ${widget.teacher.employeeCode}  •  Логин: ${widget.teacher.username}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                      Text(
+                        widget.teacher.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: [
+                          Text('Код: ${widget.teacher.employeeCode}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
+                          Text('•  Логин: ${widget.teacher.username}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5)),
+                        ],
+                      ),
                       if (widget.teacher.phone != null && widget.teacher.phone!.isNotEmpty)
-                        Text('Тел: ${widget.teacher.phone}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text('Тел: ${widget.teacher.phone}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                        ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Switch(
                       value: _isActive,
@@ -385,6 +406,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
               ],
             ),
           ),
+          const Divider(height: 1),
 
           // Tab Content
           Expanded(
@@ -412,7 +434,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
       children: [
         const Text(
           'Мугалимдин жеке жумуш убактысы',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F172A)),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0F172A)),
         ),
         const SizedBox(height: 4),
         const Text(
@@ -424,49 +446,75 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
         ...List.generate(7, (dayIdx) {
           final custom = _teacherSchedules.where((s) => s.dayOfWeek == dayIdx).firstOrNull;
           final isCustom = custom != null;
+          final isOff = custom?.isDayOff ?? (dayIdx == 6);
+          final timeText = isOff
+              ? 'Дем алыш күн'
+              : '${custom?.startTime?.substring(0, 5) ?? "08:00"} — ${custom?.endTime?.substring(0, 5) ?? "17:00"} (Жеңилдик: ${custom?.graceMinutes ?? 15} мүн)';
 
-          return Card(
+          return Container(
             margin: const EdgeInsets.only(bottom: 10),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: (custom?.isDayOff ?? (dayIdx == 6))
-                    ? Colors.grey.withValues(alpha: 0.2)
-                    : (isCustom ? AppTheme.primaryColor.withValues(alpha: 0.15) : const Color(0xFFF1F5F9)),
-                child: Icon(
-                  (custom?.isDayOff ?? (dayIdx == 6)) ? Icons.weekend : Icons.access_time,
-                  color: isCustom ? AppTheme.primaryColor : const Color(0xFF64748B),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: isOff
+                      ? const Color(0xFFF1F5F9)
+                      : (isCustom ? AppTheme.primaryColor.withValues(alpha: 0.12) : const Color(0xFFF1F5F9)),
+                  child: Icon(
+                    isOff ? Icons.weekend_rounded : Icons.access_time_rounded,
+                    color: isCustom ? AppTheme.primaryColor : const Color(0xFF64748B),
+                    size: 18,
+                  ),
                 ),
-              ),
-              title: Row(
-                children: [
-                  Text(_dayNames[dayIdx], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  if (isCustom)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                      child: const Text('Жеке график', style: TextStyle(fontSize: 10, color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
-                      child: const Text('Жалпы график', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(_dayNames[dayIdx], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                          const SizedBox(width: 6),
+                          if (isCustom)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                              child: const Text('Жеке график', style: TextStyle(fontSize: 9.5, color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(timeText, style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor, size: 18),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => _showEditScheduleDialog(dayIdx),
                     ),
-                ],
-              ),
-              subtitle: Text(
-                custom == null
-                    ? (dayIdx == 6 ? 'Дем алыш күн (Мектеп)' : '08:00 — 17:00 (Мектептин графиги)')
-                    : (custom.isDayOff
-                        ? 'Дем алыш күн'
-                        : '${custom.startTime?.substring(0, 5) ?? "08:00"} — ${custom.endTime?.substring(0, 5) ?? "17:00"} (Жеңилдик: ${custom.graceMinutes} мүн)'),
-                style: const TextStyle(fontSize: 13),
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit, color: AppTheme.primaryColor),
-                onPressed: () => _showEditScheduleDialog(dayIdx),
-              ),
+                    if (isCustom && custom.id != null) ...[
+                      const SizedBox(width: 10),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 18),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _resetToDefaultSchedule(custom.id!),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
           );
         }),
@@ -496,52 +544,68 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
       padding: const EdgeInsets.all(16.0),
       children: [
         // Monthly Summary Analytics Card
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${_selectedMonth.year}-жыл, ${_selectedMonth.month}-айдын статистикасы',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppTheme.borderColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${_selectedMonth.year}-жыл, ${_selectedMonth.month}-айдын көрсөткүчү',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const Icon(Icons.bar_chart, color: AppTheme.primaryColor),
-                  ],
-                ),
-                const Divider(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatCol('Жалпы күндөр', '$totalDays', AppTheme.primaryColor),
-                    _buildStatCol('Өз убагында', '$onTimeCount', AppTheme.successColor),
-                    _buildStatCol('Кечикти', '$lateCount', Colors.orange),
-                    _buildStatCol('Себептүү', '$excusedCount', Colors.blue),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Жалпы кечигүү: ${lateHours > 0 ? "$lateHours с " : ""}$lateMins мүн',
-                        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                      Text(
-                        'Жалпы иштеди: $workedHours с $workedMins мүн',
-                        style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                    ],
                   ),
+                  const Icon(Icons.bar_chart_rounded, color: AppTheme.primaryColor, size: 20),
+                ],
+              ),
+              const Divider(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatCol('Жалпы күндөр', '$totalDays', AppTheme.primaryColor),
+                  _buildStatCol('Өз убагында', '$onTimeCount', AppTheme.successColor),
+                  _buildStatCol('Кечикти', '$lateCount', Colors.orange),
+                  _buildStatCol('Себептүү', '$excusedCount', Colors.blue),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Кечигүү: ${lateHours > 0 ? "$lateHours с " : ""}$lateMins мүн',
+                        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Иштеди: $workedHours с $workedMins мүн',
+                        style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.bold, fontSize: 11.5),
+                        textAlign: TextAlign.end,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -551,10 +615,10 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
           children: [
             const Text(
               'Каттоо тарыхы жана Жооптор',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0F172A)),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: Color(0xFF0F172A)),
             ),
             IconButton(
-              icon: const Icon(Icons.refresh, size: 20),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
               onPressed: _loadTeacherHistory,
             ),
           ],
@@ -562,11 +626,14 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
         const SizedBox(height: 6),
 
         if (_historyRecords.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(28.0),
-              child: Center(child: Text('Бул айда катышуу жазуулары жок')),
+          Container(
+            padding: const EdgeInsets.all(28.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.borderColor),
             ),
+            child: const Center(child: Text('Бул айда катышуу жазуулары жок', style: TextStyle(color: AppTheme.textSecondary))),
           )
         else
           ..._historyRecords.map((r) {
@@ -589,53 +656,56 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
             final checkOut = _formatTime(r['check_out_time']);
             final reason = r['correction_reason'] as String?;
 
-            return Card(
+            return Container(
               margin: const EdgeInsets.only(bottom: 10),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          r['date'] as String? ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                          child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text('Келүү: $checkIn', style: const TextStyle(fontSize: 13)),
-                        const SizedBox(width: 16),
-                        Text('Кетүү: $checkOut', style: const TextStyle(fontSize: 13)),
-                        const Spacer(),
-                        OutlinedButton(
-                          onPressed: () => _showExcuseReplyDialog(r),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          child: const Text('Оңдоо / Жооп', style: TextStyle(fontSize: 11)),
-                        ),
-                      ],
-                    ),
-                    if (reason != null && reason.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Text(
-                        'Себеби: $reason',
-                        style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFF64748B)),
+                        r['date'] as String? ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+                        child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10.5)),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text('Келүү: $checkIn', style: const TextStyle(fontSize: 12.5)),
+                      const SizedBox(width: 10),
+                      Text('Кетүү: $checkOut', style: const TextStyle(fontSize: 12.5)),
+                      const Spacer(),
+                      OutlinedButton(
+                        onPressed: () => _showExcuseReplyDialog(r),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: const Text('Оңдоо / Жооп', style: TextStyle(fontSize: 11)),
+                      ),
+                    ],
+                  ),
+                  if (reason != null && reason.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Себеби: $reason',
+                      style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFF64748B)),
+                    ),
                   ],
-                ),
+                ],
               ),
             );
           }),
@@ -646,9 +716,9 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen> with SingleTi
   Widget _buildStatCol(String label, String val, Color col) {
     return Column(
       children: [
-        Text(val, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: col)),
+        Text(val, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: col)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+        Text(label, style: const TextStyle(fontSize: 10.5, color: Color(0xFF64748B))),
       ],
     );
   }

@@ -4,11 +4,28 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
+# Engine configuration for PostgreSQL (Supabase pooler / Direct) or SQLite fallback
+is_postgres = "postgres" in settings.DATABASE_URL
+
+async_connect_args = {}
+sync_connect_args = {}
+
+if is_postgres:
+    async_connect_args = {
+        "statement_cache_size": 0,
+        "ssl": "require",
+    }
+    sync_connect_args = {
+        "sslmode": "require",
+    }
+
 # Async Engine for FastAPI async requests
 async_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     future=True,
+    connect_args=async_connect_args,
+    pool_pre_ping=True,
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -24,6 +41,8 @@ sync_engine = create_engine(
     settings.SYNC_DATABASE_URL,
     echo=False,
     future=True,
+    connect_args=sync_connect_args,
+    pool_pre_ping=True,
 )
 
 SyncSessionLocal = sessionmaker(

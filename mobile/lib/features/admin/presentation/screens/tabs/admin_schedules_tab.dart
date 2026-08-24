@@ -15,13 +15,13 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
   bool _isLoading = true;
 
   final List<String> _dayNames = [
-    'Дүйшөмбү (1-күн)',
-    'Шейшемби (2-күн)',
-    'Шаршемби (3-күн)',
-    'Бейшемби (4-күн)',
-    'Жума (5-күн)',
-    'Ишемби (6-күн)',
-    'Жекшемби (7-күн)',
+    'Дүйшөмбү',
+    'Шейшемби',
+    'Шаршемби',
+    'Бейшемби',
+    'Жума',
+    'Ишемби',
+    'Жекшемби',
   ];
 
   @override
@@ -62,23 +62,30 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          title: Text(_dayNames[item.dayOfWeek]),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('${_dayNames[item.dayOfWeek]} графиги', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SwitchListTile(
-                  title: const Text('Дем алыш күн (Day Off)'),
+                  title: const Text('Дем алыш күн (Day Off)', style: TextStyle(fontWeight: FontWeight.w600)),
                   value: isDayOff,
                   contentPadding: EdgeInsets.zero,
+                  activeTrackColor: AppTheme.primaryColor.withValues(alpha: 0.5),
+                  activeThumbColor: AppTheme.primaryColor,
                   onChanged: (val) => setModalState(() => isDayOff = val),
                 ),
                 if (!isDayOff) ...[
                   const Divider(),
                   ListTile(
                     title: const Text('Башталуу убактысы'),
-                    trailing: Chip(label: Text('${startTime.hour.toString().padLeft(2, "0")}:${startTime.minute.toString().padLeft(2, "0")}')),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+                      child: Text('${startTime.hour.toString().padLeft(2, "0")}:${startTime.minute.toString().padLeft(2, "0")}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                    ),
                     contentPadding: EdgeInsets.zero,
                     onTap: () async {
                       final picked = await showTimePicker(context: context, initialTime: startTime);
@@ -87,21 +94,24 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
                   ),
                   ListTile(
                     title: const Text('Аяктоо убактысы'),
-                    trailing: Chip(label: Text('${endTime.hour.toString().padLeft(2, "0")}:${endTime.minute.toString().padLeft(2, "0")}')),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+                      child: Text('${endTime.hour.toString().padLeft(2, "0")}:${endTime.minute.toString().padLeft(2, "0")}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                    ),
                     contentPadding: EdgeInsets.zero,
                     onTap: () async {
                       final picked = await showTimePicker(context: context, initialTime: endTime);
                       if (picked != null) setModalState(() => endTime = picked);
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextField(
                     controller: graceController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Жеңилдик убактысы (мүнөт)',
                       hintText: '15',
-                      border: OutlineInputBorder(),
                     ),
                   ),
                 ],
@@ -125,10 +135,14 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
                   isDayOff: isDayOff,
                 );
 
+                final messenger = ScaffoldMessenger.of(context);
                 final success = await _repository.updateSchedule(updated);
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (success) {
                   _loadSchedules();
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('График ийгиликтүү сакталды!'), backgroundColor: AppTheme.successColor),
+                  );
                 }
               },
               child: const Text('Сактоо'),
@@ -148,16 +162,48 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
     return RefreshIndicator(
       onRefresh: _loadSchedules,
       child: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
         children: [
-          const Text(
-            'Жумалык жумуш графиги',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0F172A)),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Мугалимдердин жумушка келүү-кетүү тартибин жана кечигүү мүнөтүн көзөмөлдөөчү график',
-            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          // Header Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppTheme.borderColor),
+              boxShadow: const [
+                BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.schedule_rounded, color: AppTheme.primaryColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Мектептин жумалык графиги',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: AppTheme.textPrimary),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Бардык мугалимдер үчүн негизги тартип',
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -167,33 +213,65 @@ class _AdminSchedulesTabState extends State<AdminSchedulesTab> {
               orElse: () => WorkScheduleItemModel(dayOfWeek: dayIdx, graceMinutes: 15, isDayOff: dayIdx == 6),
             );
 
-            return Card(
+            return Container(
               margin: const EdgeInsets.only(bottom: 10),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: schedule.isDayOff ? Colors.grey.withValues(alpha: 0.2) : AppTheme.primaryColor.withValues(alpha: 0.1),
-                  child: Icon(
-                    schedule.isDayOff ? Icons.weekend : Icons.work_outline,
-                    color: schedule.isDayOff ? Colors.grey : AppTheme.primaryColor,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.borderColor),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x04000000), blurRadius: 6, offset: Offset(0, 2)),
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: schedule.isDayOff ? const Color(0xFFF1F5F9) : AppTheme.primaryColor.withValues(alpha: 0.1),
+                    child: Icon(
+                      schedule.isDayOff ? Icons.weekend_rounded : Icons.work_history_rounded,
+                      color: schedule.isDayOff ? AppTheme.textMuted : AppTheme.primaryColor,
+                      size: 20,
+                    ),
                   ),
-                ),
-                title: Text(_dayNames[dayIdx], style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(
-                  schedule.isDayOff
-                      ? 'Дем алыш күн'
-                      : '${schedule.startTime?.substring(0, 5) ?? "08:00"} — ${schedule.endTime?.substring(0, 5) ?? "17:00"} (Жеңилдик: ${schedule.graceMinutes} мүн)',
-                  style: TextStyle(
-                    color: schedule.isDayOff ? Colors.grey : const Color(0xFF0F172A),
-                    fontWeight: schedule.isDayOff ? FontWeight.normal : FontWeight.w500,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_dayNames[dayIdx], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        const SizedBox(height: 2),
+                        Text(
+                          schedule.isDayOff
+                              ? 'Дем алыш күн'
+                              : '${schedule.startTime?.substring(0, 5) ?? "08:00"} — ${schedule.endTime?.substring(0, 5) ?? "17:00"} (Жеңилдик: ${schedule.graceMinutes} мүн)',
+                          style: TextStyle(
+                            color: schedule.isDayOff ? AppTheme.textMuted : AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.edit, color: AppTheme.primaryColor),
-                  onPressed: () => _showEditScheduleDialog(schedule),
-                ),
+                  IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor, size: 18),
+                    ),
+                    onPressed: () => _showEditScheduleDialog(schedule),
+                  ),
+                ],
               ),
             );
           }),
+          const SizedBox(height: 20),
         ],
       ),
     );

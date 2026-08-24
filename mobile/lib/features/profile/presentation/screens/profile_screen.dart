@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teacher_mobile/core/theme/app_theme.dart';
-import 'package:teacher_mobile/features/auth/presentation/cubit/auth_cubit.dart';
-import 'package:teacher_mobile/features/auth/presentation/cubit/auth_state.dart';
-import 'package:teacher_mobile/features/profile/data/repositories/profile_repository.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../data/repositories/profile_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -50,8 +50,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Профиль'),
+        title: const Text('Жеке Профиль'),
       ),
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
@@ -67,108 +68,117 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           return SafeArea(
             child: ListView(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               children: [
-                Center(
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
+                // Avatar Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: AppTheme.borderColor),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x06000000), blurRadius: 12, offset: Offset(0, 3)),
+                    ],
+                  ),
+                  child: Column(
                     children: [
-                      const CircleAvatar(
-                        radius: 42,
-                        backgroundColor: Color(0xFFEFF6FF),
-                        child: Icon(Icons.person,
-                            size: 52, color: AppTheme.primaryColor),
-                      ),
-                      if (isDemo)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.amber,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'DEMO',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                      Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 38,
+                            backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
+                            child: Text(
+                              fullName.isNotEmpty ? fullName[0] : 'М',
+                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
                             ),
                           ),
+                          if (isDemo)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('DEMO', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        fullName,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        email,
+                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        child: const Text('№1 Орто Мектеп', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryLight)),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    fullName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                Center(
-                  child: Text(
-                    email,
-                    style: const TextStyle(
-                        fontSize: 14, color: Color(0xFF64748B)),
-                  ),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 18),
 
-                // Teacher Info Card
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.badge_outlined,
-                              color: AppTheme.primaryColor),
-                          title: const Text('Табель номери'),
-                          trailing: Text(
-                            _profile?.employeeCode ?? 'TCH-001',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.menu_book_outlined,
-                              color: AppTheme.primaryColor),
-                          title: const Text('Предмети'),
-                          trailing: Text(
-                            _profile?.subject ?? 'Математика',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        const ListTile(
-                          leading: Icon(Icons.location_on_outlined,
-                              color: AppTheme.primaryColor),
-                          title: Text('Геолокация текшерүү'),
-                          trailing: Icon(Icons.check_circle,
-                              color: AppTheme.successColor),
-                        ),
-                      ],
-                    ),
+                // Teacher Info Block
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.borderColor),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildInfoTile(
+                        icon: Icons.badge_outlined,
+                        title: 'Табель коду',
+                        value: _profile?.employeeCode ?? 'TCH-001',
+                      ),
+                      const Divider(height: 1),
+                      _buildInfoTile(
+                        icon: Icons.menu_book_outlined,
+                        title: 'Предмети',
+                        value: _profile?.subject ?? 'Математика',
+                      ),
+                      const Divider(height: 1),
+                      _buildInfoTile(
+                        icon: Icons.location_on_outlined,
+                        title: 'GPS Текшерүү',
+                        value: 'Haversine (150м)',
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Weekly Work Schedule
                 const Text(
                   'Жумалык иш графиги',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
-                const SizedBox(height: 12),
-                Card(
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.borderColor),
+                  ),
                   child: _isLoading
                       ? const Padding(
                           padding: EdgeInsets.all(24.0),
@@ -178,52 +188,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: 7,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1),
+                          separatorBuilder: (context, index) => const Divider(height: 1),
                           itemBuilder: (context, index) {
-                            final sched =
-                                _schedules.cast<MobileScheduleItem?>().firstWhere(
-                                      (s) => s?.dayOfWeek == index,
-                                      orElse: () => null,
-                                    );
+                            final sched = _schedules.cast<MobileScheduleItem?>().firstWhere(
+                                  (s) => s?.dayOfWeek == index,
+                                  orElse: () => null,
+                                );
                             final isOff = sched?.isDayOff ?? (index == 6);
                             final timeText = isOff
                                 ? 'Дем алыш'
-                                : '${sched != null ? sched.startTime.substring(0, 5) : "08:00"} - ${sched != null ? sched.endTime.substring(0, 5) : "17:00"}';
+                                : '${sched != null ? sched.startTime.substring(0, 5) : "08:00"} — ${sched != null ? sched.endTime.substring(0, 5) : "17:00"}';
 
-                            return ListTile(
-                              dense: true,
-                              title: Text(
-                                _dayNames[index],
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600),
-                              ),
-                              trailing: Text(
-                                timeText,
-                                style: TextStyle(
-                                  color: isOff
-                                      ? Colors.grey
-                                      : AppTheme.primaryColor,
-                                  fontWeight: isOff
-                                      ? FontWeight.normal
-                                      : FontWeight.bold,
-                                ),
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _dayNames[index],
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: isOff ? const Color(0xFFF1F5F9) : const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      timeText,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: isOff ? AppTheme.textMuted : AppTheme.primaryColor,
+                                        fontWeight: isOff ? FontWeight.normal : FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             );
                           },
                         ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
                 // Logout Button
-                OutlinedButton.icon(
+                ElevatedButton.icon(
                   onPressed: () {
                     showDialog(
                       context: context,
                       builder: (dialogCtx) => AlertDialog(
-                        title: const Text('Чыгуу'),
-                        content: const Text(
-                            'Чын эле аккаунттан чыгууну каалайсызбы?'),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        title: const Text('Чыгуу', style: TextStyle(fontWeight: FontWeight.bold)),
+                        content: const Text('Чын эле аккаунттан чыгууну каалайсызбы?'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(dialogCtx),
@@ -236,7 +257,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.errorColor,
-                              minimumSize: const Size(80, 40),
+                              minimumSize: const Size(90, 42),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             child: const Text('Чыгуу'),
                           ),
@@ -244,18 +266,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.logout, color: AppTheme.errorColor),
-                  label: const Text('Чыгуу',
-                      style: TextStyle(color: AppTheme.errorColor)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppTheme.errorColor),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  icon: const Icon(Icons.logout_rounded, size: 20),
+                  label: const Text('Аккаунттан чыгуу'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFEF2F2),
+                    foregroundColor: AppTheme.errorColor,
+                    elevation: 0,
+                    side: const BorderSide(color: Color(0xFFFECACA)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
+                const SizedBox(height: 16),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 18, color: AppTheme.primaryColor),
+          ),
+          const SizedBox(width: 10),
+          Text(title, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

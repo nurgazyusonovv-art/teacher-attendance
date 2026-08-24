@@ -15,6 +15,7 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
   List<TeacherItemModel> _teachers = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  String _statusFilter = 'ALL'; // ALL, ACTIVE, INACTIVE
 
   @override
   void initState() {
@@ -33,109 +34,11 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
     }
   }
 
-  void _showAddTeacherDialog() {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final usernameController = TextEditingController();
-    final emailController = TextEditingController();
-    final phoneController = TextEditingController();
-    final codeController = TextEditingController(text: 'TCH-00${_teachers.length + 1}');
-    final passwordController = TextEditingController(text: 'teacher123');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.person_add, color: AppTheme.primaryColor),
-            SizedBox(width: 8),
-            Text('Жаңы мугалим кошуу'),
-          ],
-        ),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Аты-жөнү (Ф.И.О.) *', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Аты-жөнүн жазыңыз' : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: usernameController,
-                  decoration: const InputDecoration(labelText: 'Логин *', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Логинди жазыңыз' : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Электрондук дарек (Email) *', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Email жазыңыз' : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(labelText: 'Телефон номери (+996...)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: codeController,
-                  decoration: const InputDecoration(labelText: 'Табель коду *', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Табель кодун жазыңыз' : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(labelText: 'Сырсөз *', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.length < 6 ? 'Сырсөз кеминде 6 белги болушу керек' : null,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Жокко чыгаруу')),
-          ElevatedButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              final success = await _repository.createTeacher(
-                fullName: nameController.text.trim(),
-                username: usernameController.text.trim(),
-                email: emailController.text.trim(),
-                phone: phoneController.text.trim().isNotEmpty ? phoneController.text.trim() : null,
-                employeeCode: codeController.text.trim(),
-                password: passwordController.text.trim(),
-              );
-
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (success) {
-                _loadTeachers();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Мугалим ийгиликтүү кошулду!'), backgroundColor: AppTheme.successColor),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ката кетти. Логин же Email кайталанбашы керек.'), backgroundColor: AppTheme.errorColor),
-                  );
-                }
-              }
-            },
-            child: const Text('Кошуу'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final filtered = _teachers.where((t) {
+      if (_statusFilter == 'ACTIVE' && !t.isActive) return false;
+      if (_statusFilter == 'INACTIVE' && t.isActive) return false;
       if (_searchQuery.isEmpty) return true;
       final q = _searchQuery.toLowerCase();
       return t.fullName.toLowerCase().contains(q) ||
@@ -143,10 +46,19 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
           t.username.toLowerCase().contains(q);
     }).toList();
 
+    final activeCount = _teachers.where((t) => t.isActive).length;
+    final inactiveCount = _teachers.where((t) => !t.isActive).length;
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddTeacherDialog,
-        icon: const Icon(Icons.add),
+        onPressed: () async {
+          final result = await context.push<bool>('/admin/add-teacher');
+          if (result == true) {
+            _loadTeachers();
+          }
+        },
+        icon: const Icon(Icons.person_add_alt_1_rounded),
         label: const Text('Мугалим кошуу'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
@@ -156,79 +68,196 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
           : RefreshIndicator(
               onRefresh: _loadTeachers,
               child: ListView(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                 children: [
-                  // Search Bar
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Мугалимдин аты же коду боюнча издөө...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  // Modern Search Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.borderColor),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x04000000), blurRadius: 8, offset: Offset(0, 2)),
+                      ],
                     ),
-                    onChanged: (val) => setState(() => _searchQuery = val),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Мугалимдин аты же коду боюнча издөө...',
+                        prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.textSecondary),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                onPressed: () => setState(() => _searchQuery = ''),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterBadge('Бардыгы (${_teachers.length})', 'ALL'),
+                        const SizedBox(width: 8),
+                        _buildFilterBadge('Активдүү ($activeCount)', 'ACTIVE'),
+                        const SizedBox(width: 8),
+                        _buildFilterBadge('Өчүрүлгөн ($inactiveCount)', 'INACTIVE'),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Жалпы мугалимдер: ${_teachers.length}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
-                      ),
-                      Text('Активдүү: ${_teachers.where((t) => t.isActive).length}', style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
                   if (filtered.isEmpty)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Center(child: Text('Мугалим табылган жок')),
+                    Container(
+                      margin: const EdgeInsets.only(top: 20),
+                      padding: const EdgeInsets.all(36),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppTheme.borderColor)),
+                      child: Column(
+                        children: [
+                          Icon(Icons.person_search_rounded, size: 48, color: AppTheme.textMuted.withValues(alpha: 0.5)),
+                          const SizedBox(height: 10),
+                          const Text('Мугалим табылган жок', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                        ],
                       ),
                     )
                   else
                     ...filtered.map((t) {
-                      return Card(
+                      return Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        child: ListTile(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.borderColor),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x04000000), blurRadius: 6, offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: InkWell(
                           onTap: () => context.push('/admin/teacher-detail', extra: t),
-                          leading: CircleAvatar(
-                            backgroundColor: t.isActive ? AppTheme.primaryColor.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.2),
-                            child: Text(
-                              t.fullName.isNotEmpty ? t.fullName[0] : 'М',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: t.isActive ? AppTheme.primaryColor : Colors.grey,
-                              ),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: t.isActive ? AppTheme.primaryColor.withValues(alpha: 0.12) : const Color(0xFFF1F5F9),
+                                  child: Text(
+                                    t.fullName.isNotEmpty ? t.fullName[0] : 'М',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: t.isActive ? AppTheme.primaryColor : AppTheme.textMuted,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        t.fullName,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEFF6FF),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              t.employeeCode,
+                                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.primaryLight),
+                                            ),
+                                          ),
+                                          Text(
+                                            'Логин: ${t.username}',
+                                            style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                      if (t.phone != null && t.phone!.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            'Тел: ${t.phone}',
+                                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Switch(
+                                      value: t.isActive,
+                                      activeTrackColor: AppTheme.successColor.withValues(alpha: 0.5),
+                                      activeThumbColor: AppTheme.successColor,
+                                      onChanged: (val) async {
+                                        final success = await _repository.toggleTeacherActive(t.id, val);
+                                        if (success) _loadTeachers();
+                                      },
+                                    ),
+                                    const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted, size: 18),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ),
-                          title: Text(t.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Код: ${t.employeeCode}  •  Логин: ${t.username}'),
-                              if (t.phone != null && t.phone!.isNotEmpty) Text('Тел: ${t.phone}'),
-                            ],
-                          ),
-                          trailing: Switch(
-                            value: t.isActive,
-                            activeTrackColor: AppTheme.successColor.withValues(alpha: 0.5),
-                            activeThumbColor: AppTheme.successColor,
-                            onChanged: (val) async {
-                              final success = await _repository.toggleTeacherActive(t.id, val);
-                              if (success) _loadTeachers();
-                            },
                           ),
                         ),
                       );
                     }),
-                  const SizedBox(height: 60), // Spacing for FAB
+                  const SizedBox(height: 80), // Spacing for FAB
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildFilterBadge(String label, String filter) {
+    final isSelected = _statusFilter == filter;
+    return InkWell(
+      onTap: () => setState(() => _statusFilter = filter),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? AppTheme.primaryColor : AppTheme.borderColor),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected ? Colors.white : AppTheme.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }

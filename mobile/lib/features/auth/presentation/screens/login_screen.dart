@@ -15,7 +15,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(text: 'teacher1');
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
@@ -27,11 +27,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    if (!_formKey.currentState!.validate()) return;
-    context.read<AuthCubit>().login(
-          usernameOrEmail: _usernameController.text,
-          password: _passwordController.text,
-        );
+    if (_formKey.currentState?.validate() ?? false) {
+      context.read<AuthCubit>().login(
+            usernameOrEmail: _usernameController.text.trim(),
+            password: _passwordController.text,
+          );
+    }
   }
 
   void _showServerSettingsDialog() {
@@ -39,11 +40,12 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.settings, color: AppTheme.primaryColor),
-            SizedBox(width: 8),
-            Text('Сервердин дареги'),
+            Icon(Icons.settings_outlined, color: AppTheme.primaryColor),
+            SizedBox(width: 10),
+            Text('Сервердин дареги', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -52,14 +54,17 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             const Text(
               'Backend API URL (Wi-Fi / LAN IP же домен):',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             TextField(
               controller: urlController,
-              decoration: const InputDecoration(
-                hintText: 'http://10.18.114.217:8000/api/v1',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: 'http://192.168.1.100:8000/api/v1',
+                prefixIcon: const Icon(Icons.link, size: 20),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -70,15 +75,21 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Text('Жокко чыгаруу'),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(100, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () {
-              if (urlController.text.trim().isNotEmpty) {
-                setState(() {
-                  AppConstants.defaultBaseUrl = urlController.text.trim();
-                });
+              final newUrl = urlController.text.trim();
+              if (newUrl.isNotEmpty) {
+                AppConstants.defaultBaseUrl = newUrl;
               }
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Сервер дареги сакталды: ${AppConstants.defaultBaseUrl}')),
+                SnackBar(
+                  content: Text('Сервер дареги сакталды: ${AppConstants.defaultBaseUrl}'),
+                  backgroundColor: AppTheme.successColor,
+                ),
               );
             },
             child: const Text('Сактоо'),
@@ -91,15 +102,25 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Color(0xFF64748B)),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.borderColor),
+              ),
+              child: const Icon(Icons.tune_rounded, color: AppTheme.textSecondary, size: 20),
+            ),
             tooltip: 'Сервер орнотуулары',
             onPressed: _showServerSettingsDialog,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: BlocConsumer<AuthCubit, AuthState>(
@@ -113,8 +134,16 @@ class _LoginScreenState extends State<LoginScreen> {
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(state.message)),
+                  ],
+                ),
                 backgroundColor: AppTheme.errorColor,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             );
           }
@@ -125,116 +154,204 @@ class _LoginScreenState extends State<LoginScreen> {
           return SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(
-                        Icons.school_rounded,
-                        size: 64,
-                        color: AppTheme.primaryColor,
+                      // Logo & Header Card
+                      Center(
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.primaryGradientStart, AppTheme.primaryGradientEnd],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.school_rounded,
+                            size: 40,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
                       const Text(
                         'Мугалим Каттоо',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                          letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       const Text(
-                        'Мектептин кызматкерлери үчүн система',
+                        'Мектептеги катышууну көзөмөлдөө системасы',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 36),
-                      TextFormField(
-                        controller: _usernameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Логин же Email',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        validator: (val) =>
-                            val == null || val.trim().isEmpty ? 'Логинди киргизиңиз' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: 'Сырсөз',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      const SizedBox(height: 28),
+
+                      // Input Box Container
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppTheme.borderColor),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x08000000),
+                              blurRadius: 20,
+                              offset: Offset(0, 4),
                             ),
-                            onPressed: () {
-                              setState(() => _obscurePassword = !_obscurePassword);
-                            },
-                          ),
+                          ],
                         ),
-                        validator: (val) =>
-                            val == null || val.isEmpty ? 'Сырсөздү киргизиңиз' : null,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: isLoading ? null : _handleLogin,
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Логин же Email',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _usernameController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                hintText: 'Логинди киргизиңиз',
+                                prefixIcon: Icon(Icons.person_outline_rounded, color: AppTheme.textSecondary),
+                              ),
+                              validator: (val) =>
+                                  val == null || val.isEmpty ? 'Логинди киргизиңиз' : null,
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Сырсөз',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _handleLogin(),
+                              decoration: InputDecoration(
+                                hintText: 'Сырсөздү киргизиңиз',
+                                prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  onPressed: () {
+                                    setState(() => _obscurePassword = !_obscurePassword);
+                                  },
                                 ),
-                              )
-                            : const Text('Кирүү'),
+                              ),
+                              validator: (val) =>
+                                  val == null || val.isEmpty ? 'Сырсөздү киргизиңиз' : null,
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                minimumSize: const Size(double.infinity, 52),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              child: isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                  : const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text('Кирүү', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                        SizedBox(width: 8),
+                                        Icon(Icons.arrow_forward_rounded, size: 20),
+                                      ],
+                                    ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Тесттик аккаунттарды тез толтуруу:',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        children: [
-                          ActionChip(
-                            label: const Text('Админ (admin)', style: TextStyle(fontSize: 11)),
-                            avatar: const Icon(Icons.admin_panel_settings, size: 14),
-                            onPressed: () {
-                              _usernameController.text = 'admin';
-                              _passwordController.text = 'admin123';
-                            },
-                          ),
-                          ActionChip(
-                            label: const Text('Мугалим (teacher1)', style: TextStyle(fontSize: 11)),
-                            avatar: const Icon(Icons.person, size: 14),
-                            onPressed: () {
-                              _usernameController.text = 'teacher1';
-                              _passwordController.text = 'teacher123';
-                            },
-                          ),
-                          ActionChip(
-                            label: const Text('Демо (demo)', style: TextStyle(fontSize: 11)),
-                            avatar: const Icon(Icons.star, size: 14),
-                            onPressed: () {
-                              _usernameController.text = 'demo_teacher';
-                              _passwordController.text = 'demo123';
-                            },
-                          ),
-                        ],
+
+                      // Quick Test Preset Buttons
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Тесттик аккаунттарды тез толтуруу:',
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _buildQuickChip(
+                                  label: 'Админ (admin)',
+                                  icon: Icons.admin_panel_settings_rounded,
+                                  color: AppTheme.primaryColor,
+                                  onTap: () {
+                                    _usernameController.text = 'admin';
+                                    _passwordController.text = 'admin123';
+                                  },
+                                ),
+                                _buildQuickChip(
+                                  label: 'Мугалим (teacher1)',
+                                  icon: Icons.person_rounded,
+                                  color: AppTheme.secondaryColor,
+                                  onTap: () {
+                                    _usernameController.text = 'teacher1';
+                                    _passwordController.text = 'teacher123';
+                                  },
+                                ),
+                                _buildQuickChip(
+                                  label: 'Демо (demo)',
+                                  icon: Icons.star_rounded,
+                                  color: Colors.amber[800]!,
+                                  onTap: () {
+                                    _usernameController.text = 'demo_teacher';
+                                    _passwordController.text = 'demo123';
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -243,6 +360,40 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildQuickChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.borderColor),
+          boxShadow: const [
+            BoxShadow(color: Color(0x06000000), blurRadius: 4, offset: Offset(0, 1)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+            ),
+          ],
+        ),
       ),
     );
   }

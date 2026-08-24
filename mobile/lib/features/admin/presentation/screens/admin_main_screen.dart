@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import 'tabs/admin_analytics_tab.dart';
 import 'tabs/admin_dashboard_tab.dart';
@@ -26,25 +27,60 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
 
   final List<String> _titles = const [
     'Админ Дашборд',
-    'Мугалимдер',
+    'Мугалимдерди башкаруу',
     'Жумуш Графиктери',
-    'Аналитика жана QR',
+    'Аналитика & QR-код',
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFECACA)),
+              ),
+              child: const Icon(Icons.logout_rounded, color: AppTheme.errorColor, size: 18),
+            ),
             tooltip: 'Чыгуу',
             onPressed: () {
-              context.read<AuthCubit>().logout();
-              context.go('/login');
+              showDialog(
+                context: context,
+                builder: (dialogCtx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  title: const Text('Чыгуу', style: TextStyle(fontWeight: FontWeight.bold)),
+                  content: const Text('Чын эле администратор аккаунтунан чыгууну каалайсызбы?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogCtx),
+                      child: const Text('Жок'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(dialogCtx);
+                        context.read<AuthCubit>().logout();
+                        context.go('/login');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.errorColor,
+                        minimumSize: const Size(90, 42),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Чыгуу'),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: IndexedStack(
@@ -57,22 +93,22 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
+            selectedIcon: Icon(Icons.dashboard_rounded),
             label: 'Дашборд',
           ),
           NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
+            icon: Icon(Icons.people_outline_rounded),
+            selectedIcon: Icon(Icons.people_rounded),
             label: 'Мугалимдер',
           ),
           NavigationDestination(
             icon: Icon(Icons.schedule_outlined),
-            selectedIcon: Icon(Icons.schedule),
+            selectedIcon: Icon(Icons.schedule_rounded),
             label: 'Графиктер',
           ),
           NavigationDestination(
             icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics),
+            selectedIcon: Icon(Icons.analytics_rounded),
             label: 'Аналитика',
           ),
         ],

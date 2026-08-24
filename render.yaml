@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: teacher-attendance-api
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    region: frankfurt
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        value: teacher-attendance-secure-jwt-production-key-2026-bishkek
+      - key: DATABASE_URL
+        value: postgresql+asyncpg://postgres.jyumpwkycgorpzmaqtlj:kevzek-xucKo4-jovfav@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+      - key: SYNC_DATABASE_URL
+        value: postgresql://postgres.jyumpwkycgorpzmaqtlj:kevzek-xucKo4-jovfav@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+      - key: TIMEZONE
+        value: Asia/Bishkek
+      - key: DEFAULT_ALLOWED_RADIUS_METERS
+        value: "150.0"
+      - key: DEFAULT_MAX_GPS_ACCURACY_METERS
+        value: "80.0"
+      - key: CORS_ORIGINS
+        value: '["*"]'
