@@ -53,9 +53,18 @@ class ScheduleService:
         result = await db.execute(query)
         existing = result.scalar_one_or_none()
 
+        start_t = payload.start_time
+        end_t = payload.end_time
+        if not start_t:
+            from datetime import time as dt_time
+            start_t = dt_time(8, 0)
+        if not end_t:
+            from datetime import time as dt_time
+            end_t = dt_time(17, 0)
+
         if existing:
-            existing.start_time = payload.start_time
-            existing.end_time = payload.end_time
+            existing.start_time = start_t
+            existing.end_time = end_t
             existing.grace_minutes = payload.grace_minutes
             existing.is_day_off = payload.is_day_off
             await db.commit()
@@ -66,8 +75,8 @@ class ScheduleService:
             school_id=school_id,
             teacher_id=payload.teacher_id,
             day_of_week=payload.day_of_week,
-            start_time=payload.start_time,
-            end_time=payload.end_time,
+            start_time=start_t,
+            end_time=end_t,
             grace_minutes=payload.grace_minutes,
             is_day_off=payload.is_day_off,
         )

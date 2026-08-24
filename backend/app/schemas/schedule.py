@@ -7,9 +7,9 @@ class ScheduleBase(BaseModel):
     school_id: Optional[str] = None
     teacher_id: Optional[str] = None
     day_of_week: int = Field(..., ge=0, le=6, description="0=Дүйшөмбү, 6=Жекшемби")
-    start_time: time = Field(..., description="Келүү убактысы (мис: 08:00)")
-    end_time: time = Field(..., description="Кетүү убактысы (мис: 17:00)")
-    grace_minutes: int = Field(5, ge=0, le=60, description="Кечигүүгө жеңилдик мүнөтү")
+    start_time: Optional[time] = Field(default=time(8, 0), description="Келүү убактысы (мис: 08:00)")
+    end_time: Optional[time] = Field(default=time(17, 0), description="Кетүү убактысы (мис: 17:00)")
+    grace_minutes: int = Field(15, ge=0, le=60, description="Кечигүүгө жеңилдик мүнөтү")
     is_day_off: bool = Field(False, description="Дем алыш күнбү")
 
 
