@@ -9,6 +9,7 @@ from app.models.attendance import AttendanceEvent
 from app.models.daily_attendance import DailyAttendance
 from app.models.audit import AuditLog
 from app.models.device import Device
+from app.models.lesson_delay import LessonDelay
 
 __all__ = [
     "Base",
@@ -25,4 +26,5 @@ __all__ = [
     "DailyAttendance",
     "AuditLog",
     "Device",
+    "LessonDelay",
 ]

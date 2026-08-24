@@ -80,10 +80,16 @@ async def update_teacher(
     return await TeacherService.update_teacher(db, teacher_id, payload)
 
 
-@router.delete("/{teacher_id}", response_model=TeacherRead, summary="Мугалимдин каттоосун өчүрүү/деактивация (Админ)")
-async def deactivate_teacher(
+@router.delete("/{teacher_id}", summary="Мугалимдин каттоосун өчүрүү же деактивациялоо (Админ)")
+async def delete_teacher(
     teacher_id: str,
+    hard_delete: bool = Query(False, description="Базадан толук өчүрүү"),
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    return await TeacherService.deactivate_teacher(db, teacher_id)
+    if hard_delete:
+        await TeacherService.delete_teacher(db, teacher_id)
+        return {"success": True, "message": "Мугалим базадан толук өчүрүлдү"}
+    else:
+        teacher = await TeacherService.deactivate_teacher(db, teacher_id)
+        return {"success": True, "message": "Мугалим деактивацияланды", "teacher": teacher}

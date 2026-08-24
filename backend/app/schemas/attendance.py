@@ -3,6 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import AttendanceEventType, AttendanceStatus
+from app.schemas.lesson_delay import LessonDelayRead
 
 
 class AttendanceScanRequest(BaseModel):
@@ -45,6 +46,9 @@ class DailyAttendanceRead(BaseModel):
     correction_reason: Optional[str] = None
     teacher_name: Optional[str] = None
     employee_code: Optional[str] = None
+    lesson_delays: List[LessonDelayRead] = []
+    lesson_late_minutes: int = 0
+    total_late_minutes: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -61,6 +65,9 @@ class TodayStatusResponse(BaseModel):
     scheduled_start: Optional[time] = None
     scheduled_end: Optional[time] = None
     is_day_off: bool = False
+    lesson_delays: List[LessonDelayRead] = []
+    lesson_late_minutes: int = 0
+    total_late_minutes: int = 0
 
 
 class AdminDashboardSummary(BaseModel):

@@ -3,8 +3,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin, get_current_active_teacher
+from app.api.deps import get_current_active_admin, get_current_active_teacher, get_current_user
 from app.db.session import get_db
+from app.models.enums import UserRole
 from app.models.teacher import Teacher
 from app.models.user import User
 from app.schemas.attendance import (
@@ -14,7 +15,13 @@ from app.schemas.attendance import (
     ManualCorrectionRequest,
     TodayStatusResponse,
 )
+from app.schemas.lesson_delay import (
+    LessonDelayCreate,
+    LessonDelayListResponse,
+    LessonDelayRead,
+)
 from app.services.attendance_service import AttendanceService
+from app.services.lesson_delay_service import LessonDelayService
 from app.services.school_service import SchoolService
 
 router = APIRouter()
@@ -123,3 +130,55 @@ async def manual_correction(
         admin_user=admin_user,
         payload=payload,
     )
+
+
+# --- Lesson Delays Endpoints ---
+
+@router.post("/lesson-delays", response_model=LessonDelayRead, summary="Сабакка кечигүүнү каттоо (Админ)")
+async def add_lesson_delay(
+    payload: LessonDelayCreate,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_active_admin),
+):
+    return await LessonDelayService.create_lesson_delay(
+        db=db,
+        payload=payload,
+        recorded_by_user_id=admin_user.id,
+    )
+
+
+@router.get("/lesson-delays", response_model=List[LessonDelayRead], summary="Сабактардагы кечигүүлөрдү алуу")
+async def get_lesson_delays(
+    teacher_id: Optional[str] = Query(None, description="Мугалимдин IDси"),
+    target_date: Optional[date] = Query(None, description="Күн боюнча чыпка"),
+    year: Optional[int] = Query(None, description="Жыл"),
+    month: Optional[int] = Query(None, description="Ай (1-12)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    target_teacher_id = teacher_id
+    if current_user.role == UserRole.TEACHER:
+        if not current_user.teacher_profile:
+            return []
+        target_teacher_id = current_user.teacher_profile.id
+
+    if not target_teacher_id:
+        return []
+
+    return await LessonDelayService.get_lesson_delays_for_teacher(
+        db=db,
+        teacher_id=target_teacher_id,
+        target_date=target_date,
+        year=year,
+        month=month,
+    )
+
+
+@router.delete("/lesson-delays/{delay_id}", summary="Сабак кечигүүсүн өчүрүү (Админ)")
+async def delete_lesson_delay(
+    delay_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_active_admin),
+):
+    success = await LessonDelayService.delete_lesson_delay(db, delay_id)
+    return {"success": success, "message": "Сабак кечигүүсү өчүрүлдү" if success else "Табылган жок"}

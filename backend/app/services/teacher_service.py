@@ -1,5 +1,5 @@
 from typing import List, Optional, Tuple
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -41,6 +41,7 @@ class TeacherService:
                     User.full_name.ilike(search_filter),
                     User.username.ilike(search_filter),
                     Teacher.employee_code.ilike(search_filter),
+                    Teacher.subject.ilike(search_filter),
                 )
             )
 
@@ -61,7 +62,7 @@ class TeacherService:
                 school_id=t.school_id,
                 employee_code=t.employee_code,
                 phone_number=t.phone,
-                subject=getattr(t, "subject", None),
+                subject=t.subject,
                 full_name=t.user.full_name,
                 username=t.user.username,
                 is_active=t.user.is_active,
@@ -93,7 +94,7 @@ class TeacherService:
             school_id=t.school_id,
             employee_code=t.employee_code,
             phone_number=t.phone,
-            subject=getattr(t, "subject", None),
+            subject=t.subject,
             full_name=t.user.full_name,
             username=t.user.username,
             is_active=t.user.is_active,
@@ -160,6 +161,7 @@ class TeacherService:
             school_id=school_id,
             employee_code=payload.employee_code,
             phone=payload.phone_number,
+            subject=payload.subject,
             is_active=True,
         )
         db.add(teacher)
@@ -173,7 +175,7 @@ class TeacherService:
             school_id=teacher.school_id,
             employee_code=teacher.employee_code,
             phone_number=teacher.phone,
-            subject=payload.subject,
+            subject=teacher.subject,
             full_name=user.full_name,
             username=user.username,
             is_active=user.is_active,
@@ -204,13 +206,15 @@ class TeacherService:
         if payload.is_active is not None:
             user.is_active = payload.is_active
             teacher.is_active = payload.is_active
-        if payload.password is not None:
+        if payload.password is not None and len(payload.password.strip()) > 0:
             user.hashed_password = get_password_hash(payload.password)
 
         if payload.employee_code is not None:
             teacher.employee_code = payload.employee_code
         if payload.phone_number is not None:
             teacher.phone = payload.phone_number
+        if payload.subject is not None:
+            teacher.subject = payload.subject
 
         await db.commit()
         await db.refresh(teacher)
@@ -222,7 +226,7 @@ class TeacherService:
             school_id=teacher.school_id,
             employee_code=teacher.employee_code,
             phone_number=teacher.phone,
-            subject=payload.subject,
+            subject=teacher.subject,
             full_name=user.full_name,
             username=user.username,
             is_active=user.is_active,
@@ -235,3 +239,22 @@ class TeacherService:
         return await TeacherService.update_teacher(
             db, teacher_id, TeacherUpdate(is_active=False)
         )
+
+    @staticmethod
+    async def delete_teacher(db: AsyncSession, teacher_id: str) -> bool:
+        result = await db.execute(
+            select(Teacher).where(Teacher.id == teacher_id)
+        )
+        teacher = result.scalar_one_or_none()
+        if not teacher:
+            raise AppException(
+                code=ErrorCode.TEACHER_NOT_FOUND,
+                message="Мугалим табылган жок",
+                status_code=404,
+            )
+
+        user_id = teacher.user_id
+        # Delete user which cascades to teacher and all dependent records
+        await db.execute(delete(User).where(User.id == user_id))
+        await db.commit()
+        return True

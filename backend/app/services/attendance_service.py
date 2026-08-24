@@ -1,6 +1,6 @@
 import json
 from datetime import date, datetime, time, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -15,6 +15,7 @@ from app.models.attendance import AttendanceEvent
 from app.models.audit import AuditLog
 from app.models.daily_attendance import DailyAttendance
 from app.models.enums import AttendanceEventType, AttendanceStatus
+from app.models.lesson_delay import LessonDelay
 from app.models.school import School
 from app.models.teacher import Teacher
 from app.models.user import User
@@ -25,6 +26,7 @@ from app.schemas.attendance import (
     ManualCorrectionRequest,
     TodayStatusResponse,
 )
+from app.schemas.lesson_delay import LessonDelayRead
 from app.services.geofence_service import GeofenceService
 from app.services.qr_service import QrService
 from app.services.schedule_service import ScheduleService
@@ -144,7 +146,7 @@ class AttendanceService:
         )
         db.add(event)
 
-        # 8. Record DailyAttendance
+        # 8. Upsert DailyAttendance
         if not daily:
             daily = DailyAttendance(
                 teacher_id=teacher.id,
@@ -153,6 +155,7 @@ class AttendanceService:
                 check_in_time=server_now,
                 status=status,
                 late_minutes=late_minutes,
+                worked_minutes=0,
             )
             db.add(daily)
         else:
@@ -162,6 +165,30 @@ class AttendanceService:
 
         await db.commit()
         await db.refresh(daily)
+
+        # Fetch lesson delays today if any
+        delays_res = await db.execute(
+            select(LessonDelay).where(
+                LessonDelay.teacher_id == teacher.id,
+                LessonDelay.date == today,
+            ).order_by(LessonDelay.lesson_number.asc())
+        )
+        lesson_delays = [
+            LessonDelayRead(
+                id=d.id,
+                teacher_id=d.teacher_id,
+                school_id=d.school_id,
+                date=d.date,
+                lesson_number=d.lesson_number,
+                delay_minutes=d.delay_minutes,
+                reason=d.reason,
+                recorded_by_user_id=d.recorded_by_user_id,
+                teacher_name=user.full_name,
+                created_at=d.created_at,
+            )
+            for d in delays_res.scalars().all()
+        ]
+        lesson_late_minutes = sum(d.delay_minutes for d in lesson_delays)
 
         return DailyAttendanceRead(
             id=daily.id,
@@ -177,6 +204,9 @@ class AttendanceService:
             correction_reason=daily.correction_reason,
             teacher_name=user.full_name,
             employee_code=teacher.employee_code,
+            lesson_delays=lesson_delays,
+            lesson_late_minutes=lesson_late_minutes,
+            total_late_minutes=daily.late_minutes + lesson_late_minutes,
         )
 
     @staticmethod
@@ -186,7 +216,6 @@ class AttendanceService:
         user: User,
         payload: AttendanceScanRequest,
     ) -> DailyAttendanceRead:
-        # 1. School check
         school_result = await db.execute(
             select(School).where(School.id == payload.school_id)
         )
@@ -284,6 +313,30 @@ class AttendanceService:
         await db.commit()
         await db.refresh(daily)
 
+        # Fetch lesson delays
+        delays_res = await db.execute(
+            select(LessonDelay).where(
+                LessonDelay.teacher_id == teacher.id,
+                LessonDelay.date == today,
+            ).order_by(LessonDelay.lesson_number.asc())
+        )
+        lesson_delays = [
+            LessonDelayRead(
+                id=d.id,
+                teacher_id=d.teacher_id,
+                school_id=d.school_id,
+                date=d.date,
+                lesson_number=d.lesson_number,
+                delay_minutes=d.delay_minutes,
+                reason=d.reason,
+                recorded_by_user_id=d.recorded_by_user_id,
+                teacher_name=user.full_name,
+                created_at=d.created_at,
+            )
+            for d in delays_res.scalars().all()
+        ]
+        lesson_late_minutes = sum(d.delay_minutes for d in lesson_delays)
+
         return DailyAttendanceRead(
             id=daily.id,
             teacher_id=daily.teacher_id,
@@ -298,6 +351,9 @@ class AttendanceService:
             correction_reason=daily.correction_reason,
             teacher_name=user.full_name,
             employee_code=teacher.employee_code,
+            lesson_delays=lesson_delays,
+            lesson_late_minutes=lesson_late_minutes,
+            total_late_minutes=daily.late_minutes + lesson_late_minutes,
         )
 
     @staticmethod
@@ -322,6 +378,33 @@ class AttendanceService:
         )
         daily = daily_res.scalar_one_or_none()
 
+        # Fetch today's lesson delays
+        delays_res = await db.execute(
+            select(LessonDelay)
+            .where(
+                LessonDelay.teacher_id == teacher.id,
+                LessonDelay.date == today,
+            )
+            .order_by(LessonDelay.lesson_number.asc())
+        )
+        delays = delays_res.scalars().all()
+        lesson_delays = [
+            LessonDelayRead(
+                id=d.id,
+                teacher_id=d.teacher_id,
+                school_id=d.school_id,
+                date=d.date,
+                lesson_number=d.lesson_number,
+                delay_minutes=d.delay_minutes,
+                reason=d.reason,
+                recorded_by_user_id=d.recorded_by_user_id,
+                created_at=d.created_at,
+            )
+            for d in delays
+        ]
+        lesson_late_minutes = sum(d.delay_minutes for d in lesson_delays)
+        morning_late = daily.late_minutes if daily else 0
+
         return TodayStatusResponse(
             date=today,
             has_checked_in=daily is not None and daily.check_in_time is not None,
@@ -329,11 +412,14 @@ class AttendanceService:
             check_in_time=daily.check_in_time if daily else None,
             check_out_time=daily.check_out_time if daily else None,
             status=daily.status if daily else None,
-            late_minutes=daily.late_minutes if daily else 0,
+            late_minutes=morning_late,
             worked_minutes=daily.worked_minutes if daily else 0,
             scheduled_start=schedule.start_time if schedule else school.default_start_time,
             scheduled_end=schedule.end_time if schedule else school.default_end_time,
             is_day_off=schedule.is_day_off if schedule else False,
+            lesson_delays=lesson_delays,
+            lesson_late_minutes=lesson_late_minutes,
+            total_late_minutes=morning_late + lesson_late_minutes,
         )
 
     @staticmethod
@@ -357,22 +443,56 @@ class AttendanceService:
                 r for r in records if r.date.year == year and r.date.month == month
             ]
 
-        return [
-            DailyAttendanceRead(
-                id=r.id,
-                teacher_id=r.teacher_id,
-                school_id=r.school_id,
-                date=r.date,
-                check_in_time=r.check_in_time,
-                check_out_time=r.check_out_time,
-                status=r.status,
-                late_minutes=r.late_minutes,
-                worked_minutes=r.worked_minutes,
-                is_manually_corrected=r.is_manually_corrected,
-                correction_reason=r.correction_reason,
+        # Fetch lesson delays in this date range
+        delay_query = select(LessonDelay).where(LessonDelay.teacher_id == teacher_id)
+        if year and month:
+            from sqlalchemy import extract
+            delay_query = delay_query.where(
+                extract("year", LessonDelay.date) == year,
+                extract("month", LessonDelay.date) == month,
             )
-            for r in records
-        ]
+        delay_res = await db.execute(delay_query)
+        all_delays = delay_res.scalars().all()
+
+        delays_by_date: Dict[date, List[LessonDelayRead]] = {}
+        for d in all_delays:
+            read_d = LessonDelayRead(
+                id=d.id,
+                teacher_id=d.teacher_id,
+                school_id=d.school_id,
+                date=d.date,
+                lesson_number=d.lesson_number,
+                delay_minutes=d.delay_minutes,
+                reason=d.reason,
+                recorded_by_user_id=d.recorded_by_user_id,
+                created_at=d.created_at,
+            )
+            delays_by_date.setdefault(d.date, []).append(read_d)
+
+        output: List[DailyAttendanceRead] = []
+        for r in records:
+            day_delays = delays_by_date.get(r.date, [])
+            lesson_late = sum(d.delay_minutes for d in day_delays)
+            output.append(
+                DailyAttendanceRead(
+                    id=r.id,
+                    teacher_id=r.teacher_id,
+                    school_id=r.school_id,
+                    date=r.date,
+                    check_in_time=r.check_in_time,
+                    check_out_time=r.check_out_time,
+                    status=r.status,
+                    late_minutes=r.late_minutes,
+                    worked_minutes=r.worked_minutes,
+                    is_manually_corrected=r.is_manually_corrected,
+                    correction_reason=r.correction_reason,
+                    lesson_delays=day_delays,
+                    lesson_late_minutes=lesson_late,
+                    total_late_minutes=r.late_minutes + lesson_late,
+                )
+            )
+
+        return output
 
     @staticmethod
     async def get_admin_today_dashboard(
@@ -411,6 +531,30 @@ class AttendanceService:
         daily_records = records_res.scalars().all()
         records_by_teacher_id = {r.teacher_id: r for r in daily_records}
 
+        # Get lesson delays for this school and date
+        delays_res = await db.execute(
+            select(LessonDelay)
+            .where(
+                LessonDelay.school_id == school_id,
+                LessonDelay.date == query_date,
+            )
+            .order_by(LessonDelay.lesson_number.asc())
+        )
+        delays_by_teacher_id: Dict[str, List[LessonDelayRead]] = {}
+        for d in delays_res.scalars().all():
+            read_d = LessonDelayRead(
+                id=d.id,
+                teacher_id=d.teacher_id,
+                school_id=d.school_id,
+                date=d.date,
+                lesson_number=d.lesson_number,
+                delay_minutes=d.delay_minutes,
+                reason=d.reason,
+                recorded_by_user_id=d.recorded_by_user_id,
+                created_at=d.created_at,
+            )
+            delays_by_teacher_id.setdefault(d.teacher_id, []).append(read_d)
+
         checked_in_count = 0
         on_time_count = 0
         late_count = 0
@@ -418,11 +562,15 @@ class AttendanceService:
         read_records: List[DailyAttendanceRead] = []
         for t in teachers:
             record = records_by_teacher_id.get(t.id)
+            t_delays = delays_by_teacher_id.get(t.id, [])
+            lesson_late = sum(d.delay_minutes for d in t_delays)
+
             if record and record.check_in_time:
                 checked_in_count += 1
-                if record.status == AttendanceStatus.ON_TIME:
+                total_late = record.late_minutes + lesson_late
+                if record.status == AttendanceStatus.ON_TIME and lesson_late == 0:
                     on_time_count += 1
-                elif record.status == AttendanceStatus.LATE:
+                else:
                     late_count += 1
 
                 read_records.append(
@@ -440,6 +588,9 @@ class AttendanceService:
                         correction_reason=record.correction_reason,
                         teacher_name=t.user.full_name,
                         employee_code=t.employee_code,
+                        lesson_delays=t_delays,
+                        lesson_late_minutes=lesson_late,
+                        total_late_minutes=total_late,
                     )
                 )
             else:
@@ -459,6 +610,9 @@ class AttendanceService:
                         correction_reason=None,
                         teacher_name=t.user.full_name,
                         employee_code=t.employee_code,
+                        lesson_delays=t_delays,
+                        lesson_late_minutes=lesson_late,
+                        total_late_minutes=lesson_late,
                     )
                 )
 

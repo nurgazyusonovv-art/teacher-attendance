@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from app.models.schedule import WorkSchedule
     from app.models.attendance import AttendanceEvent
     from app.models.daily_attendance import DailyAttendance
+    from app.models.lesson_delay import LessonDelay
 
 
 class Teacher(Base):
@@ -22,6 +23,7 @@ class Teacher(Base):
     school_id: Mapped[str] = mapped_column(String(36), ForeignKey("schools.id", ondelete="CASCADE"), index=True, nullable=False)
     employee_code: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    subject: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -33,3 +35,4 @@ class Teacher(Base):
     schedules: Mapped[List["WorkSchedule"]] = relationship("WorkSchedule", back_populates="teacher", cascade="all, delete-orphan")
     attendance_events: Mapped[List["AttendanceEvent"]] = relationship("AttendanceEvent", back_populates="teacher")
     daily_attendances: Mapped[List["DailyAttendance"]] = relationship("DailyAttendance", back_populates="teacher")
+    lesson_delays: Mapped[List["LessonDelay"]] = relationship("LessonDelay", back_populates="teacher", cascade="all, delete-orphan")
