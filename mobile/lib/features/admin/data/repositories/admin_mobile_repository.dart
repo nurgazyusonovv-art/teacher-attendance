@@ -252,16 +252,20 @@ class AdminMobileRepository {
 
   Future<(bool, String?)> updateSchoolSettings({
     required String schoolId,
-    required String name,
+    String? name,
+    double? latitude,
+    double? longitude,
     double? radius,
+    double? maxAccuracy,
   }) async {
     try {
-      final data = <String, dynamic>{
-        'name': name,
-      };
-      if (radius != null) {
-        data['allowed_radius_meters'] = radius;
-      }
+      final data = <String, dynamic>{};
+      if (name != null && name.isNotEmpty) data['name'] = name;
+      if (latitude != null) data['latitude'] = latitude;
+      if (longitude != null) data['longitude'] = longitude;
+      if (radius != null) data['allowed_radius_meters'] = radius;
+      if (maxAccuracy != null) data['max_accuracy_meters'] = maxAccuracy;
+
       final response = await _dio.patch(
         '/schools/$schoolId',
         data: data,
@@ -276,7 +280,7 @@ class AdminMobileRepository {
       if (data is Map) {
         msg = data['message'] as String? ?? data['detail'] as String?;
       }
-      return (false, msg ?? 'Мектептин атын өзгөртүүдө ката кетти');
+      return (false, msg ?? 'Мектептин жөндөөлөрүн өзгөртүүдө ката кетти');
     } catch (e) {
       return (false, e.toString());
     }

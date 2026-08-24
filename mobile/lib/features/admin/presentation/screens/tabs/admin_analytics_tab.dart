@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../data/repositories/admin_mobile_repository.dart';
@@ -44,96 +45,370 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
     if (schoolId == null) return;
 
     final currentName = _schoolData?['name'] as String? ?? _qrData?['school_name'] as String? ?? '№1 Орто Мектеп';
+    final currentLat = (_schoolData?['latitude'] as num?)?.toDouble() ?? 42.8746;
+    final currentLng = (_schoolData?['longitude'] as num?)?.toDouble() ?? 74.5698;
+    final currentRadius = (_schoolData?['allowed_radius_meters'] as num?)?.toDouble() ?? 150.0;
+    final currentMaxAccuracy = (_schoolData?['max_accuracy_meters'] as num?)?.toDouble() ?? 50.0;
+
     final nameController = TextEditingController(text: currentName);
+    final latController = TextEditingController(text: currentLat.toStringAsFixed(6));
+    final lngController = TextEditingController(text: currentLng.toStringAsFixed(6));
+
+    double selectedRadius = currentRadius;
+    double selectedAccuracy = currentMaxAccuracy;
+    bool isDetectingGps = false;
     bool isSaving = false;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          title: const Row(
-            children: [
-              Icon(Icons.edit_location_alt_rounded, color: AppTheme.primaryColor, size: 22),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Мектептин аталышы',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+        builder: (context, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
-          content: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Мектептин расмий аталышын жазыңыз:',
-                  style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
+
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.edit_location_alt_rounded, color: AppTheme.primaryColor, size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'Мектептин Жайгашуусу жана Геозона',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppTheme.textPrimary),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // School Name Input
+                const Text(
+                  'Мектептин аталышы:',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: nameController,
-                  autofocus: true,
                   decoration: const InputDecoration(
                     hintText: 'Мис: №70 Мектеп-лицейи',
                     prefixIcon: Icon(Icons.school_rounded, color: AppTheme.primaryColor),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // GPS Permanent Location Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Туруктуу жайы (GPS Координаталар):',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                    ),
+                    InkWell(
+                      onTap: isDetectingGps
+                          ? null
+                          : () async {
+                              setModalState(() => isDetectingGps = true);
+                              try {
+                                LocationPermission perm = await Geolocator.checkPermission();
+                                if (perm == LocationPermission.denied) {
+                                  perm = await Geolocator.requestPermission();
+                                }
+                                if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+                                  final pos = await Geolocator.getCurrentPosition(
+                                    locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+                                  );
+                                  latController.text = pos.latitude.toStringAsFixed(6);
+                                  lngController.text = pos.longitude.toStringAsFixed(6);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Учурдагы GPS координаталар ийгиликтүү аныкталды!'),
+                                      backgroundColor: AppTheme.successColor,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('GPS аныктоодо ката: $e'),
+                                    backgroundColor: AppTheme.errorColor,
+                                  ),
+                                );
+                              } finally {
+                                setModalState(() => isDetectingGps = false);
+                              }
+                            },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isDetectingGps)
+                              const SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
+                              )
+                            else
+                              const Icon(Icons.my_location_rounded, size: 14, color: AppTheme.primaryColor),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Азыркы GPSти алуу',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Lat & Lng Input Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: latController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Кеңдик (Lat)',
+                          hintText: '42.8746',
+                          prefixIcon: Icon(Icons.north_east_rounded, size: 18, color: AppTheme.secondaryColor),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: lngController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Узундук (Lng)',
+                          hintText: '74.5698',
+                          prefixIcon: Icon(Icons.south_west_rounded, size: 18, color: AppTheme.secondaryColor),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Geofence Radius Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Текшерүү радиусу (Геозона):',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${selectedRadius.toInt()} метр',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor),
+                      ),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: selectedRadius.clamp(20.0, 1000.0),
+                  min: 20.0,
+                  max: 1000.0,
+                  divisions: 98,
+                  activeColor: AppTheme.primaryColor,
+                  onChanged: (val) => setModalState(() => selectedRadius = val),
+                ),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [50, 80, 100, 150, 200, 300, 500].map((r) {
+                    final isSel = (selectedRadius - r).abs() < 1;
+                    return InkWell(
+                      onTap: () => setModalState(() => selectedRadius = r.toDouble()),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSel ? AppTheme.primaryColor : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isSel ? AppTheme.primaryColor : AppTheme.borderColor),
+                        ),
+                        child: Text(
+                          '$r м',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                            color: isSel ? Colors.white : AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 10),
+
+                // Explanation Info Box
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.successColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Мугалим мектептин борборунан ${selectedRadius.toInt()}м ичинде болгондо гана QR-кодду сканерлей алат.',
+                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF166534)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Max GPS Accuracy Limit
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Максималдуу GPS тактыгы (Accuracy):',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                    ),
+                    Text(
+                      '${selectedAccuracy.toInt()}м',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppTheme.secondaryColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: [20, 30, 50, 80, 100].map((acc) {
+                    final isSel = (selectedAccuracy - acc).abs() < 1;
+                    return InkWell(
+                      onTap: () => setModalState(() => selectedAccuracy = acc.toDouble()),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSel ? AppTheme.secondaryColor : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isSel ? AppTheme.secondaryColor : AppTheme.borderColor),
+                        ),
+                        child: Text(
+                          '$acc м',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                            color: isSel ? Colors.white : AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 22),
+
+                // Save Button
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final newName = nameController.text.trim();
+                          final newLat = double.tryParse(latController.text.trim());
+                          final newLng = double.tryParse(lngController.text.trim());
+
+                          if (newName.isEmpty) return;
+
+                          setModalState(() => isSaving = true);
+                          final messenger = ScaffoldMessenger.of(context);
+                          final (success, errorMsg) = await _repository.updateSchoolSettings(
+                            schoolId: schoolId,
+                            name: newName,
+                            latitude: newLat,
+                            longitude: newLng,
+                            radius: selectedRadius,
+                            maxAccuracy: selectedAccuracy,
+                          );
+
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (success) {
+                            _loadData();
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Мектептин жайгашуусу жана радиусу ийгиликтүү сакталды!'),
+                                backgroundColor: AppTheme.successColor,
+                              ),
+                            );
+                          } else {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(errorMsg ?? 'Жөндөөлөрдү сактоодо ката кетти'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Жөндөөлөрдү сактоо', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Жокко чыгаруу'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      final newName = nameController.text.trim();
-                      if (newName.isEmpty) return;
-
-                      setModalState(() => isSaving = true);
-                      final messenger = ScaffoldMessenger.of(context);
-                      final (success, errorMsg) = await _repository.updateSchoolSettings(
-                        schoolId: schoolId,
-                        name: newName,
-                      );
-
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (success) {
-                        _loadData();
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Мектептин аталышы ийгиликтүү өзгөртүлдү!'),
-                            backgroundColor: AppTheme.successColor,
-                          ),
-                        );
-                      } else {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(errorMsg ?? 'Аталышын өзгөртүүдө ката кетти'),
-                            backgroundColor: AppTheme.errorColor,
-                          ),
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                minimumSize: const Size(100, 42),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: isSaving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Сактоо', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
         ),
       ),
     );
@@ -156,6 +431,9 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
     final qrToken = _qrData?['token'] ?? _qrData?['qr_token'] ?? 'school-qr-demo-token-12345';
     final schoolId = _qrData?['school_id'] ?? '';
     final schoolName = _schoolData?['name'] as String? ?? _qrData?['school_name'] as String? ?? '№1 Орто Мектеп';
+    final radius = (_schoolData?['allowed_radius_meters'] as num?)?.toDouble() ?? 150.0;
+    final lat = (_schoolData?['latitude'] as num?)?.toDouble() ?? 42.8746;
+    final lng = (_schoolData?['longitude'] as num?)?.toDouble() ?? 74.5698;
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -189,7 +467,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
-                        'Мектеп Жөндөөлөрү',
+                        'Мектеп жана Геозона',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5, color: AppTheme.textPrimary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -202,9 +480,9 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                           color: AppTheme.primaryColor.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.edit_rounded, size: 17, color: AppTheme.primaryColor),
+                        child: const Icon(Icons.edit_location_alt_rounded, size: 18, color: AppTheme.primaryColor),
                       ),
-                      tooltip: 'Аталышын өзгөртүү',
+                      tooltip: 'Жайгашуу жана радиусту өзгөртүү',
                       onPressed: _showEditSchoolDialog,
                     ),
                   ],
@@ -216,10 +494,42 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Мектептин расмий каттоо профили жана параметрлери',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.successColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.radar_rounded, size: 14, color: AppTheme.successColor),
+                          const SizedBox(width: 4),
+                          Text('Радиус: ${radius.toInt()}м', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppTheme.successColor)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.place_rounded, size: 14, color: AppTheme.secondaryColor),
+                          const SizedBox(width: 4),
+                          Text('${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}', style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -400,7 +710,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                 const SizedBox(height: 12),
                 _buildSystemTile('Убакыт алкагы', 'Asia/Bishkek (Сервердик так убакыт)'),
                 const Divider(height: 14),
-                _buildSystemTile('GPS Текшерүү', 'Haversine Geofencing (Радиус: 150м)'),
+                _buildSystemTile('GPS Текшерүү', 'Haversine Geofencing (Радиус: ${radius.toInt()}м)'),
                 const Divider(height: 14),
                 _buildSystemTile('Купуялуулук', 'Координаталар базага сакталбайт'),
               ],
