@@ -33,7 +33,43 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) async {
-          // Handle token expiry / 401 refresh logic in Phase 2
+          if (error.response?.statusCode == 401 &&
+              !error.requestOptions.path.contains('/auth/login') &&
+              !error.requestOptions.path.contains('/auth/refresh')) {
+            final refreshToken = await storageService.getRefreshToken();
+            if (refreshToken != null && refreshToken.isNotEmpty) {
+              try {
+                final refreshDio = Dio(
+                  BaseOptions(
+                    baseUrl: this.baseUrl,
+                    headers: {'Content-Type': 'application/json'},
+                  ),
+                );
+                final refreshResponse = await refreshDio.post(
+                  '/auth/refresh',
+                  data: {'refresh_token': refreshToken},
+                );
+
+                if (refreshResponse.statusCode == 200) {
+                  final data = refreshResponse.data['data'] as Map<String, dynamic>;
+                  final newAccessToken = data['access_token'] as String;
+                  final newRefreshToken = data['refresh_token'] as String? ?? refreshToken;
+
+                  await storageService.saveTokens(
+                    accessToken: newAccessToken,
+                    refreshToken: newRefreshToken,
+                  );
+
+                  final reqOptions = error.requestOptions;
+                  reqOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+                  final retryResponse = await dio.fetch(reqOptions);
+                  return handler.resolve(retryResponse);
+                }
+              } catch (_) {
+                await storageService.clearAll();
+              }
+            }
+          }
           return handler.next(error);
         },
       ),

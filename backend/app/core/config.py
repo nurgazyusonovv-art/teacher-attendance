@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "development-secret-key-change-in-production-min-32-chars-long"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days for mobile longevity
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 60
 
     # School & Attendance defaults
     TIMEZONE: str = "Asia/Bishkek"

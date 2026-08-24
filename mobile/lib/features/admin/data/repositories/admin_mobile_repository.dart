@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../../core/storage/secure_storage_service.dart';
 
 class TeacherItemModel {
   final String id;
@@ -74,32 +74,17 @@ class WorkScheduleItemModel {
 }
 
 class AdminMobileRepository {
-  final Dio _dio;
-  final FlutterSecureStorage _storage;
+  final ApiClient _apiClient;
 
-  AdminMobileRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ?? Dio(),
-        _storage = storage ?? const FlutterSecureStorage();
+  AdminMobileRepository({ApiClient? apiClient})
+      : _apiClient = apiClient ?? ApiClient(storageService: SecureStorageService());
 
-  Future<Options> _getAuthOptions() async {
-    final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-  }
+  Dio get _dio => _apiClient.dio;
 
   // 1. Dashboard
   Future<Map<String, dynamic>?> getTodayDashboard() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/attendance/dashboard/today',
-        options: options,
-      );
+      final response = await _dio.get('/attendance/dashboard/today');
       return response.data as Map<String, dynamic>;
     } catch (_) {
       return null;
@@ -109,11 +94,7 @@ class AdminMobileRepository {
   // 2. Teachers CRUD
   Future<List<TeacherItemModel>> getTeachers() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/teachers',
-        options: options,
-      );
+      final response = await _dio.get('/teachers');
       final raw = response.data;
       final List list = raw is Map ? (raw['items'] as List? ?? []) : (raw as List? ?? []);
       return list
@@ -133,9 +114,8 @@ class AdminMobileRepository {
     String? phone,
   }) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/teachers',
+        '/teachers',
         data: {
           'full_name': fullName,
           'username': username,
@@ -144,7 +124,6 @@ class AdminMobileRepository {
           'employee_code': employeeCode,
           'phone_number': phone,
         },
-        options: options,
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return (true, null);
@@ -156,7 +135,7 @@ class AdminMobileRepository {
       if (data is Map) {
         msg = data['message'] as String? ?? data['detail'] as String?;
       }
-      return (false, msg ?? 'Серверге туташууда ката кетти');
+      return (false, msg ?? 'Серверге туташуу катасы. Логин же сессияны текшериңиз.');
     } catch (e) {
       return (false, e.toString());
     }
@@ -164,11 +143,9 @@ class AdminMobileRepository {
 
   Future<bool> toggleTeacherActive(String teacherId, bool isActive) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.patch(
-        '${AppConstants.defaultBaseUrl}/teachers/$teacherId',
+        '/teachers/$teacherId',
         data: {'is_active': isActive},
-        options: options,
       );
       return response.statusCode == 200;
     } catch (_) {
@@ -179,11 +156,7 @@ class AdminMobileRepository {
   // 3. Schedules
   Future<List<WorkScheduleItemModel>> getWeeklySchedules() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/schedules',
-        options: options,
-      );
+      final response = await _dio.get('/schedules');
       final raw = response.data;
       final List list = raw is Map ? (raw['schedules'] as List? ?? []) : (raw is List ? raw : []);
       return list
@@ -196,9 +169,8 @@ class AdminMobileRepository {
 
   Future<(bool, String?)> updateSchedule(WorkScheduleItemModel schedule) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/schedules',
+        '/schedules',
         data: {
           'day_of_week': schedule.dayOfWeek,
           'start_time': schedule.startTime ?? '08:00:00',
@@ -206,7 +178,6 @@ class AdminMobileRepository {
           'grace_minutes': schedule.graceMinutes,
           'is_day_off': schedule.isDayOff,
         },
-        options: options,
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return (true, null);
@@ -218,7 +189,7 @@ class AdminMobileRepository {
       if (data is Map) {
         msg = data['message'] as String? ?? data['detail'] as String?;
       }
-      return (false, msg ?? 'Серверге туташууда ката кетти');
+      return (false, msg ?? 'Серверге туташуу катасы');
     } catch (e) {
       return (false, e.toString());
     }
@@ -234,9 +205,8 @@ class AdminMobileRepository {
     String? checkOutTime,
   }) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/attendance/manual-correction',
+        '/attendance/manual-correction',
         data: {
           'teacher_id': teacherId,
           'target_date': targetDate,
@@ -245,7 +215,6 @@ class AdminMobileRepository {
           'check_in_time': checkInTime,
           'check_out_time': checkOutTime,
         },
-        options: options,
       );
       return response.statusCode == 200;
     } catch (_) {
@@ -256,11 +225,7 @@ class AdminMobileRepository {
   // 5. School QR & Settings
   Future<Map<String, dynamic>?> getSchoolQr() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/qr/current',
-        options: options,
-      );
+      final response = await _dio.get('/qr/current');
       return response.data as Map<String, dynamic>;
     } catch (_) {
       return null;
@@ -269,11 +234,7 @@ class AdminMobileRepository {
 
   Future<Map<String, dynamic>?> rotateSchoolQr(String schoolId) async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/qr/$schoolId/rotate',
-        options: options,
-      );
+      final response = await _dio.post('/qr/$schoolId/rotate');
       return response.data as Map<String, dynamic>;
     } catch (_) {
       return null;
@@ -282,11 +243,7 @@ class AdminMobileRepository {
 
   Future<Map<String, dynamic>?> getSchoolSettings() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/schools/current',
-        options: options,
-      );
+      final response = await _dio.get('/schools/current');
       return response.data as Map<String, dynamic>;
     } catch (_) {
       return null;
@@ -299,7 +256,6 @@ class AdminMobileRepository {
     double? radius,
   }) async {
     try {
-      final options = await _getAuthOptions();
       final data = <String, dynamic>{
         'name': name,
       };
@@ -307,9 +263,8 @@ class AdminMobileRepository {
         data['allowed_radius_meters'] = radius;
       }
       final response = await _dio.patch(
-        '${AppConstants.defaultBaseUrl}/schools/$schoolId',
+        '/schools/$schoolId',
         data: data,
-        options: options,
       );
       if (response.statusCode == 200) {
         return (true, null);
@@ -334,14 +289,12 @@ class AdminMobileRepository {
     int? month,
   }) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/attendance/teacher/$teacherId/history',
+        '/attendance/teacher/$teacherId/history',
         queryParameters: {
           'year': ?year,
           'month': ?month,
         },
-        options: options,
       );
       final list = response.data as List? ?? [];
       return list.map((e) => e as Map<String, dynamic>).toList();
@@ -353,11 +306,9 @@ class AdminMobileRepository {
   // 7. Teacher specific schedules
   Future<List<WorkScheduleItemModel>> getTeacherSchedules({required String teacherId}) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.get(
-        '${AppConstants.defaultBaseUrl}/schedules',
+        '/schedules',
         queryParameters: {'teacher_id': teacherId},
-        options: options,
       );
       final raw = response.data;
       final List list = raw is Map ? (raw['schedules'] as List? ?? []) : (raw is List ? raw : []);
@@ -374,9 +325,8 @@ class AdminMobileRepository {
     required WorkScheduleItemModel schedule,
   }) async {
     try {
-      final options = await _getAuthOptions();
       final response = await _dio.post(
-        '${AppConstants.defaultBaseUrl}/schedules',
+        '/schedules',
         data: {
           'teacher_id': teacherId,
           'day_of_week': schedule.dayOfWeek,
@@ -385,7 +335,6 @@ class AdminMobileRepository {
           'grace_minutes': schedule.graceMinutes,
           'is_day_off': schedule.isDayOff,
         },
-        options: options,
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (_) {
@@ -395,11 +344,7 @@ class AdminMobileRepository {
 
   Future<bool> deleteTeacherSchedule(String scheduleId) async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.delete(
-        '${AppConstants.defaultBaseUrl}/schedules/$scheduleId',
-        options: options,
-      );
+      final response = await _dio.delete('/schedules/$scheduleId');
       return response.statusCode == 200;
     } catch (_) {
       return false;

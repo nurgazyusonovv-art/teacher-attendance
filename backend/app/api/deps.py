@@ -36,19 +36,19 @@ async def get_current_user(
         if not user_id or token_type != "access":
             raise AppException(
                 code=ErrorCode.TOKEN_INVALID,
-                message="Invalid access token",
+                message="Сессиянын мөөнөтү жараксыз. Кайра кириңиз.",
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
     except jwt.ExpiredSignatureError:
         raise AppException(
             code=ErrorCode.TOKEN_EXPIRED,
-            message="Token has expired. Please refresh your session.",
+            message="Сессиянын мөөнөтү бүттү. Кайра кириңиз.",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
     except jwt.PyJWTError:
         raise AppException(
             code=ErrorCode.TOKEN_INVALID,
-            message="Could not validate credentials",
+            message="Сессия жараксыз. Кайра кириңиз.",
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
