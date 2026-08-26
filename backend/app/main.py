@@ -11,12 +11,16 @@ from app.db.base_class import Base
 import app.models  # Ensure all models are registered with Base
 
 
+from app.db.auto_migrate import init_and_migrate_db
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables if using local SQLite development mode
-    if "sqlite" in settings.DATABASE_URL:
-        async with async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    # Startup: ensure tables exist, missing columns are added, and master data seeded safely
+    try:
+        await init_and_migrate_db()
+    except Exception as e:
+        print(f"Error during startup database auto-migration: {e}")
     yield
     # Shutdown
     await async_engine.dispose()

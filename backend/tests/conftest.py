@@ -1,10 +1,19 @@
+import asyncio
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal, async_engine
+from app.db.auto_migrate import init_and_migrate_db
 from app.main import app
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_database():
+    """Ensure database schema and initial seed data exist before running test suite."""
+    asyncio.run(init_and_migrate_db())
+    asyncio.run(async_engine.dispose())
 
 
 @pytest_asyncio.fixture

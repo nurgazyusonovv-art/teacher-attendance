@@ -19,6 +19,12 @@ if is_postgres:
         "sslmode": "require",
     }
 
+from sqlalchemy.pool import NullPool
+
+pool_kwargs = {}
+if not is_postgres:
+    pool_kwargs["poolclass"] = NullPool
+
 # Async Engine for FastAPI async requests (Powered by asyncpg)
 async_engine = create_async_engine(
     settings.DATABASE_URL,
@@ -26,6 +32,7 @@ async_engine = create_async_engine(
     future=True,
     connect_args=async_connect_args,
     pool_pre_ping=True,
+    **pool_kwargs,
 )
 
 AsyncSessionLocal = async_sessionmaker(
