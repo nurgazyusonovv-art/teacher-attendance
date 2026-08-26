@@ -453,6 +453,9 @@ class AdminMobileRepository {
     double? longitude,
     double? radius,
     double? maxAccuracy,
+    String? telegramBotToken,
+    String? telegramChatId,
+    bool? telegramEnabled,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -461,6 +464,9 @@ class AdminMobileRepository {
       if (longitude != null) data['longitude'] = longitude;
       if (radius != null) data['allowed_radius_meters'] = radius;
       if (maxAccuracy != null) data['max_accuracy_meters'] = maxAccuracy;
+      if (telegramBotToken != null) data['telegram_bot_token'] = telegramBotToken;
+      if (telegramChatId != null) data['telegram_chat_id'] = telegramChatId;
+      if (telegramEnabled != null) data['telegram_enabled'] = telegramEnabled;
 
       final response = await _dio.patch(
         '/schools/$schoolId',
@@ -479,6 +485,81 @@ class AdminMobileRepository {
       return (false, msg ?? 'Мектептин жөндөөлөрүн өзгөртүүдө ката кетти');
     } catch (e) {
       return (false, e.toString());
+    }
+  }
+
+  // 6.1 Telegram Reports
+  Future<(bool, String, String?)> sendTelegramReport({
+    String? targetDate,
+    String? botToken,
+    String? chatId,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/reports/telegram/send',
+        data: {
+          if (targetDate != null) 'target_date': targetDate,
+          if (botToken != null && botToken.isNotEmpty) 'bot_token': botToken,
+          if (chatId != null && chatId.isNotEmpty) 'chat_id': chatId,
+        },
+      );
+      final data = response.data as Map<String, dynamic>;
+      final msg = data['message'] as String? ?? 'Отчет Telegram\'га ийгиликтүү жөнөтүлдү!';
+      final text = data['report_text'] as String?;
+      return (true, msg, text);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Telegram\'га жөнөтүүдө ката кетти', null);
+    } catch (e) {
+      return (false, e.toString(), null);
+    }
+  }
+
+  Future<(bool, String)> testTelegramConnection({
+    required String botToken,
+    required String chatId,
+    String? schoolName,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/reports/telegram/test',
+        data: {
+          'bot_token': botToken,
+          'chat_id': chatId,
+          if (schoolName != null) 'school_name': schoolName,
+        },
+      );
+      final data = response.data as Map<String, dynamic>;
+      final msg = data['message'] as String? ?? 'Тесттик билдирүү ийгиликтүү жөнөтүлдү!';
+      return (true, msg);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String? msg;
+      if (data is Map) {
+        msg = data['message'] as String? ?? data['detail'] as String?;
+      }
+      return (false, msg ?? 'Telegram ботко туташууда ката кетти');
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  Future<String?> previewTelegramReport({String? targetDate}) async {
+    try {
+      final response = await _dio.get(
+        '/reports/telegram/preview',
+        queryParameters: {
+          if (targetDate != null) 'target_date': targetDate,
+        },
+      );
+      final data = response.data as Map<String, dynamic>;
+      return data['report_text'] as String?;
+    } catch (_) {
+      return null;
     }
   }
 
