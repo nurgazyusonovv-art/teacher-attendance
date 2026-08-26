@@ -14,15 +14,50 @@ class ScheduleService:
     async def get_schedules_for_school(
         db: AsyncSession, school_id: str, teacher_id: Optional[str] = None
     ) -> List[WorkSchedule]:
-        query = select(WorkSchedule).where(WorkSchedule.school_id == school_id)
-        if teacher_id:
-            query = query.where(WorkSchedule.teacher_id == teacher_id)
-        else:
-            query = query.where(WorkSchedule.teacher_id.is_(None))
+        if not teacher_id:
+            query = (
+                select(WorkSchedule)
+                .where(
+                    WorkSchedule.school_id == school_id,
+                    WorkSchedule.teacher_id.is_(None),
+                )
+                .order_by(WorkSchedule.day_of_week.asc())
+            )
+            result = await db.execute(query)
+            return list(result.scalars().all())
 
-        query = query.order_by(WorkSchedule.day_of_week.asc())
-        result = await db.execute(query)
-        return list(result.scalars().all())
+        # If teacher_id is provided:
+        # 1. Fetch school default schedules
+        school_res = await db.execute(
+            select(WorkSchedule)
+            .where(
+                WorkSchedule.school_id == school_id,
+                WorkSchedule.teacher_id.is_(None),
+            )
+            .order_by(WorkSchedule.day_of_week.asc())
+        )
+        school_schedules = {s.day_of_week: s for s in school_res.scalars().all()}
+
+        # 2. Fetch teacher custom overrides
+        teacher_res = await db.execute(
+            select(WorkSchedule)
+            .where(
+                WorkSchedule.school_id == school_id,
+                WorkSchedule.teacher_id == teacher_id,
+            )
+            .order_by(WorkSchedule.day_of_week.asc())
+        )
+        teacher_schedules = {s.day_of_week: s for s in teacher_res.scalars().all()}
+
+        # 3. Merge: If teacher has custom schedule for day, use it. Otherwise, use school default schedule.
+        merged: List[WorkSchedule] = []
+        for day in range(7):
+            if day in teacher_schedules:
+                merged.append(teacher_schedules[day])
+            elif day in school_schedules:
+                merged.append(school_schedules[day])
+
+        return merged
 
     @staticmethod
     async def create_or_update_schedule(

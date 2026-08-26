@@ -77,3 +77,23 @@ async def test_resolve_schedule_business_logic(db_session):
         db_session, school.id, None, sunday_date
     )
     assert sun_sched is None or sun_sched.is_day_off is True
+
+
+@pytest.mark.asyncio
+async def test_teacher_inherits_school_schedule(db_session):
+    from app.services.schedule_service import ScheduleService
+    from app.models.school import School
+    from sqlalchemy import select
+
+    res = await db_session.execute(select(School).limit(1))
+    school = res.scalar_one()
+
+    # Get schedules for a teacher without custom schedules
+    schedules = await ScheduleService.get_schedules_for_school(
+        db_session, school.id, teacher_id="fake-teacher-uuid"
+    )
+    # Should automatically inherit the school's default schedules
+    assert len(schedules) >= 5
+    for s in schedules:
+        assert s.school_id == school.id
+
