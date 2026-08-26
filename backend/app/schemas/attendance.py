@@ -46,6 +46,8 @@ class DailyAttendanceRead(BaseModel):
     correction_reason: Optional[str] = None
     teacher_name: Optional[str] = None
     employee_code: Optional[str] = None
+    phone_number: Optional[str] = None
+    subject: Optional[str] = None
     lesson_delays: List[LessonDelayRead] = []
     lesson_late_minutes: int = 0
     total_late_minutes: int = 0
