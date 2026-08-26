@@ -346,6 +346,16 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
     final currentChatId = _schoolData?['telegram_chat_id'] as String? ?? '';
     bool enabled = _schoolData?['telegram_enabled'] as bool? ?? (currentToken.isNotEmpty && currentChatId.isNotEmpty);
 
+    // Parse initial report time
+    TimeOfDay selectedReportTime = const TimeOfDay(hour: 17, minute: 30);
+    final rawTime = _schoolData?['telegram_report_time'] as String?;
+    if (rawTime != null && rawTime.contains(':')) {
+      final parts = rawTime.split(':');
+      final h = int.tryParse(parts[0]) ?? 17;
+      final m = int.tryParse(parts[1]) ?? 30;
+      selectedReportTime = TimeOfDay(hour: h, minute: m);
+    }
+
     final tokenController = TextEditingController(text: currentToken);
     final chatIdController = TextEditingController(text: currentChatId);
 
@@ -461,14 +471,74 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
 
                 // Enabled Switch
                 SwitchListTile(
-                  title: const Text('Telegram отчетторун активдештирүү', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  title: const Text('Күндөлүк автоматтык отчетту иштетүү', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+                  subtitle: const Text('Директорго/каналга күн сайын белгиленген саатта жөнөтөт', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                   value: enabled,
                   contentPadding: EdgeInsets.zero,
                   activeTrackColor: const Color(0xFF0284C7).withValues(alpha: 0.5),
                   activeThumbColor: const Color(0xFF0284C7),
                   onChanged: (val) => setModalState(() => enabled = val),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
+
+                // Report Time Picker Tile (if enabled)
+                if (enabled) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F9FF),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Row(
+                            children: [
+                              Icon(Icons.schedule_rounded, size: 20, color: Color(0xFF0284C7)),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Автоматтык жөнөтүү убактысы:',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: AppTheme.textPrimary),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: selectedReportTime,
+                            );
+                            if (picked != null) {
+                              setModalState(() => selectedReportTime = picked);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF0284C7)),
+                            ),
+                            child: Text(
+                              '${selectedReportTime.hour.toString().padLeft(2, '0')}:${selectedReportTime.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: Color(0xFF0284C7)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
 
                 // Test Connection Button
                 OutlinedButton.icon(
@@ -521,6 +591,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                       : () async {
                           final token = tokenController.text.trim();
                           final chat = chatIdController.text.trim();
+                          final reportTimeStr = '${selectedReportTime.hour.toString().padLeft(2, '0')}:${selectedReportTime.minute.toString().padLeft(2, '0')}:00';
 
                           setModalState(() => isSaving = true);
                           final messenger = ScaffoldMessenger.of(context);
@@ -530,6 +601,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                             telegramBotToken: token.isNotEmpty ? token : null,
                             telegramChatId: chat.isNotEmpty ? chat : null,
                             telegramEnabled: enabled,
+                            telegramReportTime: reportTimeStr,
                           );
 
                           if (ctx.mounted) Navigator.pop(ctx);
@@ -670,6 +742,8 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
     final tgChatId = _schoolData?['telegram_chat_id'] as String? ?? '';
     final tgEnabled = _schoolData?['telegram_enabled'] as bool? ?? false;
     final isTgConfigured = tgToken.isNotEmpty && tgChatId.isNotEmpty;
+    final rawReportTime = _schoolData?['telegram_report_time'] as String? ?? '17:30';
+    final reportTimeFormatted = rawReportTime.length >= 5 ? rawReportTime.substring(0, 5) : rawReportTime;
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -864,7 +938,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                       Expanded(
                         child: Text(
                           isTgConfigured && tgEnabled
-                              ? 'Каналга туташтырылды: $tgChatId'
+                              ? 'Канал: $tgChatId • ⏰ Саат $reportTimeFormatted'
                               : (isTgConfigured ? 'Бот жөндөлгөн, бирок өчүрүлгөн' : 'Бот туташтырыла элек (Жөндөө басыңыз)'),
                           style: TextStyle(
                             fontSize: 11.5,

@@ -456,6 +456,7 @@ class AdminMobileRepository {
     String? telegramBotToken,
     String? telegramChatId,
     bool? telegramEnabled,
+    String? telegramReportTime,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -467,6 +468,7 @@ class AdminMobileRepository {
       if (telegramBotToken != null) data['telegram_bot_token'] = telegramBotToken;
       if (telegramChatId != null) data['telegram_chat_id'] = telegramChatId;
       if (telegramEnabled != null) data['telegram_enabled'] = telegramEnabled;
+      if (telegramReportTime != null) data['telegram_report_time'] = telegramReportTime;
 
       final response = await _dio.patch(
         '/schools/$schoolId',
