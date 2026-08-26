@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, date, time
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -44,6 +44,7 @@ class SchoolUpdate(BaseModel):
 
 class SchoolRead(SchoolBase):
     id: str
+    last_telegram_report_sent_date: Optional[date] = None
     created_at: datetime
     updated_at: datetime
 

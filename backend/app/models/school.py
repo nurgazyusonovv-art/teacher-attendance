@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime, time
+from datetime import datetime, date, time
 from typing import List, Optional, TYPE_CHECKING
-from sqlalchemy import String, Float, Integer, Boolean, Time, DateTime
+from sqlalchemy import String, Float, Integer, Boolean, Time, Date, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db.base_class import Base
@@ -39,6 +39,7 @@ class School(Base):
     telegram_chat_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     telegram_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     telegram_report_time: Mapped[Optional[time]] = mapped_column(Time, default=time(17, 30), nullable=True)
+    last_telegram_report_sent_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

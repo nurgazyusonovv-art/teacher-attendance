@@ -44,6 +44,7 @@ async def init_and_migrate_db():
             ("telegram_chat_id VARCHAR(100)", "telegram_chat_id VARCHAR(100)"),
             ("telegram_enabled BOOLEAN DEFAULT FALSE", "telegram_enabled BOOLEAN DEFAULT 0"),
             ("telegram_report_time TIME DEFAULT '17:30:00'", "telegram_report_time TIME"),
+            ("last_telegram_report_sent_date DATE", "last_telegram_report_sent_date DATE"),
         ]:
             col_name = col_def.split()[0]
             try:

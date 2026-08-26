@@ -187,3 +187,85 @@ class TelegramService:
             f"⏱ <i>Текшерилген убакыт: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}</i>"
         )
         return await TelegramService.send_message(bot_token, chat_id, text)
+
+    @staticmethod
+    async def check_and_send_scheduled_reports(db: AsyncSession) -> int:
+        """
+        Checks all active schools with telegram_enabled == True.
+        If local school time is >= school.telegram_report_time and report hasn't been sent today,
+        generates and sends the daily report and updates last_telegram_report_sent_date.
+        """
+        stmt = select(School).where(
+            School.is_active == True,  # noqa: E712
+            School.telegram_enabled == True,  # noqa: E712
+        )
+        result = await db.execute(stmt)
+        schools = result.scalars().all()
+
+        sent_count = 0
+        for school in schools:
+            bot_token = school.telegram_bot_token or getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+            chat_id = school.telegram_chat_id or getattr(settings, "TELEGRAM_CHAT_ID", None)
+
+            if not bot_token or not chat_id:
+                continue
+
+            local_dt = current_time_in_school_timezone(school.timezone)
+            local_date = today_date_in_school_timezone(school.timezone)
+            report_time = school.telegram_report_time
+
+            # Default to 17:30 if not specified
+            if not report_time:
+                from datetime import time as dt_time
+                report_time = dt_time(17, 30)
+
+            # Check if current time has reached or passed scheduled report time
+            if local_dt.time() >= report_time:
+                # Check if already sent today
+                if school.last_telegram_report_sent_date == local_date:
+                    continue
+
+                logger.info(
+                    f"[Automated Telegram Report] Triggering scheduled report for {school.name} "
+                    f"(target_date={local_date}, scheduled_time={report_time}, chat_id={chat_id})"
+                )
+
+                try:
+                    success, msg, _ = await TelegramService.send_daily_report(
+                        db=db,
+                        school_id=school.id,
+                        target_date=local_date,
+                    )
+
+                    if success:
+                        school.last_telegram_report_sent_date = local_date
+                        await db.commit()
+                        sent_count += 1
+                        logger.info(f"[Automated Telegram Report] Successfully delivered report for {school.name}")
+                    else:
+                        logger.warning(f"[Automated Telegram Report] Delivery failed for {school.name}: {msg}")
+                except Exception as ex:
+                    logger.error(f"[Automated Telegram Report] Error sending report for {school.name}: {ex}", exc_info=True)
+
+        return sent_count
+
+    @staticmethod
+    async def start_scheduler():
+        """
+        Background worker task that runs every 60 seconds to check and trigger automated daily reports.
+        """
+        import asyncio
+        from app.db.session import AsyncSessionLocal
+
+        logger.info("Telegram Automated Daily Report background worker started.")
+        while True:
+            try:
+                async with AsyncSessionLocal() as session:
+                    await TelegramService.check_and_send_scheduled_reports(session)
+            except asyncio.CancelledError:
+                logger.info("Telegram background scheduler stopped.")
+                break
+            except Exception as e:
+                logger.error(f"Telegram background scheduler error: {e}", exc_info=True)
+
+            await asyncio.sleep(60)

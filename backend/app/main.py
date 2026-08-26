@@ -11,7 +11,9 @@ from app.db.base_class import Base
 import app.models  # Ensure all models are registered with Base
 
 
+import asyncio
 from app.db.auto_migrate import init_and_migrate_db
+from app.services.telegram_service import TelegramService
 
 
 @asynccontextmanager
@@ -21,8 +23,21 @@ async def lifespan(app: FastAPI):
         await init_and_migrate_db()
     except Exception as e:
         print(f"Error during startup database auto-migration: {e}")
+
+    # Start automated background daily Telegram report scheduler
+    scheduler_task = asyncio.create_task(TelegramService.start_scheduler())
+
     yield
+
     # Shutdown
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        pass
+
     await async_engine.dispose()
 
 
