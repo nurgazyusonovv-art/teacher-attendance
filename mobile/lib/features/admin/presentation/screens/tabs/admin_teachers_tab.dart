@@ -51,18 +51,6 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await context.push<bool>('/admin/add-teacher');
-          if (result == true) {
-            _loadTeachers();
-          }
-        },
-        icon: const Icon(Icons.person_add_alt_1_rounded),
-        label: const Text('Мугалим кошуу'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

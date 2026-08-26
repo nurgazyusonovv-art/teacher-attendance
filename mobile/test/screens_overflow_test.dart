@@ -10,6 +10,7 @@ import 'package:teacher_mobile/features/admin/presentation/screens/tabs/admin_sc
 import 'package:teacher_mobile/features/admin/presentation/screens/tabs/admin_teachers_tab.dart';
 import 'package:teacher_mobile/features/admin/presentation/screens/teacher_detail_screen.dart';
 import 'package:teacher_mobile/features/admin/presentation/screens/add_teacher_screen.dart';
+import 'package:teacher_mobile/features/admin/presentation/screens/admin_main_screen.dart';
 import 'package:teacher_mobile/features/admin/presentation/screens/admin_qr_code_screen.dart';
 import 'package:teacher_mobile/features/attendance/presentation/screens/home_screen.dart';
 import 'package:teacher_mobile/features/history/presentation/screens/history_screen.dart';
@@ -186,6 +187,17 @@ void main() {
     await tester.pumpWidget(wrapWithTheme(const AdminQrCodeScreen(), size: const Size(320, 640)));
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(AdminQrCodeScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AdminMainScreen renders without overflow on small screens', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(wrapWithTheme(const AdminMainScreen(), size: const Size(320, 640)));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(AdminMainScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
