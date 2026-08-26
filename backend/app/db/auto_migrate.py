@@ -31,14 +31,28 @@ async def init_and_migrate_db():
         # 2. Add newly introduced columns to existing tables safely
         # Column: teachers.subject
         try:
-            # PostgreSQL syntax: ADD COLUMN IF NOT EXISTS
             await conn.execute(text("ALTER TABLE teachers ADD COLUMN IF NOT EXISTS subject VARCHAR(100);"))
         except Exception:
             try:
-                # SQLite fallback
                 await conn.execute(text("ALTER TABLE teachers ADD COLUMN subject VARCHAR(100);"))
             except Exception:
                 pass  # Column already exists
+
+        # Columns: schools.telegram_*
+        for col_def, col_def_sqlite in [
+            ("telegram_bot_token VARCHAR(255)", "telegram_bot_token VARCHAR(255)"),
+            ("telegram_chat_id VARCHAR(100)", "telegram_chat_id VARCHAR(100)"),
+            ("telegram_enabled BOOLEAN DEFAULT FALSE", "telegram_enabled BOOLEAN DEFAULT 0"),
+            ("telegram_report_time TIME DEFAULT '17:30:00'", "telegram_report_time TIME"),
+        ]:
+            col_name = col_def.split()[0]
+            try:
+                await conn.execute(text(f"ALTER TABLE schools ADD COLUMN IF NOT EXISTS {col_def};"))
+            except Exception:
+                try:
+                    await conn.execute(text(f"ALTER TABLE schools ADD COLUMN {col_def_sqlite};"))
+                except Exception:
+                    pass
 
     # 3. Seed master data if table records are missing (Idempotent)
     async with AsyncSessionLocal() as session:

@@ -16,6 +16,12 @@ def setup_test_database():
     asyncio.run(async_engine.dispose())
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def cleanup_db_pool():
+    yield
+    await async_engine.dispose()
+
+
 @pytest_asyncio.fixture
 async def async_client():
     transport = ASGITransport(app=app)

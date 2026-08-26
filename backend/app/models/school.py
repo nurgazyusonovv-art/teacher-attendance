@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, time
-from typing import List, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Float, Integer, Boolean, Time, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -34,6 +34,12 @@ class School(Base):
     grace_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Bishkek", nullable=False)
     
+    # Telegram Integration Settings
+    telegram_bot_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    telegram_chat_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    telegram_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    telegram_report_time: Mapped[Optional[time]] = mapped_column(Time, default=time(17, 30), nullable=True)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
