@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Teacher Mobile</string>
+	<string>Мектеп Мугалим</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -56,19 +58,19 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Мектептин QR-кодун сканерлөө үчүн камерага уруксат керек.</string>
+	<string>Мектептин QR-кодун сканерлеп, катышууну каттоо үчүн камера колдонулат.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Мектептин аймагында экениңизди аныктоо үчүн геолокацияга уруксат керек.</string>
+	<string>Мектептин геозонасында экениңизди аныктап, катышууну тастыктоо үчүн геолокация колдонулат.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>QR-кодду галереяга сүрөт катары сактоо үчүн уруксат талап кылынат.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>QR-кодду галереяга сүрөт кылып сактоо үчүн уруксат талап кылынат.</string>
 </dict>
 </plist>
