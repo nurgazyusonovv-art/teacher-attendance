@@ -467,7 +467,7 @@ Optional:
 - [ ] Мурда ачыкка чыккан production JWT/DB credentials'ди provider'лерде rotate кылуу
 - [ ] Production database'ке `alembic upgrade head` жүргүзүп, deploy smoke test аткаруу
 - [x] Реалдуу PostgreSQL'де concurrent attendance integration test жүргүзүү
-- [ ] Production көлөмүнө жакын attendance load test жүргүзүү
+- [x] Production көлөмүнө жакын attendance load test жүргүзүү — локалдык PostgreSQL: 500 мугалим, 50 concurrent, 279.1 req/s, p95 48.9 ms
 
 ---
 
