@@ -65,11 +65,19 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
               // Title
               const Row(
                 children: [
-                  Icon(Icons.add_circle_outline_rounded, color: AppTheme.primaryColor, size: 22),
+                  Icon(
+                    Icons.add_circle_outline_rounded,
+                    color: AppTheme.primaryColor,
+                    size: 22,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Ыкчам аракеттер',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -145,19 +153,30 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: AppTheme.textPrimary),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14.5,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: Color(0xFF94A3B8),
+              ),
             ],
           ),
         ),
@@ -197,7 +216,9 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
           padding: EdgeInsets.only(
@@ -215,7 +236,10 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                   child: Container(
                     width: 44,
                     height: 4,
-                    decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -229,7 +253,11 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                         color: Colors.orange.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(Icons.alarm_add_rounded, color: Colors.orange, size: 24),
+                      child: const Icon(
+                        Icons.alarm_add_rounded,
+                        color: Colors.orange,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -238,18 +266,28 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                         children: [
                           Text(
                             'Сабакка кечигүү белгилөө',
-                            style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                            style: TextStyle(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                           SizedBox(height: 2),
                           Text(
                             'Мугалимди тандап, кечигүүнү жазыңыз',
-                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Color(0xFF64748B),
+                      ),
                       onPressed: () => Navigator.pop(ctx),
                     ),
                   ],
@@ -257,24 +295,42 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 const SizedBox(height: 16),
 
                 // Teacher Selector Dropdown
-                const Text('Мугалимди тандоо *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const Text(
+                  'Мугалимди тандоо *',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<TeacherItemModel>(
-                  value: selectedTeacher,
+                  initialValue: selectedTeacher,
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.person_rounded, color: AppTheme.primaryColor),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    prefixIcon: Icon(
+                      Icons.person_rounded,
+                      color: AppTheme.primaryColor,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                   ),
                   isExpanded: true,
                   items: teachers.map((t) {
-                    final subj = t.subject != null && t.subject!.isNotEmpty ? ' (${t.subject})' : '';
+                    final subj = t.subject != null && t.subject!.isNotEmpty
+                        ? ' (${t.subject})'
+                        : '';
                     return DropdownMenuItem(
                       value: t,
                       child: Text(
                         '${t.fullName}$subj',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     );
                   }).toList(),
@@ -285,7 +341,14 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 const SizedBox(height: 14),
 
                 // Date Picker
-                const Text('Күнү *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const Text(
+                  'Күнү *',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 InkWell(
                   onTap: () async {
@@ -301,7 +364,10 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                   },
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(14),
@@ -309,14 +375,32 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today_rounded, size: 18, color: AppTheme.primaryColor),
+                        const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 18,
+                          color: AppTheme.primaryColor,
+                        ),
                         const SizedBox(width: 10),
                         Text(
-                          DateFormat('d-MMMM yyyy (EEEE)', 'ky').format(pickedDate),
-                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                          DateFormat(
+                            'd-MMMM yyyy (EEEE)',
+                            'ky',
+                          ).format(pickedDate),
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
                         ),
                         const Spacer(),
-                        const Text('Өзгөртүү', style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Өзгөртүү',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -324,7 +408,14 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 const SizedBox(height: 14),
 
                 // Lesson Number (1-8)
-                const Text('Канчанчы сабак? *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const Text(
+                  'Канчанчы сабак? *',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
@@ -333,20 +424,30 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                     final lessonNum = i + 1;
                     final isSel = selectedLesson == lessonNum;
                     return InkWell(
-                      onTap: () => setModalState(() => selectedLesson = lessonNum),
+                      onTap: () =>
+                          setModalState(() => selectedLesson = lessonNum),
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSel ? Colors.orange : const Color(0xFFF1F5F9),
+                          color: isSel
+                              ? Colors.orange
+                              : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isSel ? Colors.orange : AppTheme.borderColor),
+                          border: Border.all(
+                            color: isSel ? Colors.orange : AppTheme.borderColor,
+                          ),
                         ),
                         child: Text(
                           '$lessonNum-сабак',
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                            fontWeight: isSel
+                                ? FontWeight.bold
+                                : FontWeight.w600,
                             color: isSel ? Colors.white : AppTheme.textPrimary,
                           ),
                         ),
@@ -357,7 +458,14 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 const SizedBox(height: 14),
 
                 // Delay Minutes
-                const Text('Канча минута кечикти? *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const Text(
+                  'Канча минута кечикти? *',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -372,17 +480,26 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                       },
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSel ? Colors.orange : const Color(0xFFF1F5F9),
+                          color: isSel
+                              ? Colors.orange
+                              : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isSel ? Colors.orange : AppTheme.borderColor),
+                          border: Border.all(
+                            color: isSel ? Colors.orange : AppTheme.borderColor,
+                          ),
                         ),
                         child: Text(
                           '$mins мүн',
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                            fontWeight: isSel
+                                ? FontWeight.bold
+                                : FontWeight.w600,
                             color: isSel ? Colors.white : AppTheme.textPrimary,
                           ),
                         ),
@@ -400,7 +517,9 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                   ),
                   onChanged: (val) {
                     final parsed = int.tryParse(val);
-                    if (parsed != null) setModalState(() => selectedMinutes = parsed);
+                    if (parsed != null) {
+                      setModalState(() => selectedMinutes = parsed);
+                    }
                   },
                 ),
                 const SizedBox(height: 14),
@@ -424,20 +543,29 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       elevation: 2,
                     ),
                     onPressed: () async {
                       if (selectedTeacher == null) return;
-                      final mins = int.tryParse(customMinutesController.text.trim()) ?? selectedMinutes;
+                      final mins =
+                          int.tryParse(customMinutesController.text.trim()) ??
+                          selectedMinutes;
                       if (mins <= 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Кечигүү мүнөтүн туура жазыңыз!'), backgroundColor: Colors.red),
+                          const SnackBar(
+                            content: Text('Кечигүү мүнөтүн туура жазыңыз!'),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                         return;
                       }
 
-                      final dateStr = DateFormat('yyyy-MM-dd').format(pickedDate);
+                      final dateStr = DateFormat(
+                        'yyyy-MM-dd',
+                      ).format(pickedDate);
                       final messenger = ScaffoldMessenger.of(context);
 
                       final (ok, err) = await _repository.addLessonDelay(
@@ -445,24 +573,39 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                         date: dateStr,
                         lessonNumber: selectedLesson,
                         delayMinutes: mins,
-                        reason: reasonController.text.trim().isNotEmpty ? reasonController.text.trim() : null,
+                        reason: reasonController.text.trim().isNotEmpty
+                            ? reasonController.text.trim()
+                            : null,
                       );
 
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (ok) {
                         messenger.showSnackBar(
                           SnackBar(
-                            content: Text('${selectedTeacher!.fullName}: $selectedLesson-сабакка $mins мүнөт кечигүү сакталды!'),
+                            content: Text(
+                              '${selectedTeacher!.fullName}: $selectedLesson-сабакка $mins мүнөт кечигүү сакталды!',
+                            ),
                             backgroundColor: AppTheme.successColor,
                           ),
                         );
                       } else {
                         messenger.showSnackBar(
-                          SnackBar(content: Text(err ?? 'Кечигүүнү сактоодо ката кетти'), backgroundColor: Colors.red),
+                          SnackBar(
+                            content: Text(
+                              err ?? 'Кечигүүнү сактоодо ката кетти',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
                         );
                       }
                     },
-                    child: const Text('Кечигүүнү сактоо', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Кечигүүнү сактоо',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -493,9 +636,15 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                ),
               ),
-              child: const Icon(Icons.qr_code_rounded, color: AppTheme.primaryColor, size: 18),
+              child: const Icon(
+                Icons.qr_code_rounded,
+                color: AppTheme.primaryColor,
+                size: 18,
+              ),
             ),
             tooltip: 'Мектептин QR-коду',
             onPressed: () => context.push('/admin/qr-code'),
@@ -508,16 +657,27 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFFECACA)),
               ),
-              child: const Icon(Icons.logout_rounded, color: AppTheme.errorColor, size: 18),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: AppTheme.errorColor,
+                size: 18,
+              ),
             ),
             tooltip: 'Чыгуу',
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (dialogCtx) => AlertDialog(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  title: const Text('Чыгуу', style: TextStyle(fontWeight: FontWeight.bold)),
-                  content: const Text('Чын эле администратор аккаунтунан чыгууну каалайсызбы?'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  title: const Text(
+                    'Чыгуу',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  content: const Text(
+                    'Чын эле администратор аккаунтунан чыгууну каалайсызбы?',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(dialogCtx),
@@ -532,7 +692,9 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.errorColor,
                         minimumSize: const Size(90, 42),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: const Text('Чыгуу'),
                     ),
@@ -544,16 +706,22 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _tabs),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.8), width: 1)),
+          border: Border(
+            top: BorderSide(
+              color: AppTheme.borderColor.withValues(alpha: 0.8),
+              width: 1,
+            ),
+          ),
           boxShadow: const [
-            BoxShadow(color: Color(0x08000000), blurRadius: 16, offset: Offset(0, -4)),
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 16,
+              offset: Offset(0, -4),
+            ),
           ],
         ),
         child: SafeArea(
@@ -599,7 +767,11 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
                   ),
                 ),
 

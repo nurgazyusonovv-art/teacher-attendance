@@ -32,6 +32,8 @@ class ErrorMessages {
         return 'Сиздин аккаунтуңуз активдүү эмес. Администраторго кайрылыңыз.';
       case 'TOKEN_EXPIRED':
         return 'Сессиянын мөөнөтү бүттү. Кайра кириңиз.';
+      case 'RATE_LIMITED':
+        return 'Өтө көп аракет жасалды. Бир аздан кийин кайра аракет кылыңыз.';
       case 'PERMISSION_DENIED':
         return 'Бул аракетти аткарууга уруксат жок.';
       case 'NETWORK_ERROR':

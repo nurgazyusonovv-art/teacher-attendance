@@ -33,9 +33,13 @@ class TeacherItemModel {
       id: json['id'] as String,
       userId: json['user_id'] as String? ?? user?['id'] as String? ?? '',
       schoolId: json['school_id'] as String? ?? '',
-      fullName: json['full_name'] as String? ?? user?['full_name'] as String? ?? 'Мугалим',
+      fullName:
+          json['full_name'] as String? ??
+          user?['full_name'] as String? ??
+          'Мугалим',
       email: json['email'] as String? ?? user?['email'] as String? ?? '',
-      username: json['username'] as String? ?? user?['username'] as String? ?? '',
+      username:
+          json['username'] as String? ?? user?['username'] as String? ?? '',
       phone: json['phone_number'] as String? ?? json['phone'] as String?,
       subject: json['subject'] as String?,
       employeeCode: json['employee_code'] as String? ?? '',
@@ -141,7 +145,8 @@ class AdminMobileRepository {
   final ApiClient _apiClient;
 
   AdminMobileRepository({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient(storageService: SecureStorageService());
+    : _apiClient =
+          apiClient ?? ApiClient(storageService: SecureStorageService());
 
   Dio get _dio => _apiClient.dio;
 
@@ -150,7 +155,9 @@ class AdminMobileRepository {
     try {
       final response = await _dio.get(
         '/attendance/dashboard/today',
-        queryParameters: targetDate != null ? {'target_date': targetDate} : null,
+        queryParameters: targetDate != null
+            ? {'target_date': targetDate}
+            : null,
       );
       return response.data as Map<String, dynamic>;
     } catch (_) {
@@ -163,7 +170,9 @@ class AdminMobileRepository {
     try {
       final response = await _dio.get('/teachers');
       final raw = response.data;
-      final List list = raw is Map ? (raw['items'] as List? ?? []) : (raw as List? ?? []);
+      final List list = raw is Map
+          ? (raw['items'] as List? ?? [])
+          : (raw as List? ?? []);
       return list
           .map((i) => TeacherItemModel.fromJson(i as Map<String, dynamic>))
           .toList();
@@ -202,7 +211,10 @@ class AdminMobileRepository {
       if (data is Map) {
         msg = data['message'] as String? ?? data['detail'] as String?;
       }
-      return (false, msg ?? 'Серверге туташуу катасы. Логин же сессияны текшериңиз.');
+      return (
+        false,
+        msg ?? 'Серверге туташуу катасы. Логин же сессияны текшериңиз.',
+      );
     } catch (e) {
       return (false, e.toString());
     }
@@ -222,14 +234,15 @@ class AdminMobileRepository {
       if (fullName != null && fullName.isNotEmpty) data['full_name'] = fullName;
       if (subject != null) data['subject'] = subject;
       if (phone != null) data['phone_number'] = phone;
-      if (employeeCode != null && employeeCode.isNotEmpty) data['employee_code'] = employeeCode;
-      if (password != null && password.trim().isNotEmpty) data['password'] = password.trim();
+      if (employeeCode != null && employeeCode.isNotEmpty) {
+        data['employee_code'] = employeeCode;
+      }
+      if (password != null && password.trim().isNotEmpty) {
+        data['password'] = password.trim();
+      }
       if (isActive != null) data['is_active'] = isActive;
 
-      final response = await _dio.patch(
-        '/teachers/$teacherId',
-        data: data,
-      );
+      final response = await _dio.patch('/teachers/$teacherId', data: data);
       if (response.statusCode == 200) {
         return (true, null);
       }
@@ -246,7 +259,10 @@ class AdminMobileRepository {
     }
   }
 
-  Future<(bool, String?)> deleteTeacher(String teacherId, {bool hardDelete = true}) async {
+  Future<(bool, String?)> deleteTeacher(
+    String teacherId, {
+    bool hardDelete = true,
+  }) async {
     try {
       final response = await _dio.delete(
         '/teachers/$teacherId',
@@ -326,9 +342,9 @@ class AdminMobileRepository {
         '/attendance/lesson-delays',
         queryParameters: {
           'teacher_id': teacherId,
-          if (date != null) 'target_date': date,
-          if (year != null) 'year': year,
-          if (month != null) 'month': month,
+          'target_date': ?date,
+          'year': ?year,
+          'month': ?month,
         },
       );
       final List list = response.data as List? ?? [];
@@ -354,7 +370,9 @@ class AdminMobileRepository {
     try {
       final response = await _dio.get('/schedules');
       final raw = response.data;
-      final List list = raw is Map ? (raw['schedules'] as List? ?? []) : (raw is List ? raw : []);
+      final List list = raw is Map
+          ? (raw['schedules'] as List? ?? [])
+          : (raw is List ? raw : []);
       return list
           .map((i) => WorkScheduleItemModel.fromJson(i as Map<String, dynamic>))
           .toList();
@@ -465,15 +483,16 @@ class AdminMobileRepository {
       if (longitude != null) data['longitude'] = longitude;
       if (radius != null) data['allowed_radius_meters'] = radius;
       if (maxAccuracy != null) data['max_accuracy_meters'] = maxAccuracy;
-      if (telegramBotToken != null) data['telegram_bot_token'] = telegramBotToken;
+      if (telegramBotToken != null) {
+        data['telegram_bot_token'] = telegramBotToken;
+      }
       if (telegramChatId != null) data['telegram_chat_id'] = telegramChatId;
       if (telegramEnabled != null) data['telegram_enabled'] = telegramEnabled;
-      if (telegramReportTime != null) data['telegram_report_time'] = telegramReportTime;
+      if (telegramReportTime != null) {
+        data['telegram_report_time'] = telegramReportTime;
+      }
 
-      final response = await _dio.patch(
-        '/schools/$schoolId',
-        data: data,
-      );
+      final response = await _dio.patch('/schools/$schoolId', data: data);
       if (response.statusCode == 200) {
         return (true, null);
       }
@@ -500,13 +519,15 @@ class AdminMobileRepository {
       final response = await _dio.post(
         '/reports/telegram/send',
         data: {
-          if (targetDate != null) 'target_date': targetDate,
+          'target_date': ?targetDate,
           if (botToken != null && botToken.isNotEmpty) 'bot_token': botToken,
           if (chatId != null && chatId.isNotEmpty) 'chat_id': chatId,
         },
       );
       final data = response.data as Map<String, dynamic>;
-      final msg = data['message'] as String? ?? 'Отчет Telegram\'га ийгиликтүү жөнөтүлдү!';
+      final msg =
+          data['message'] as String? ??
+          'Отчет Telegram\'га ийгиликтүү жөнөтүлдү!';
       final text = data['report_text'] as String?;
       return (true, msg, text);
     } on DioException catch (e) {
@@ -532,11 +553,13 @@ class AdminMobileRepository {
         data: {
           'bot_token': botToken,
           'chat_id': chatId,
-          if (schoolName != null) 'school_name': schoolName,
+          'school_name': ?schoolName,
         },
       );
       final data = response.data as Map<String, dynamic>;
-      final msg = data['message'] as String? ?? 'Тесттик билдирүү ийгиликтүү жөнөтүлдү!';
+      final msg =
+          data['message'] as String? ??
+          'Тесттик билдирүү ийгиликтүү жөнөтүлдү!';
       return (true, msg);
     } on DioException catch (e) {
       final data = e.response?.data;
@@ -554,9 +577,7 @@ class AdminMobileRepository {
     try {
       final response = await _dio.get(
         '/reports/telegram/preview',
-        queryParameters: {
-          if (targetDate != null) 'target_date': targetDate,
-        },
+        queryParameters: {'target_date': ?targetDate},
       );
       final data = response.data as Map<String, dynamic>;
       return data['report_text'] as String?;
@@ -574,10 +595,7 @@ class AdminMobileRepository {
     try {
       final response = await _dio.get(
         '/attendance/teacher/$teacherId/history',
-        queryParameters: {
-          if (year != null) 'year': year,
-          if (month != null) 'month': month,
-        },
+        queryParameters: {'year': ?year, 'month': ?month},
       );
       final list = response.data as List? ?? [];
       return list.map((e) => e as Map<String, dynamic>).toList();
@@ -587,14 +605,18 @@ class AdminMobileRepository {
   }
 
   // 8. Teacher specific schedules
-  Future<List<WorkScheduleItemModel>> getTeacherSchedules({required String teacherId}) async {
+  Future<List<WorkScheduleItemModel>> getTeacherSchedules({
+    required String teacherId,
+  }) async {
     try {
       final response = await _dio.get(
         '/schedules',
         queryParameters: {'teacher_id': teacherId},
       );
       final raw = response.data;
-      final List list = raw is Map ? (raw['schedules'] as List? ?? []) : (raw is List ? raw : []);
+      final List list = raw is Map
+          ? (raw['schedules'] as List? ?? [])
+          : (raw is List ? raw : []);
       return list
           .map((i) => WorkScheduleItemModel.fromJson(i as Map<String, dynamic>))
           .toList();

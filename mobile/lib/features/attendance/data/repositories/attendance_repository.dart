@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../../core/errors/error_messages.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../../admin/data/repositories/admin_mobile_repository.dart';
@@ -38,8 +39,11 @@ class DailyAttendanceModel {
         .map((e) => LessonDelayModel.fromJson(e as Map<String, dynamic>))
         .toList();
     final lateMins = json['late_minutes'] as int? ?? 0;
-    final lessonLateMins = json['lesson_late_minutes'] as int? ?? delays.fold<int>(0, (sum, d) => sum + d.delayMinutes);
-    final totalLateMins = json['total_late_minutes'] as int? ?? (lateMins + lessonLateMins);
+    final lessonLateMins =
+        json['lesson_late_minutes'] as int? ??
+        delays.fold<int>(0, (sum, d) => sum + d.delayMinutes);
+    final totalLateMins =
+        json['total_late_minutes'] as int? ?? (lateMins + lessonLateMins);
 
     return DailyAttendanceModel(
       id: json['id'] as String,
@@ -97,8 +101,11 @@ class TodayStatusModel {
         .map((e) => LessonDelayModel.fromJson(e as Map<String, dynamic>))
         .toList();
     final lateMins = json['late_minutes'] as int? ?? 0;
-    final lessonLateMins = json['lesson_late_minutes'] as int? ?? delays.fold<int>(0, (sum, d) => sum + d.delayMinutes);
-    final totalLateMins = json['total_late_minutes'] as int? ?? (lateMins + lessonLateMins);
+    final lessonLateMins =
+        json['lesson_late_minutes'] as int? ??
+        delays.fold<int>(0, (sum, d) => sum + d.delayMinutes);
+    final totalLateMins =
+        json['total_late_minutes'] as int? ?? (lateMins + lessonLateMins);
 
     return TodayStatusModel(
       date: json['date'] as String,
@@ -123,7 +130,8 @@ class AttendanceRepository {
   final ApiClient _apiClient;
 
   AttendanceRepository({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient(storageService: SecureStorageService());
+    : _apiClient =
+          apiClient ?? ApiClient(storageService: SecureStorageService());
 
   Dio get _dio => _apiClient.dio;
 
@@ -147,13 +155,22 @@ class AttendanceRepository {
           'device_info': deviceInfo,
         },
       );
-      return DailyAttendanceModel.fromJson(response.data as Map<String, dynamic>);
+      return DailyAttendanceModel.fromJson(
+        response.data as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       final data = e.response?.data;
-      if (data is Map<String, dynamic> && data['message'] != null) {
-        throw Exception(data['message'] as String);
+      if (data is Map<String, dynamic>) {
+        throw Exception(
+          ErrorMessages.getKyrgyzMessage(
+            data['code'] as String?,
+            data['message'] as String?,
+          ),
+        );
       }
-      throw Exception('Келүү каттоосу ишке ашкан жок. Тармак же GPS сигналын текшериңиз.');
+      throw Exception(
+        'Келүү каттоосу ишке ашкан жок. Тармак же GPS сигналын текшериңиз.',
+      );
     }
   }
 
@@ -177,13 +194,22 @@ class AttendanceRepository {
           'device_info': deviceInfo,
         },
       );
-      return DailyAttendanceModel.fromJson(response.data as Map<String, dynamic>);
+      return DailyAttendanceModel.fromJson(
+        response.data as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       final data = e.response?.data;
-      if (data is Map<String, dynamic> && data['message'] != null) {
-        throw Exception(data['message'] as String);
+      if (data is Map<String, dynamic>) {
+        throw Exception(
+          ErrorMessages.getKyrgyzMessage(
+            data['code'] as String?,
+            data['message'] as String?,
+          ),
+        );
       }
-      throw Exception('Кетүү каттоосу ишке ашкан жок. Тармак же GPS сигналын текшериңиз.');
+      throw Exception(
+        'Кетүү каттоосу ишке ашкан жок. Тармак же GPS сигналын текшериңиз.',
+      );
     }
   }
 
@@ -196,7 +222,10 @@ class AttendanceRepository {
     }
   }
 
-  Future<List<DailyAttendanceModel>> getMyHistory({int? year, int? month}) async {
+  Future<List<DailyAttendanceModel>> getMyHistory({
+    int? year,
+    int? month,
+  }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (year != null) queryParams['year'] = year;

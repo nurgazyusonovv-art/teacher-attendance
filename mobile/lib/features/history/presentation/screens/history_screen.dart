@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/datetime_utils.dart';
 import '../../../attendance/data/repositories/attendance_repository.dart';
@@ -41,7 +40,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _changeMonth(int offset) {
     setState(() {
-      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + offset);
+      _currentMonth = DateTime(
+        _currentMonth.year,
+        _currentMonth.month + offset,
+      );
     });
     _loadHistory();
   }
@@ -79,10 +81,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final excusedCount = _records.where((r) => r.status == 'EXCUSED').length;
     final totalDays = _records.length;
 
-    final onTimeRate = totalDays > 0 ? ((onTimeCount / totalDays) * 100).toStringAsFixed(0) : '0';
+    final onTimeRate = totalDays > 0
+        ? ((onTimeCount / totalDays) * 100).toStringAsFixed(0)
+        : '0';
 
-    final totalLateMinutes = _records.fold<int>(0, (sum, r) => sum + r.totalLateMinutes);
-    final totalWorkedMinutes = _records.fold<int>(0, (sum, r) => sum + r.workedMinutes);
+    final totalLateMinutes = _records.fold<int>(
+      0,
+      (sum, r) => sum + r.totalLateMinutes,
+    );
+    final totalWorkedMinutes = _records.fold<int>(
+      0,
+      (sum, r) => sum + r.workedMinutes,
+    );
 
     final lateHours = totalLateMinutes ~/ 60;
     final lateMins = totalLateMinutes % 60;
@@ -96,9 +106,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Каттоо тарыхы'),
-      ),
+      appBar: AppBar(title: const Text('Каттоо тарыхы')),
       body: RefreshIndicator(
         onRefresh: _loadHistory,
         child: ListView(
@@ -112,7 +120,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppTheme.borderColor),
                 boxShadow: const [
-                  BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+                  BoxShadow(
+                    color: Color(0x06000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
                 ],
               ),
               child: Row(
@@ -127,7 +139,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.calendar_month_rounded, size: 18, color: AppTheme.primaryColor),
+                        const Icon(
+                          Icons.calendar_month_rounded,
+                          size: 18,
+                          color: AppTheme.primaryColor,
+                        ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
@@ -162,7 +178,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: AppTheme.borderColor),
                 boxShadow: const [
-                  BoxShadow(color: Color(0x08000000), blurRadius: 16, offset: Offset(0, 4)),
+                  BoxShadow(
+                    color: Color(0x08000000),
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
                 ],
               ),
               child: Column(
@@ -176,13 +196,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.analytics_rounded, size: 18, color: AppTheme.primaryColor),
+                        child: const Icon(
+                          Icons.analytics_rounded,
+                          size: 18,
+                          color: AppTheme.primaryColor,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
                           'Жалпы айлык көрсөткүчтөр',
-                          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -202,10 +230,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             width: 68,
                             height: 68,
                             child: CircularProgressIndicator(
-                              value: totalDays > 0 ? (onTimeCount / totalDays) : 0,
+                              value: totalDays > 0
+                                  ? (onTimeCount / totalDays)
+                                  : 0,
                               strokeWidth: 6.5,
                               backgroundColor: const Color(0xFFF1F5F9),
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.successColor),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppTheme.successColor,
+                              ),
                             ),
                           ),
                           Column(
@@ -213,11 +245,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             children: [
                               Text(
                                 '$onTimeRate%',
-                                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
                               const Text(
                                 'өз уб.',
-                                style: TextStyle(fontSize: 8.5, color: AppTheme.textSecondary),
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  color: AppTheme.textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -235,10 +274,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           crossAxisSpacing: 6,
                           mainAxisSpacing: 6,
                           children: [
-                            _buildStatBadge('Күндөр', '$totalDays', AppTheme.primaryColor),
-                            _buildStatBadge('Өз уб.', '$onTimeCount', AppTheme.successColor),
-                            _buildStatBadge('Кечикти', '$lateCount', Colors.orange),
-                            _buildStatBadge('Себептүү', '$excusedCount', Colors.blue),
+                            _buildStatBadge(
+                              'Күндөр',
+                              '$totalDays',
+                              AppTheme.primaryColor,
+                            ),
+                            _buildStatBadge(
+                              'Өз уб.',
+                              '$onTimeCount',
+                              AppTheme.successColor,
+                            ),
+                            _buildStatBadge(
+                              'Кечикти',
+                              '$lateCount',
+                              Colors.orange,
+                            ),
+                            _buildStatBadge(
+                              'Себептүү',
+                              '$excusedCount',
+                              Colors.blue,
+                            ),
                           ],
                         ),
                       ),
@@ -248,7 +303,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
                   // Minute Breakdown Footer
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12),
@@ -259,12 +317,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         Expanded(
                           child: Row(
                             children: [
-                              const Icon(Icons.timer_outlined, size: 14, color: Colors.orange),
+                              const Icon(
+                                Icons.timer_outlined,
+                                size: 14,
+                                color: Colors.orange,
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   'Кечигүү: ${lateHours > 0 ? "$lateHours с " : ""}$lateMins мүн',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -276,12 +342,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         Expanded(
                           child: Row(
                             children: [
-                              const Icon(Icons.work_outline_rounded, size: 14, color: AppTheme.successColor),
+                              const Icon(
+                                Icons.work_outline_rounded,
+                                size: 14,
+                                color: AppTheme.successColor,
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   'Иштеди: $workedHours с $workedMins мүн',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.successColor),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.successColor,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -331,11 +405,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.event_busy_rounded, size: 48, color: AppTheme.textMuted.withValues(alpha: 0.5)),
+                    Icon(
+                      Icons.event_busy_rounded,
+                      size: 48,
+                      color: AppTheme.textMuted.withValues(alpha: 0.5),
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'Бул чыпка боюнча жазуулар жок',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textSecondary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -369,7 +451,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppTheme.borderColor),
                     boxShadow: const [
-                      BoxShadow(color: Color(0x04000000), blurRadius: 8, offset: Offset(0, 2)),
+                      BoxShadow(
+                        color: Color(0x04000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
                     ],
                   ),
                   child: Row(
@@ -386,11 +472,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           children: [
                             Text(
                               dayNumber,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
                             ),
                             Text(
                               dayOfWeek,
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondary,
+                              ),
                             ),
                           ],
                         ),
@@ -406,21 +500,38 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.login_rounded, size: 13, color: AppTheme.successColor),
+                                    const Icon(
+                                      Icons.login_rounded,
+                                      size: 13,
+                                      color: AppTheme.successColor,
+                                    ),
                                     const SizedBox(width: 3),
-                                    Text('Келди: $checkIn', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    Text(
+                                      'Келди: $checkIn',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const Spacer(),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: statusColor.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     statusText,
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: statusColor,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -432,16 +543,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.logout_rounded, size: 13, color: AppTheme.secondaryColor),
+                                    const Icon(
+                                      Icons.logout_rounded,
+                                      size: 13,
+                                      color: AppTheme.secondaryColor,
+                                    ),
                                     const SizedBox(width: 3),
-                                    Text('Кетти: $checkOut', style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+                                    Text(
+                                      'Кетти: $checkOut',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const Spacer(),
                                 if (r.workedMinutes > 0)
                                   Text(
                                     '${r.workedMinutes ~/ 60}с ${r.workedMinutes % 60}мүн',
-                                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.textSecondary,
+                                    ),
                                   ),
                               ],
                             ),
@@ -452,15 +577,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 runSpacing: 4,
                                 children: r.lessonDelays.map((ld) {
                                   return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1.5,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.orange.withValues(alpha: 0.1),
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                                      border: Border.all(
+                                        color: Colors.orange.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                      ),
                                     ),
                                     child: Text(
                                       '${ld.lessonNumber}-сабак: ${ld.delayMinutes}м',
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.orange,
+                                      ),
                                     ),
                                   );
                                 }).toList(),
@@ -490,10 +628,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(val, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: color)),
+          Text(
+            val,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
           Text(
             title,
-            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: color),
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -512,7 +661,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         decoration: BoxDecoration(
           color: isSelected ? AppTheme.primaryColor : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? AppTheme.primaryColor : AppTheme.borderColor),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : AppTheme.borderColor,
+          ),
           boxShadow: [
             if (isSelected)
               BoxShadow(

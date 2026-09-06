@@ -4,13 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../data/repositories/admin_mobile_repository.dart';
 
-enum KpiCategory {
-  total,
-  checkedIn,
-  onTime,
-  lateArrival,
-  absent,
-}
+enum KpiCategory { total, checkedIn, onTime, lateArrival, absent }
 
 class AdminDashboardTab extends StatefulWidget {
   const AdminDashboardTab({super.key});
@@ -60,20 +54,30 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
   }
 
   void _showManualCorrectionDialog(Map<String, dynamic> record) {
-    String selectedStatus = record['status'] == 'ABSENT' ? 'EXCUSED' : (record['status'] ?? 'ON_TIME');
-    final reasonController = TextEditingController(text: record['correction_reason'] ?? '');
+    String selectedStatus = record['status'] == 'ABSENT'
+        ? 'EXCUSED'
+        : (record['status'] ?? 'ON_TIME');
+    final reasonController = TextEditingController(
+      text: record['correction_reason'] ?? '',
+    );
     final checkInController = TextEditingController(
-      text: record['check_in_time'] != null ? _formatTime(record['check_in_time']) : '08:00',
+      text: record['check_in_time'] != null
+          ? _formatTime(record['check_in_time'])
+          : '08:00',
     );
     final checkOutController = TextEditingController(
-      text: record['check_out_time'] != null ? _formatTime(record['check_out_time']) : '17:00',
+      text: record['check_out_time'] != null
+          ? _formatTime(record['check_out_time'])
+          : '17:00',
     );
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             '${record["teacher_name"] ?? "Мугалим"}\nКатышууну оңдоо',
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
@@ -83,16 +87,38 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Статусту тандоо:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                const Text(
+                  'Статусту тандоо:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: selectedStatus,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10)),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
                   items: const [
-                    DropdownMenuItem(value: 'ON_TIME', child: Text('Өз убагында')),
+                    DropdownMenuItem(
+                      value: 'ON_TIME',
+                      child: Text('Өз убагында'),
+                    ),
                     DropdownMenuItem(value: 'LATE', child: Text('Кечиккен')),
-                    DropdownMenuItem(value: 'EXCUSED', child: Text('Себептүү (EXCUSED)')),
-                    DropdownMenuItem(value: 'ABSENT', child: Text('Келген жок')),
+                    DropdownMenuItem(
+                      value: 'EXCUSED',
+                      child: Text('Себептүү (EXCUSED)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'ABSENT',
+                      child: Text('Келген жок'),
+                    ),
                   ],
                   onChanged: (val) {
                     if (val != null) setModalState(() => selectedStatus = val);
@@ -104,14 +130,20 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     Expanded(
                       child: TextField(
                         controller: checkInController,
-                        decoration: const InputDecoration(labelText: 'Келүү (08:00)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Келүү (08:00)',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: checkOutController,
-                        decoration: const InputDecoration(labelText: 'Кетүү (17:00)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Кетүү (17:00)',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                     ),
                   ],
@@ -130,7 +162,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Жокко чыгаруу')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Жокко чыгаруу'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (reasonController.text.trim().length < 3) {
@@ -140,8 +175,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                   return;
                 }
                 final dateStr = record['date'] as String;
-                final checkInIso = checkInController.text.trim().isNotEmpty ? '${dateStr}T${checkInController.text.trim()}:00' : null;
-                final checkOutIso = checkOutController.text.trim().isNotEmpty ? '${dateStr}T${checkOutController.text.trim()}:00' : null;
+                final checkInIso = checkInController.text.trim().isNotEmpty
+                    ? '${dateStr}T${checkInController.text.trim()}:00'
+                    : null;
+                final checkOutIso = checkOutController.text.trim().isNotEmpty
+                    ? '${dateStr}T${checkOutController.text.trim()}:00'
+                    : null;
 
                 final messenger = ScaffoldMessenger.of(context);
                 final success = await _repository.manualCorrection(
@@ -157,7 +196,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 if (success) {
                   _loadData();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Катышуу ийгиликтүү оңдолду!'), backgroundColor: AppTheme.successColor),
+                    const SnackBar(
+                      content: Text('Катышуу ийгиликтүү оңдолду!'),
+                      backgroundColor: AppTheme.successColor,
+                    ),
                   );
                 }
               },
@@ -171,7 +213,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
   // --- KPI DETAIL BOTTOM SHEET ---
   void _showKpiDetailBottomSheet(KpiCategory category) {
-    final records = (_dashboardData?['records'] as List? ?? []).cast<Map<String, dynamic>>();
+    final records = (_dashboardData?['records'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
 
     String title;
     String subtitle;
@@ -193,7 +236,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         subtitle = 'QR-код сканерлеп катталган мугалимдер';
         icon = Icons.how_to_reg_rounded;
         themeColor = AppTheme.successColor;
-        filteredList = records.where((r) => r['check_in_time'] != null).toList();
+        filteredList = records
+            .where((r) => r['check_in_time'] != null)
+            .toList();
         break;
 
       case KpiCategory.onTime:
@@ -206,7 +251,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           final status = r['status'];
           final lateMins = r['late_minutes'] ?? 0;
           final lessonLate = r['lesson_late_minutes'] ?? 0;
-          return hasCheckIn && status == 'ON_TIME' && lateMins == 0 && lessonLate == 0;
+          return hasCheckIn &&
+              status == 'ON_TIME' &&
+              lateMins == 0 &&
+              lessonLate == 0;
         }).toList();
         break;
 
@@ -229,7 +277,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         subtitle = 'Азырынча QR-код сканерлебеген мугалимдер';
         icon = Icons.person_off_rounded;
         themeColor = AppTheme.errorColor;
-        filteredList = records.where((r) => r['check_in_time'] == null || r['status'] == 'ABSENT').toList();
+        filteredList = records
+            .where((r) => r['check_in_time'] == null || r['status'] == 'ABSENT')
+            .toList();
         break;
     }
 
@@ -264,7 +314,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
 
                 // Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -285,21 +338,32 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                 Flexible(
                                   child: Text(
                                     title,
-                                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.textPrimary,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2.5,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: themeColor,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     '${filteredList.length}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -307,7 +371,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                             const SizedBox(height: 2),
                             Text(
                               subtitle,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -315,7 +382,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Color(0xFF64748B),
+                        ),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
@@ -332,15 +402,23 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.check_circle_outline_rounded, size: 48, color: themeColor.withValues(alpha: 0.4)),
+                                Icon(
+                                  Icons.check_circle_outline_rounded,
+                                  size: 48,
+                                  color: themeColor.withValues(alpha: 0.4),
+                                ),
                                 const SizedBox(height: 12),
                                 Text(
                                   category == KpiCategory.absent
                                       ? 'Бардык мугалимдер келишти! 🎉'
                                       : (category == KpiCategory.lateArrival
-                                          ? 'Бүгүн кечиккен мугалимдер жок! 👏'
-                                          : 'Бул категорияда тизме бош'),
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                            ? 'Бүгүн кечиккен мугалимдер жок! 👏'
+                                            : 'Бул категорияда тизме бош'),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimary,
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
                               ],
@@ -349,12 +427,17 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         )
                       : ListView.separated(
                           controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           itemCount: filteredList.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 8),
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final r = filteredList[index];
-                            final name = r['teacher_name'] as String? ?? 'Мугалим';
+                            final name =
+                                r['teacher_name'] as String? ?? 'Мугалим';
                             final code = r['employee_code'] as String? ?? '';
                             final subject = r['subject'] as String?;
                             final phone = r['phone_number'] as String?;
@@ -363,8 +446,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                             final hasCheckedIn = r['check_in_time'] != null;
                             final status = r['status'] as String? ?? 'ABSENT';
                             final lateMins = r['late_minutes'] as int? ?? 0;
-                            final lessonDelays = (r['lesson_delays'] as List? ?? []);
-                            final totalLate = r['total_late_minutes'] as int? ?? lateMins;
+                            final lessonDelays =
+                                (r['lesson_delays'] as List? ?? []);
+                            final totalLate =
+                                r['total_late_minutes'] as int? ?? lateMins;
 
                             Color badgeColor;
                             String badgeText;
@@ -404,48 +489,75 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                     phone: phone,
                                     isActive: true,
                                   );
-                                  context.push('/admin/teacher-detail', extra: item);
+                                  context.push(
+                                    '/admin/teacher-detail',
+                                    extra: item,
+                                  );
                                 },
                                 borderRadius: BorderRadius.circular(16),
                                 child: Padding(
                                   padding: const EdgeInsets.all(12.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           CircleAvatar(
                                             radius: 20,
-                                            backgroundColor: badgeColor.withValues(alpha: 0.15),
+                                            backgroundColor: badgeColor
+                                                .withValues(alpha: 0.15),
                                             child: Text(
                                               name.isNotEmpty ? name[0] : 'М',
-                                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: badgeColor),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: badgeColor,
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   name,
-                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                    color: AppTheme.textPrimary,
+                                                  ),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Wrap(
                                                   spacing: 6,
                                                   children: [
-                                                    if (subject != null && subject.isNotEmpty)
+                                                    if (subject != null &&
+                                                        subject.isNotEmpty)
                                                       Text(
                                                         subject,
-                                                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryColor),
+                                                        style: const TextStyle(
+                                                          fontSize: 11.5,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color: AppTheme
+                                                              .primaryColor,
+                                                        ),
                                                       ),
                                                     if (code.isNotEmpty)
                                                       Text(
                                                         '• Код: $code',
-                                                        style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                                                        style: const TextStyle(
+                                                          fontSize: 11.5,
+                                                          color: Color(
+                                                            0xFF64748B,
+                                                          ),
+                                                        ),
                                                       ),
                                                   ],
                                                 ),
@@ -453,14 +565,24 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                             ),
                                           ),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: badgeColor.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: badgeColor.withValues(
+                                                alpha: 0.12,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: Text(
                                               badgeText,
-                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: badgeColor),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: badgeColor,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -471,13 +593,33 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                         const SizedBox(height: 8),
                                         Row(
                                           children: [
-                                            const Icon(Icons.login_rounded, size: 13, color: AppTheme.successColor),
+                                            const Icon(
+                                              Icons.login_rounded,
+                                              size: 13,
+                                              color: AppTheme.successColor,
+                                            ),
                                             const SizedBox(width: 4),
-                                            Text('Келүү: $checkIn', style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+                                            Text(
+                                              'Келүү: $checkIn',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                color: AppTheme.textSecondary,
+                                              ),
+                                            ),
                                             const SizedBox(width: 12),
-                                            const Icon(Icons.logout_rounded, size: 13, color: AppTheme.secondaryColor),
+                                            const Icon(
+                                              Icons.logout_rounded,
+                                              size: 13,
+                                              color: AppTheme.secondaryColor,
+                                            ),
                                             const SizedBox(width: 4),
-                                            Text('Кетүү: $checkOut', style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+                                            Text(
+                                              'Кетүү: $checkOut',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                color: AppTheme.textSecondary,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ],
@@ -492,15 +634,29 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                             final num = d['lesson_number'];
                                             final mins = d['delay_minutes'];
                                             return Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 1.5,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: Colors.orange.withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                                                color: Colors.orange.withValues(
+                                                  alpha: 0.1,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                  color: Colors.orange
+                                                      .withValues(alpha: 0.2),
+                                                ),
                                               ),
                                               child: Text(
-                                                '$num-сабак: ${mins}м',
-                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                                                '$num-сабак: $mins м',
+                                                style: const TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.orange,
+                                                ),
                                               ),
                                             );
                                           }).toList(),
@@ -508,24 +664,54 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                       ],
 
                                       // Phone number (if present and absent)
-                                      if (phone != null && phone.isNotEmpty && !hasCheckedIn) ...[
+                                      if (phone != null &&
+                                          phone.isNotEmpty &&
+                                          !hasCheckedIn) ...[
                                         const SizedBox(height: 6),
                                         Row(
                                           children: [
-                                            const Icon(Icons.phone_outlined, size: 13, color: Color(0xFF64748B)),
+                                            const Icon(
+                                              Icons.phone_outlined,
+                                              size: 13,
+                                              color: Color(0xFF64748B),
+                                            ),
                                             const SizedBox(width: 4),
-                                            Text(phone, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B))),
+                                            Text(
+                                              phone,
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                color: Color(0xFF64748B),
+                                              ),
+                                            ),
                                             const Spacer(),
                                             InkWell(
-                                              onTap: () => _showManualCorrectionDialog(r),
+                                              onTap: () =>
+                                                  _showManualCorrectionDialog(
+                                                    r,
+                                                  ),
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3,
+                                                    ),
                                                 decoration: BoxDecoration(
                                                   color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(6),
-                                                  border: Border.all(color: AppTheme.borderColor),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: AppTheme.borderColor,
+                                                  ),
                                                 ),
-                                                child: const Text('Түшүндүрмө / Оңдоо', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                                                child: const Text(
+                                                  'Түшүндүрмө / Оңдоо',
+                                                  style: TextStyle(
+                                                    fontSize: 10.5,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        AppTheme.primaryColor,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -558,9 +744,12 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     final onTime = _dashboardData?['on_time_count'] ?? 0;
     final lateCount = _dashboardData?['late_count'] ?? 0;
     final notCheckedIn = _dashboardData?['not_checked_in_count'] ?? 0;
-    final records = (_dashboardData?['records'] as List? ?? []).cast<Map<String, dynamic>>();
+    final records = (_dashboardData?['records'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
 
-    final attendancePercentage = total > 0 ? ((checkedIn / total) * 100).toStringAsFixed(0) : '0';
+    final attendancePercentage = total > 0
+        ? ((checkedIn / total) * 100).toStringAsFixed(0)
+        : '0';
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -575,7 +764,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: AppTheme.borderColor),
               boxShadow: const [
-                BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 2)),
+                BoxShadow(
+                  color: Color(0x06000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
               ],
             ),
             child: Row(
@@ -586,7 +779,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.event_available_rounded, color: AppTheme.primaryColor, size: 22),
+                  child: const Icon(
+                    Icons.event_available_rounded,
+                    color: AppTheme.primaryColor,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -595,14 +792,21 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     children: [
                       Text(
                         _formatHeaderDate(DateTime.now()),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: AppTheme.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Катышуу: $attendancePercentage% ($checkedIn / $total мугалим)',
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -619,12 +823,20 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             padding: EdgeInsets.only(left: 4, bottom: 8),
             child: Row(
               children: [
-                Icon(Icons.touch_app_rounded, size: 14, color: AppTheme.primaryLight),
+                Icon(
+                  Icons.touch_app_rounded,
+                  size: 14,
+                  color: AppTheme.primaryLight,
+                ),
                 SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     'Карточкаларды басып, тиешелүү мугалимдерди көрүңүз',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -688,12 +900,20 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               const Expanded(
                 child: Row(
                   children: [
-                    Icon(Icons.list_alt_rounded, size: 18, color: AppTheme.primaryColor),
+                    Icon(
+                      Icons.list_alt_rounded,
+                      size: 18,
+                      color: AppTheme.primaryColor,
+                    ),
                     SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Бүгүнкү келүүлөр тизмеси',
-                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -704,8 +924,18 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
-                child: Text('${records.length} мугалим', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${records.length} мугалим',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
@@ -720,7 +950,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 border: Border.all(color: AppTheme.borderColor),
               ),
               child: const Center(
-                child: Text('Бүгүн азырынча катышуу жазуусу жок', style: TextStyle(color: AppTheme.textSecondary)),
+                child: Text(
+                  'Бүгүн азырынча катышуу жазуусу жок',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
               ),
             )
           else
@@ -762,13 +995,20 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 borderRadius: BorderRadius.circular(18),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppTheme.borderColor),
                     boxShadow: const [
-                      BoxShadow(color: Color(0x04000000), blurRadius: 6, offset: Offset(0, 2)),
+                      BoxShadow(
+                        color: Color(0x04000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
                     ],
                   ),
                   child: Row(
@@ -777,7 +1017,9 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         radius: 18,
                         backgroundColor: statusColor.withValues(alpha: 0.12),
                         child: Icon(
-                          status == 'ABSENT' ? Icons.person_off_rounded : Icons.person_rounded,
+                          status == 'ABSENT'
+                              ? Icons.person_off_rounded
+                              : Icons.person_rounded,
                           color: statusColor,
                           size: 18,
                         ),
@@ -789,21 +1031,31 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                           children: [
                             Text(
                               r['teacher_name'] ?? 'Мугалим',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'Келүү: $checkIn  •  Кетүү: $checkOut',
-                              style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: AppTheme.textSecondary,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             if ((r['late_minutes'] ?? 0) > 0)
                               Text(
                                 'Кечигүү: +${r["late_minutes"]} мүнөт',
-                                style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 10.5),
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10.5,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -815,27 +1067,44 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: statusColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               statusLabel,
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: statusColor,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 4),
                           InkWell(
                             onTap: () => _showManualCorrectionDialog(r),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2.5,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(color: AppTheme.borderColor),
                               ),
-                              child: const Text('Оңдоо', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppTheme.primaryColor)),
+                              child: const Text(
+                                'Оңдоо',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -870,7 +1139,11 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppTheme.borderColor),
             boxShadow: const [
-              BoxShadow(color: Color(0x04000000), blurRadius: 6, offset: Offset(0, 2)),
+              BoxShadow(
+                color: Color(0x04000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
             ],
           ),
           child: Column(
@@ -881,15 +1154,30 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 children: [
                   Icon(icon, size: 16, color: color),
                   const SizedBox(width: 2),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 9, color: Color(0xFF94A3B8)),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 9,
+                    color: Color(0xFF94A3B8),
+                  ),
                 ],
               ),
               const SizedBox(height: 3),
-              Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
               const SizedBox(height: 1),
               Text(
                 label,
-                style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

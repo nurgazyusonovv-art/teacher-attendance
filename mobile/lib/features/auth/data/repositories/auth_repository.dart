@@ -10,10 +10,7 @@ class AuthRepository {
   final ApiClient apiClient;
   final SecureStorageService storageService;
 
-  AuthRepository({
-    required this.apiClient,
-    required this.storageService,
-  });
+  AuthRepository({required this.apiClient, required this.storageService});
 
   Future<UserModel> login({
     required String usernameOrEmail,
@@ -42,8 +39,12 @@ class AuthRepository {
       return user;
     } on DioException catch (e) {
       final responseData = e.response?.data;
-      final errorCode = responseData is Map ? responseData['code'] as String? : null;
-      final serverMessage = responseData is Map ? responseData['message'] as String? : null;
+      final errorCode = responseData is Map
+          ? responseData['code'] as String?
+          : null;
+      final serverMessage = responseData is Map
+          ? responseData['message'] as String?
+          : null;
       throw Exception(ErrorMessages.getKyrgyzMessage(errorCode, serverMessage));
     } catch (e) {
       throw Exception('Кирүүдө ката кетти: ${e.toString()}');
@@ -63,7 +64,11 @@ class AuthRepository {
         await storageService.saveUserData(jsonEncode(user.toJson()));
         return user;
       }
-    } catch (_) {
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 401) {
+        await storageService.clearAll();
+        return null;
+      }
       // Try cached user data if network fails temporarily
       final cachedJson = await storageService.getUserData();
       if (cachedJson != null && cachedJson.isNotEmpty) {
@@ -71,6 +76,8 @@ class AuthRepository {
           return UserModel.fromJson(jsonDecode(cachedJson));
         } catch (_) {}
       }
+      await storageService.clearAll();
+    } catch (_) {
       await storageService.clearAll();
     }
     return null;

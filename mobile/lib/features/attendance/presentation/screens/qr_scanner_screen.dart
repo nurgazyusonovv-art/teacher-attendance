@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -46,12 +47,22 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       String qrToken = '';
 
       try {
-        final decoded = jsonDecode(rawValue) as Map<String, dynamic>;
-        schoolId = decoded['school_id'] as String? ?? '';
-        qrToken = decoded['qr_token'] as String? ?? decoded['token'] as String? ?? '';
+        final decoded = jsonDecode(rawValue);
+        if (decoded is Map<String, dynamic>) {
+          final type = decoded['type'] as String?;
+          if (type == null || type == 'school_attendance') {
+            schoolId = decoded['school_id'] as String? ?? '';
+            qrToken =
+                decoded['qr_token'] as String? ??
+                decoded['token'] as String? ??
+                '';
+          }
+        }
       } catch (_) {
-        // Fallback for direct token string or standard payload
-        qrToken = rawValue.trim();
+        // Only the structured school attendance payload is accepted.
+      }
+      if (schoolId.isEmpty || qrToken.isEmpty) {
+        throw Exception('QR_INVALID');
       }
 
       // 1. Fetch current GPS location
@@ -68,7 +79,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           latitude: location.latitude,
           longitude: location.longitude,
           accuracy: location.accuracy,
-          deviceInfo: 'iOS Mobile App',
+          deviceInfo: 'teacher_mobile/${Platform.operatingSystem}',
         );
       } else {
         await cubit.checkIn(
@@ -77,16 +88,19 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           latitude: location.latitude,
           longitude: location.longitude,
           accuracy: location.accuracy,
-          deviceInfo: 'iOS Mobile App',
+          deviceInfo: 'teacher_mobile/${Platform.operatingSystem}',
         );
       }
     } catch (e) {
       if (!mounted) return;
       String errorMsg = e.toString().replaceFirst('Exception: ', '');
       if (errorMsg == 'LOCATION_SERVICES_DISABLED') {
-        errorMsg = 'GPS геолокация кызматы өчүк. Сураныч, жөндөөлөрдөн GPSти күйгүзүңүз.';
+        errorMsg =
+            'GPS геолокация кызматы өчүк. Сураныч, жөндөөлөрдөн GPSти күйгүзүңүз.';
       } else if (errorMsg == 'LOCATION_PERMISSION_DENIED') {
         errorMsg = 'Жайгашкан жерге (GPS) уруксат берилген жок.';
+      } else if (errorMsg == 'QR_INVALID') {
+        errorMsg = 'Бул мектептин жарактуу QR-коду эмес.';
       }
 
       showDialog(
@@ -127,7 +141,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             builder: (ctx) => AlertDialog(
               title: Row(
                 children: [
-                  const Icon(Icons.check_circle, color: AppTheme.successColor, size: 28),
+                  const Icon(
+                    Icons.check_circle,
+                    color: AppTheme.successColor,
+                    size: 28,
+                  ),
                   const SizedBox(width: 8),
                   Text(widget.isCheckOut ? 'Кетүү катталды' : 'Келүү катталды'),
                 ],
@@ -151,7 +169,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             builder: (ctx) => AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: AppTheme.warningColor, size: 28),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppTheme.warningColor,
+                    size: 28,
+                  ),
                   SizedBox(width: 8),
                   Text('Катталган жок'),
                 ],
@@ -176,7 +198,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         appBar: AppBar(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
-          title: Text(widget.isCheckOut ? 'Кетүү (Check-out) QR' : 'Келүү (Check-in) QR'),
+          title: Text(
+            widget.isCheckOut ? 'Кетүү (Check-out) QR' : 'Келүү (Check-in) QR',
+          ),
           actions: [
             IconButton(
               icon: const Icon(Icons.flash_on),
@@ -209,7 +233,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               left: 20,
               right: 20,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(12),
@@ -224,12 +251,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                           SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           ),
                           SizedBox(width: 12),
                           Text(
                             'GPS жана QR текшерилүүдө...',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       )
