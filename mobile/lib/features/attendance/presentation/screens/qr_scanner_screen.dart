@@ -1,11 +1,12 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:teacher_mobile/core/services/location_service.dart';
 import 'package:teacher_mobile/core/theme/app_theme.dart';
+import 'package:teacher_mobile/features/attendance/domain/attendance_qr_payload.dart';
 import '../cubit/attendance_cubit.dart';
 import '../cubit/attendance_state.dart';
 
@@ -43,25 +44,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     await _scannerController.stop();
 
     try {
-      String schoolId = '';
-      String qrToken = '';
-
-      try {
-        final decoded = jsonDecode(rawValue);
-        if (decoded is Map<String, dynamic>) {
-          final type = decoded['type'] as String?;
-          if (type == null || type == 'school_attendance') {
-            schoolId = decoded['school_id'] as String? ?? '';
-            qrToken =
-                decoded['qr_token'] as String? ??
-                decoded['token'] as String? ??
-                '';
-          }
-        }
-      } catch (_) {
-        // Only the structured school attendance payload is accepted.
-      }
-      if (schoolId.isEmpty || qrToken.isEmpty) {
+      final qrPayload = AttendanceQrPayload.tryParse(rawValue);
+      if (qrPayload == null) {
         throw Exception('QR_INVALID');
       }
 
@@ -74,8 +58,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       final cubit = context.read<AttendanceCubit>();
       if (widget.isCheckOut) {
         await cubit.checkOut(
-          schoolId: schoolId,
-          qrToken: qrToken,
+          schoolId: qrPayload.schoolId,
+          qrToken: qrPayload.token,
           latitude: location.latitude,
           longitude: location.longitude,
           accuracy: location.accuracy,
@@ -83,8 +67,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         );
       } else {
         await cubit.checkIn(
-          schoolId: schoolId,
-          qrToken: qrToken,
+          schoolId: qrPayload.schoolId,
+          qrToken: qrPayload.token,
           latitude: location.latitude,
           longitude: location.longitude,
           accuracy: location.accuracy,
@@ -99,9 +83,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             'GPS геолокация кызматы өчүк. Сураныч, жөндөөлөрдөн GPSти күйгүзүңүз.';
       } else if (errorMsg == 'LOCATION_PERMISSION_DENIED') {
         errorMsg = 'Жайгашкан жерге (GPS) уруксат берилген жок.';
+      } else if (errorMsg == 'LOCATION_PERMISSION_PERMANENTLY_DENIED') {
+        errorMsg =
+            'GPS уруксаты өчүрүлгөн. Телефондун жөндөөлөрүнөн колдонмого геолокация уруксатын бериңиз.';
       } else if (errorMsg == 'QR_INVALID') {
         errorMsg = 'Бул мектептин жарактуу QR-коду эмес.';
       }
+
+      final canOpenSettings = e.toString().contains(
+        'LOCATION_PERMISSION_PERMANENTLY_DENIED',
+      );
 
       showDialog(
         context: context,
@@ -116,6 +107,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           ),
           content: Text(errorMsg),
           actions: [
+            if (canOpenSettings)
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  setState(() => _isProcessing = false);
+                  await openAppSettings();
+                  if (mounted) await _scannerController.start();
+                },
+                child: const Text('Жөндөөлөрдү ачуу'),
+              ),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(ctx);
@@ -128,6 +129,51 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildScannerError(
+    BuildContext context,
+    MobileScannerException error,
+  ) {
+    final permissionDenied =
+        error.errorCode == MobileScannerErrorCode.permissionDenied;
+    final message = permissionDenied
+        ? 'QR сканерлөө үчүн камерага уруксат бериңиз.'
+        : error.errorCode == MobileScannerErrorCode.unsupported
+        ? 'Бул түзмөктө камера аркылуу QR сканерлөө жеткиликсиз.'
+        : 'Камераны ачууда ката кетти. Колдонмону кайра иштетип көрүңүз.';
+
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.no_photography_outlined,
+                color: Colors.white,
+                size: 54,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              if (permissionDenied) ...[
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async => openAppSettings(),
+                  child: const Text('Жөндөөлөрдү ачуу'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -213,6 +259,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             MobileScanner(
               controller: _scannerController,
               onDetect: _handleBarcode,
+              errorBuilder: _buildScannerError,
             ),
 
             // Viewfinder cutout overlay
