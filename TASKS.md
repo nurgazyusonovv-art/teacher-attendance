@@ -460,8 +460,10 @@ Optional:
 - [x] FCM token'ди API response'тан жашыруу жана duplicate device race'ин жабуу
 - [x] Android release cleartext traffic'ти өчүрүү жана security headers кошуу
 - [x] Android release build'ден debug signing fallback'ты алып салуу
+- [x] Mobile кодду Android debug APK, iOS Simulator жана iOS device release (`--no-codesign`) build менен cross-platform текшерүү
+- [x] CI'ге өзүнчө macOS/iOS Simulator build gate кошуу
 - [x] Mobile/web analyzer жана backend lint каталарын тазалоо
-- [x] Regression: backend 60 test, mobile 14 test, web 1 test
+- [x] Regression: backend 60 test, mobile 17 test, web 1 test
 - [x] GitHub CI: backend lint/test, PostgreSQL migration/concurrency, mobile/web analyze/test
 - [x] Compose migration startup, private-DB SSL mode жана Nginx security headers оңдоо
 - [ ] Мурда ачыкка чыккан production JWT/DB credentials'ди provider'лерде rotate кылуу
