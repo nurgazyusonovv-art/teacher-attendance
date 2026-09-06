@@ -8,6 +8,7 @@ from app.core.errors import AppException, ErrorCode
 from app.models.qr import QrCredential
 from app.models.school import School
 from app.schemas.qr import QrPayloadResponse
+from app.services.audit_service import AuditService
 
 
 class QrService:
@@ -46,6 +47,7 @@ class QrService:
             await db.refresh(qr_cred)
 
         payload_dict = {
+            "type": "school_attendance",
             "school_id": school.id,
             "qr_token": qr_cred.token,
         }
@@ -79,7 +81,10 @@ class QrService:
 
     @staticmethod
     async def rotate_school_qr(
-        db: AsyncSession, school_id: str, label: Optional[str] = None
+        db: AsyncSession,
+        school_id: str,
+        label: Optional[str] = None,
+        actor_user_id: Optional[str] = None,
     ) -> QrPayloadResponse:
         # Deactivate old credentials
         existing_result = await db.execute(
@@ -100,6 +105,15 @@ class QrService:
             is_active=True,
         )
         db.add(new_qr)
+        AuditService.add(
+            db,
+            school_id=school_id,
+            user_id=actor_user_id,
+            action="QR_CREDENTIAL_ROTATED",
+            entity_name="qr_credential",
+            entity_id=new_qr.id,
+            new_values={"label": new_qr.label},
+        )
         await db.commit()
         await db.refresh(new_qr)
 

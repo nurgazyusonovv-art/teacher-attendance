@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -7,37 +8,13 @@ from app.core.config import settings
 from app.core.errors import AppException, ErrorCode
 from app.api.v1.api import api_router
 from app.db.session import async_engine
-from app.db.base_class import Base
-import app.models  # Ensure all models are registered with Base
 
-
-import asyncio
-from app.db.auto_migrate import init_and_migrate_db
-from app.services.telegram_service import TelegramService
+logger = logging.getLogger("teacher_attendance")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure tables exist, missing columns are added, and master data seeded safely
-    try:
-        await init_and_migrate_db()
-    except Exception as e:
-        print(f"Error during startup database auto-migration: {e}")
-
-    # Start automated background daily Telegram report scheduler
-    scheduler_task = asyncio.create_task(TelegramService.start_scheduler())
-
     yield
-
-    # Shutdown
-    scheduler_task.cancel()
-    try:
-        await scheduler_task
-    except asyncio.CancelledError:
-        pass
-    except Exception:
-        pass
-
     await async_engine.dispose()
 
 
@@ -51,12 +28,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), geolocation=()"
+    response.headers["Cache-Control"] = "no-store"
+    if settings.ENVIRONMENT.lower() == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 # Set CORS middleware
 if settings.CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[str(origin) for origin in settings.CORS_ORIGINS],
-        allow_credentials=True,
+        allow_credentials="*" not in settings.CORS_ORIGINS,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -86,7 +76,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         formatted_errors[field or "general"] = err.get("msg", "Invalid input")
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={
             "success": False,
             "code": ErrorCode.VALIDATION_ERROR.value,
@@ -99,10 +89,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Generic catch-all exception handler
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    import traceback
     # Log exception internally (never expose internal trace to client as per AGENTS.md #10)
-    print(f"Unhandled server error: {exc}")
-    traceback.print_exc()
+    logger.exception("Unhandled server error on %s", request.url.path)
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

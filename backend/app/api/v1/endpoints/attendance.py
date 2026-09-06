@@ -3,10 +3,18 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin, get_current_active_teacher, get_current_user
+from app.api.deps import (
+    ensure_teacher_access,
+    get_current_active_admin,
+    get_current_active_teacher,
+    get_current_user,
+    get_user_school_id,
+)
 from app.db.session import get_db
+from app.core.errors import AppException, ErrorCode
 from app.models.enums import UserRole
 from app.models.teacher import Teacher
+from app.models.lesson_delay import LessonDelay
 from app.models.user import User
 from app.schemas.attendance import (
     AdminDashboardSummary,
@@ -17,14 +25,50 @@ from app.schemas.attendance import (
 )
 from app.schemas.lesson_delay import (
     LessonDelayCreate,
-    LessonDelayListResponse,
     LessonDelayRead,
 )
 from app.services.attendance_service import AttendanceService
+from app.services.audit_service import AuditService
 from app.services.lesson_delay_service import LessonDelayService
 from app.services.school_service import SchoolService
+from app.services.rate_limit_service import RateLimitService
+from sqlalchemy import select
 
 router = APIRouter()
+
+_SUSPICIOUS_SCAN_CODES = {
+    ErrorCode.QR_INVALID,
+    ErrorCode.QR_DISABLED,
+    ErrorCode.QR_EXPIRED,
+    ErrorCode.QR_WRONG_SCHOOL,
+    ErrorCode.LOCATION_OUTSIDE_SCHOOL,
+    ErrorCode.LOCATION_ACCURACY_TOO_LOW,
+    ErrorCode.RATE_LIMITED,
+}
+
+
+async def _record_rejected_scan(
+    db: AsyncSession,
+    teacher: Teacher,
+    payload: AttendanceScanRequest,
+    error: AppException,
+) -> None:
+    if error.code not in _SUSPICIOUS_SCAN_CODES:
+        return
+    AuditService.add(
+        db,
+        school_id=teacher.school_id,
+        user_id=teacher.user_id,
+        action="ATTENDANCE_SCAN_REJECTED",
+        entity_name="teacher",
+        entity_id=teacher.id,
+        new_values={
+            "error_code": error.code.value,
+            "requested_school_id": payload.school_id,
+            "location_accuracy_meters": payload.accuracy,
+        },
+    )
+    await db.commit()
 
 
 @router.post("/check-in", response_model=DailyAttendanceRead, summary="Келүү убактысын каттоо (Check-in)")
@@ -33,12 +77,17 @@ async def check_in(
     db: AsyncSession = Depends(get_db),
     current_teacher: Teacher = Depends(get_current_active_teacher),
 ):
-    return await AttendanceService.register_check_in(
-        db=db,
-        teacher=current_teacher,
-        user=current_teacher.user,
-        payload=payload,
-    )
+    try:
+        await RateLimitService.enforce_attendance_limit(db, current_teacher.user_id)
+        return await AttendanceService.register_check_in(
+            db=db,
+            teacher=current_teacher,
+            user=current_teacher.user,
+            payload=payload,
+        )
+    except AppException as error:
+        await _record_rejected_scan(db, current_teacher, payload, error)
+        raise
 
 
 @router.post("/check-out", response_model=DailyAttendanceRead, summary="Кетүү убактысын каттоо (Check-out)")
@@ -47,12 +96,17 @@ async def check_out(
     db: AsyncSession = Depends(get_db),
     current_teacher: Teacher = Depends(get_current_active_teacher),
 ):
-    return await AttendanceService.register_check_out(
-        db=db,
-        teacher=current_teacher,
-        user=current_teacher.user,
-        payload=payload,
-    )
+    try:
+        await RateLimitService.enforce_attendance_limit(db, current_teacher.user_id)
+        return await AttendanceService.register_check_out(
+            db=db,
+            teacher=current_teacher,
+            user=current_teacher.user,
+            payload=payload,
+        )
+    except AppException as error:
+        await _record_rejected_scan(db, current_teacher, payload, error)
+        raise
 
 
 @router.get("/today", response_model=TodayStatusResponse, summary="Бүгүнкү каттоо статусун алуу")
@@ -93,6 +147,7 @@ async def get_teacher_history_for_admin(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
+    await ensure_teacher_access(db, admin_user, teacher_id)
     return await AttendanceService.get_teacher_history(
         db=db,
         teacher_id=teacher_id,
@@ -107,11 +162,7 @@ async def get_today_dashboard(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    school_id = (
-        admin_user.teacher_profile.school_id
-        if admin_user.teacher_profile
-        else (await SchoolService.get_first_active_school(db)).id
-    )
+    school_id = await get_user_school_id(db, admin_user)
     return await AttendanceService.get_admin_today_dashboard(
         db=db,
         school_id=school_id,
@@ -125,6 +176,7 @@ async def manual_correction(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
+    await ensure_teacher_access(db, admin_user, payload.teacher_id)
     return await AttendanceService.manual_correction(
         db=db,
         admin_user=admin_user,
@@ -140,6 +192,7 @@ async def add_lesson_delay(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
+    await ensure_teacher_access(db, admin_user, payload.teacher_id)
     return await LessonDelayService.create_lesson_delay(
         db=db,
         payload=payload,
@@ -161,6 +214,8 @@ async def get_lesson_delays(
         if not current_user.teacher_profile:
             return []
         target_teacher_id = current_user.teacher_profile.id
+    elif target_teacher_id:
+        await ensure_teacher_access(db, current_user, target_teacher_id)
 
     if not target_teacher_id:
         return []
@@ -180,5 +235,11 @@ async def delete_lesson_delay(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    success = await LessonDelayService.delete_lesson_delay(db, delay_id)
+    result = await db.execute(select(LessonDelay).where(LessonDelay.id == delay_id))
+    delay = result.scalar_one_or_none()
+    if delay:
+        await ensure_teacher_access(db, admin_user, delay.teacher_id)
+    success = await LessonDelayService.delete_lesson_delay(
+        db, delay_id, actor_user_id=admin_user.id
+    )
     return {"success": success, "message": "Сабак кечигүүсү өчүрүлдү" if success else "Табылган жок"}

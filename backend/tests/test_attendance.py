@@ -1,12 +1,12 @@
-import json
 import uuid
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from app.models.school import School
+from app.models.audit import AuditLog
 from app.models.teacher import Teacher
-from app.models.user import User
 from app.services.qr_service import QrService
 
 
@@ -32,8 +32,13 @@ async def create_fresh_teacher(async_client: AsyncClient, admin_auth_headers: di
 
 @pytest.mark.asyncio
 async def test_full_attendance_flow_checkin_and_checkout(
-    async_client: AsyncClient, admin_auth_headers: dict, db_session
+    async_client: AsyncClient, admin_auth_headers: dict, db_session, monkeypatch
 ):
+    monday = datetime(2026, 9, 7, 8, 0, tzinfo=ZoneInfo("Asia/Bishkek"))
+    monkeypatch.setattr(
+        "app.services.attendance_service.current_time_in_school_timezone",
+        lambda _timezone: monday,
+    )
     # 1. Fetch school & QR info
     school_res = await db_session.execute(select(School).limit(1))
     school = school_res.scalar_one()
@@ -97,6 +102,18 @@ async def test_full_attendance_flow_checkin_and_checkout(
     )
     assert dup_co_res.status_code == 400
     assert dup_co_res.json()["code"] == "ALREADY_CHECKED_OUT"
+
+
+@pytest.mark.asyncio
+async def test_teacher_can_read_own_history(
+    async_client: AsyncClient, teacher_auth_headers: dict
+):
+    response = await async_client.get(
+        "/api/v1/attendance/my-history", headers=teacher_auth_headers
+    )
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
 
 @pytest.mark.asyncio
@@ -173,12 +190,24 @@ async def test_checkin_invalid_qr_rejected(
     )
     assert res.status_code == 400
     assert res.json()["code"] == "QR_INVALID"
+    audit = await db_session.execute(
+        select(AuditLog).where(
+            AuditLog.action == "ATTENDANCE_SCAN_REJECTED",
+            AuditLog.new_values.contains("QR_INVALID"),
+        )
+    )
+    assert audit.scalars().first() is not None
 
 
 @pytest.mark.asyncio
 async def test_demo_account_bypasses_geofence(
-    async_client: AsyncClient, db_session
+    async_client: AsyncClient, db_session, monkeypatch
 ):
+    monday = datetime(2026, 9, 7, 8, 0, tzinfo=ZoneInfo("Asia/Bishkek"))
+    monkeypatch.setattr(
+        "app.services.attendance_service.current_time_in_school_timezone",
+        lambda _timezone: monday,
+    )
     school_res = await db_session.execute(select(School).limit(1))
     school = school_res.scalar_one()
     qr_info = await QrService.get_active_school_qr(db_session, school.id)
@@ -204,6 +233,137 @@ async def test_demo_account_bypasses_geofence(
         headers=demo_headers,
     )
     assert res.status_code == 200 or res.json().get("code") == "ALREADY_CHECKED_IN"
+
+
+@pytest.mark.asyncio
+async def test_checkin_rejected_on_day_off(
+    async_client: AsyncClient, admin_auth_headers: dict, db_session, monkeypatch
+):
+    school = (await db_session.execute(select(School).limit(1))).scalar_one()
+    qr_info = await QrService.get_active_school_qr(db_session, school.id)
+    teacher_headers = await create_fresh_teacher(async_client, admin_auth_headers)
+    sunday = datetime(2026, 9, 6, 9, 0, tzinfo=ZoneInfo("Asia/Bishkek"))
+    monkeypatch.setattr(
+        "app.services.attendance_service.current_time_in_school_timezone",
+        lambda _timezone: sunday,
+    )
+
+    response = await async_client.post(
+        "/api/v1/attendance/check-in",
+        json={
+            "school_id": school.id,
+            "qr_token": qr_info.qr_token,
+            "latitude": school.latitude,
+            "longitude": school.longitude,
+            "accuracy": 10,
+        },
+        headers=teacher_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "DAY_OFF"
+
+
+@pytest.mark.asyncio
+async def test_checkin_rejected_when_schedule_is_missing(
+    async_client: AsyncClient, admin_auth_headers: dict, db_session, monkeypatch
+):
+    school = (await db_session.execute(select(School).limit(1))).scalar_one()
+    qr_info = await QrService.get_active_school_qr(db_session, school.id)
+    teacher_headers = await create_fresh_teacher(async_client, admin_auth_headers)
+
+    async def no_schedule(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "app.services.attendance_service.ScheduleService.resolve_schedule_for_date",
+        no_schedule,
+    )
+    response = await async_client.post(
+        "/api/v1/attendance/check-in",
+        json={
+            "school_id": school.id,
+            "qr_token": qr_info.qr_token,
+            "latitude": school.latitude,
+            "longitude": school.longitude,
+            "accuracy": 10,
+        },
+        headers=teacher_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "NO_SCHEDULE"
+
+
+@pytest.mark.asyncio
+async def test_attendance_requests_are_rate_limited(
+    async_client: AsyncClient, admin_auth_headers: dict, db_session
+):
+    school = (await db_session.execute(select(School).limit(1))).scalar_one()
+    teacher_headers = await create_fresh_teacher(async_client, admin_auth_headers)
+    payload = {
+        "school_id": school.id,
+        "qr_token": "invalid-rate-limit-test-token",
+        "latitude": school.latitude,
+        "longitude": school.longitude,
+        "accuracy": 10,
+    }
+
+    for _ in range(10):
+        response = await async_client.post(
+            "/api/v1/attendance/check-in", json=payload, headers=teacher_headers
+        )
+        assert response.status_code == 400
+        assert response.json()["code"] == "QR_INVALID"
+
+    blocked = await async_client.post(
+        "/api/v1/attendance/check-in", json=payload, headers=teacher_headers
+    )
+    assert blocked.status_code == 429
+    assert blocked.json()["code"] == "RATE_LIMITED"
+
+
+@pytest.mark.asyncio
+async def test_manual_correction_rejects_checkout_before_checkin(
+    async_client: AsyncClient, admin_auth_headers: dict, db_session
+):
+    teacher = (await db_session.execute(select(Teacher).limit(1))).scalar_one()
+    response = await async_client.post(
+        "/api/v1/attendance/manual-correction",
+        json={
+            "teacher_id": teacher.id,
+            "target_date": "2026-09-05",
+            "check_in_time": "2026-09-05T17:00:00+06:00",
+            "check_out_time": "2026-09-05T08:00:00+06:00",
+            "status": "ON_TIME",
+            "reason": "Убакыттарды текшерүү үчүн тест",
+        },
+        headers=admin_auth_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.asyncio
+async def test_manual_correction_rejects_mismatched_record_id(
+    async_client: AsyncClient, admin_auth_headers: dict, db_session
+):
+    teacher = (await db_session.execute(select(Teacher).limit(1))).scalar_one()
+    response = await async_client.post(
+        "/api/v1/attendance/manual-correction",
+        json={
+            "daily_attendance_id": str(uuid.uuid4()),
+            "teacher_id": teacher.id,
+            "target_date": "2026-09-05",
+            "status": "EXCUSED",
+            "reason": "Туура эмес record ID текшерүү",
+        },
+        headers=admin_auth_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "VALIDATION_ERROR"
 
 
 @pytest.mark.asyncio

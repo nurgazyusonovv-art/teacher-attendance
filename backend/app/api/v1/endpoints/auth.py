@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.api.deps import get_current_user
@@ -17,12 +17,16 @@ class LoginResponseData(TokenResponse):
 @router.post("/login", response_model=StandardResponse[LoginResponseData])
 async def login(
     login_data: LoginRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Authenticates user and returns JWT access and refresh tokens along with profile data.
     """
-    tokens, user_info = await AuthService.authenticate_user(db, login_data)
+    client_ip = request.client.host if request.client else "unknown"
+    tokens, user_info = await AuthService.authenticate_user(
+        db, login_data, client_ip=client_ip
+    )
     response_data = LoginResponseData(
         access_token=tokens.access_token,
         refresh_token=tokens.refresh_token,
@@ -72,10 +76,14 @@ async def get_me(
 @router.post("/logout", response_model=StandardResponse[dict])
 async def logout(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Logs out the user and informs the client to clear stored credentials.
     """
+    await AuthService.revoke_session(
+        db, current_user.id, getattr(current_user, "_auth_session_id", None)
+    )
     return StandardResponse(
         success=True,
         message="Ийгиликтүү чыктыңыз",

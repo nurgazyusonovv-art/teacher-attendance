@@ -7,12 +7,12 @@ from app.schemas.lesson_delay import LessonDelayRead
 
 
 class AttendanceScanRequest(BaseModel):
-    school_id: str = Field(..., description="Мектептин IDси")
-    qr_token: str = Field(..., description="Сканерленген QR токен")
+    school_id: str = Field(..., min_length=36, max_length=36, description="Мектептин IDси")
+    qr_token: str = Field(..., min_length=16, max_length=128, description="Сканерленген QR токен")
     latitude: float = Field(..., ge=-90.0, le=90.0, description="GPS кеңдик")
     longitude: float = Field(..., ge=-180.0, le=180.0, description="GPS узундук")
     accuracy: float = Field(..., ge=0.0, description="GPS тактыгы (метр)")
-    device_info: Optional[str] = Field(None, description="Түзмөктүн маалыматы")
+    device_info: Optional[str] = Field(None, max_length=255, description="Түзмөктүн маалыматы")
 
 
 class AttendanceEventRead(BaseModel):

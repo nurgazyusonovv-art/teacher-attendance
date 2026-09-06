@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from app.core.timezone import (
     get_school_timezone,
     current_time_in_school_timezone,

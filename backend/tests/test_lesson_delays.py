@@ -1,5 +1,5 @@
 from datetime import date
-from app.schemas.lesson_delay import LessonDelayCreate, LessonDelayRead
+from app.schemas.lesson_delay import LessonDelayCreate
 import pytest
 
 

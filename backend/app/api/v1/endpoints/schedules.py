@@ -2,7 +2,17 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin, get_current_user
+from app.api.deps import (
+    ensure_school_access,
+    ensure_teacher_access,
+    get_current_active_admin,
+    get_current_user,
+    get_user_school_id,
+)
+from app.models.enums import UserRole
+from app.models.schedule import WorkSchedule
+from app.core.errors import AppException, ErrorCode
+from sqlalchemy import select
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.schedule import (
@@ -12,7 +22,6 @@ from app.schemas.schedule import (
     WeeklyScheduleResponse,
 )
 from app.services.schedule_service import ScheduleService
-from app.services.school_service import SchoolService
 
 router = APIRouter()
 
@@ -24,12 +33,12 @@ async def get_schedules(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    target_school_id = school_id
-    if not target_school_id and current_user.teacher_profile:
-        target_school_id = current_user.teacher_profile.school_id
-    if not target_school_id:
-        school = await SchoolService.get_first_active_school(db)
-        target_school_id = school.id
+    target_school_id = school_id or await get_user_school_id(db, current_user)
+    await ensure_school_access(db, current_user, target_school_id)
+    if current_user.role == UserRole.TEACHER:
+        teacher_id = current_user.teacher_profile.id
+    elif teacher_id:
+        await ensure_teacher_access(db, current_user, teacher_id)
 
     schedules = await ScheduleService.get_schedules_for_school(
         db, target_school_id, teacher_id
@@ -48,9 +57,19 @@ async def create_or_update_schedule(
     admin_user: User = Depends(get_current_active_admin),
 ):
     if not payload.school_id:
-        school = await SchoolService.get_first_active_school(db)
-        payload.school_id = school.id
-    schedule = await ScheduleService.create_or_update_schedule(db, payload)
+        payload.school_id = await get_user_school_id(db, admin_user)
+    await ensure_school_access(db, admin_user, payload.school_id)
+    if payload.teacher_id:
+        teacher = await ensure_teacher_access(db, admin_user, payload.teacher_id)
+        if teacher.school_id != payload.school_id:
+            raise AppException(
+                ErrorCode.VALIDATION_ERROR,
+                "Мугалим менен график бир мектепке таандык болушу керек.",
+                400,
+            )
+    schedule = await ScheduleService.create_or_update_schedule(
+        db, payload, actor_user_id=admin_user.id
+    )
     return ScheduleRead.model_validate(schedule)
 
 
@@ -61,7 +80,14 @@ async def update_schedule(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    schedule = await ScheduleService.update_schedule(db, schedule_id, payload)
+    result = await db.execute(select(WorkSchedule).where(WorkSchedule.id == schedule_id))
+    existing = result.scalar_one_or_none()
+    if not existing:
+        raise AppException(ErrorCode.NOT_FOUND, "График табылган жок", 404)
+    await ensure_school_access(db, admin_user, existing.school_id)
+    schedule = await ScheduleService.update_schedule(
+        db, schedule_id, payload, actor_user_id=admin_user.id
+    )
     return ScheduleRead.model_validate(schedule)
 
 
@@ -71,5 +97,12 @@ async def delete_schedule(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    await ScheduleService.delete_schedule(db, schedule_id)
+    result = await db.execute(select(WorkSchedule).where(WorkSchedule.id == schedule_id))
+    existing = result.scalar_one_or_none()
+    if not existing:
+        raise AppException(ErrorCode.NOT_FOUND, "График табылган жок", 404)
+    await ensure_school_access(db, admin_user, existing.school_id)
+    await ScheduleService.delete_schedule(
+        db, schedule_id, actor_user_id=admin_user.id
+    )
     return {"message": "Иш графиги ийгиликтүү өчүрүлдү"}

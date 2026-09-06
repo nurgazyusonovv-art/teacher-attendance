@@ -1,4 +1,4 @@
-from datetime import datetime, date, time
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
 from app.core.config import settings
 

@@ -1,6 +1,6 @@
 from datetime import date
 from typing import List, Optional
-from sqlalchemy import select, delete, func
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -8,6 +8,7 @@ from app.core.errors import AppException, ErrorCode
 from app.models.lesson_delay import LessonDelay
 from app.models.teacher import Teacher
 from app.schemas.lesson_delay import LessonDelayCreate, LessonDelayRead
+from app.services.audit_service import AuditService
 
 
 class LessonDelayService:
@@ -43,9 +44,26 @@ class LessonDelayService:
 
         if existing:
             # Update existing lesson delay
+            old_values = {
+                "delay_minutes": existing.delay_minutes,
+                "reason": existing.reason,
+            }
             existing.delay_minutes = payload.delay_minutes
             existing.reason = payload.reason
             existing.recorded_by_user_id = recorded_by_user_id
+            AuditService.add(
+                db,
+                school_id=teacher.school_id,
+                user_id=recorded_by_user_id,
+                action="LESSON_DELAY_UPDATED",
+                entity_name="lesson_delay",
+                entity_id=existing.id,
+                old_values=old_values,
+                new_values={
+                    "delay_minutes": payload.delay_minutes,
+                    "reason": payload.reason,
+                },
+            )
             await db.commit()
             await db.refresh(existing)
             return LessonDelayRead(
@@ -72,6 +90,16 @@ class LessonDelayService:
             recorded_by_user_id=recorded_by_user_id,
         )
         db.add(delay)
+        await db.flush()
+        AuditService.add(
+            db,
+            school_id=teacher.school_id,
+            user_id=recorded_by_user_id,
+            action="LESSON_DELAY_CREATED",
+            entity_name="lesson_delay",
+            entity_id=delay.id,
+            new_values=payload.model_dump(),
+        )
         await db.commit()
         await db.refresh(delay)
 
@@ -165,7 +193,31 @@ class LessonDelayService:
         ]
 
     @staticmethod
-    async def delete_lesson_delay(db: AsyncSession, delay_id: str) -> bool:
+    async def delete_lesson_delay(
+        db: AsyncSession,
+        delay_id: str,
+        actor_user_id: Optional[str] = None,
+    ) -> bool:
+        existing_result = await db.execute(
+            select(LessonDelay).where(LessonDelay.id == delay_id)
+        )
+        existing = existing_result.scalar_one_or_none()
+        if not existing:
+            return False
+        AuditService.add(
+            db,
+            school_id=existing.school_id,
+            user_id=actor_user_id,
+            action="LESSON_DELAY_DELETED",
+            entity_name="lesson_delay",
+            entity_id=existing.id,
+            old_values={
+                "teacher_id": existing.teacher_id,
+                "date": existing.date,
+                "lesson_number": existing.lesson_number,
+                "delay_minutes": existing.delay_minutes,
+            },
+        )
         stmt = delete(LessonDelay).where(LessonDelay.id == delay_id)
         result = await db.execute(stmt)
         await db.commit()

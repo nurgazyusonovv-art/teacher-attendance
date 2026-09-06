@@ -1,19 +1,78 @@
-from typing import AsyncGenerator, Optional
-from fastapi import Depends, Header, status
+from typing import Optional
+from fastapi import Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.db.session import get_db
-from app.core.config import settings
 from app.core.security import decode_token
 from app.core.errors import AppException, ErrorCode
 from app.models.user import User
 from app.models.teacher import Teacher
 from app.models.enums import UserRole
+from app.models.auth_security import AuthSession
+from app.models.school import School
+from datetime import datetime, timezone
 
 security_bearer = HTTPBearer(auto_error=False)
+
+
+async def get_user_school_id(db: AsyncSession, user: User) -> str:
+    """Resolve the single school an ordinary user/admin may access."""
+    if user.teacher_profile and user.teacher_profile.school_id:
+        return user.teacher_profile.school_id
+    if user.school_id:
+        return user.school_id
+    if user.role != UserRole.SUPER_ADMIN:
+        raise AppException(
+            code=ErrorCode.PERMISSION_DENIED,
+            message="Администратор мектепке байланыштырылган эмес.",
+            status_code=403,
+        )
+    result = await db.execute(
+        select(School.id)
+        .where(School.is_active.is_(True))
+        .order_by(School.created_at.asc())
+        .limit(1)
+    )
+    school_id = result.scalar_one_or_none()
+    if not school_id:
+        raise AppException(
+            code=ErrorCode.NOT_FOUND,
+            message="Активдүү мектеп табылган жок.",
+            status_code=404,
+        )
+    return school_id
+
+
+async def ensure_school_access(
+    db: AsyncSession, user: User, school_id: str
+) -> None:
+    if user.role == UserRole.SUPER_ADMIN:
+        return
+    allowed_school_id = await get_user_school_id(db, user)
+    if allowed_school_id != school_id:
+        raise AppException(
+            code=ErrorCode.PERMISSION_DENIED,
+            message="Башка мектептин маалыматына уруксат жок.",
+            status_code=403,
+        )
+
+
+async def ensure_teacher_access(
+    db: AsyncSession, user: User, teacher_id: str
+) -> Teacher:
+    result = await db.execute(select(Teacher).where(Teacher.id == teacher_id))
+    teacher = result.scalar_one_or_none()
+    if not teacher:
+        raise AppException(
+            code=ErrorCode.TEACHER_NOT_FOUND,
+            message="Мугалим табылган жок.",
+            status_code=404,
+        )
+    await ensure_school_access(db, user, teacher.school_id)
+    return teacher
 
 
 async def get_current_user(
@@ -33,7 +92,8 @@ async def get_current_user(
         payload = decode_token(credentials.credentials)
         user_id = payload.get("sub")
         token_type = payload.get("type")
-        if not user_id or token_type != "access":
+        session_id = payload.get("sid")
+        if not user_id or token_type != "access" or not session_id:
             raise AppException(
                 code=ErrorCode.TOKEN_INVALID,
                 message="Сессиянын мөөнөтү жараксыз. Кайра кириңиз.",
@@ -71,6 +131,32 @@ async def get_current_user(
             message="User account is deactivated. Contact administrator.",
             status_code=status.HTTP_403_FORBIDDEN,
         )
+
+    session_result = await db.execute(
+        select(AuthSession).where(
+            AuthSession.id == session_id,
+            AuthSession.user_id == user.id,
+            AuthSession.revoked_at.is_(None),
+        )
+    )
+    auth_session = session_result.scalar_one_or_none()
+    if auth_session is None:
+        raise AppException(
+            code=ErrorCode.TOKEN_INVALID,
+            message="Сессия жараксыз. Кайра кириңиз.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+    expires_at = auth_session.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
+        raise AppException(
+            code=ErrorCode.TOKEN_EXPIRED,
+            message="Сессиянын мөөнөтү бүттү. Кайра кириңиз.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    setattr(user, "_auth_session_id", session_id)
 
     return user
 

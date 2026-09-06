@@ -43,6 +43,9 @@ class SchoolUpdate(BaseModel):
 
 
 class SchoolRead(SchoolBase):
+    # A stored bot token is write-only and must never be serialized back to
+    # teachers, browsers, logs, or admin clients.
+    telegram_bot_token: Optional[str] = Field(default=None, exclude=True)
     id: str
     last_telegram_report_sent_date: Optional[date] = None
     created_at: datetime

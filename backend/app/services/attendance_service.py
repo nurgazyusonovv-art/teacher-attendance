@@ -1,7 +1,8 @@
 import json
-from datetime import date, datetime, time, timedelta
-from typing import List, Optional, Tuple, Dict
+from datetime import date, datetime, timedelta
+from typing import List, Optional, Dict
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,6 +34,18 @@ from app.services.schedule_service import ScheduleService
 
 
 class AttendanceService:
+    @staticmethod
+    async def _lock_attendance_day(
+        db: AsyncSession, teacher_id: str, target_date: date
+    ) -> None:
+        """Serialize one teacher/day on PostgreSQL to make scans race-safe."""
+        bind = db.get_bind()
+        if bind.dialect.name == "postgresql":
+            lock_key = f"attendance:{teacher_id}:{target_date.isoformat()}"
+            await db.execute(
+                select(func.pg_advisory_xact_lock(func.hashtextextended(lock_key, 0)))
+            )
+
     @staticmethod
     async def register_check_in(
         db: AsyncSession,
@@ -89,13 +102,16 @@ class AttendanceService:
         # 4. Authoritative Server Time & Date (AGENTS.md #5)
         server_now = current_time_in_school_timezone(school.timezone)
         today = server_now.date()
+        await AttendanceService._lock_attendance_day(db, teacher.id, today)
 
         # 5. Duplicate Check-in Check
         daily_res = await db.execute(
-            select(DailyAttendance).where(
+            select(DailyAttendance)
+            .where(
                 DailyAttendance.teacher_id == teacher.id,
                 DailyAttendance.date == today,
             )
+            .with_for_update()
         )
         daily = daily_res.scalar_one_or_none()
         if daily and daily.check_in_time is not None:
@@ -113,8 +129,21 @@ class AttendanceService:
             target_date=today,
         )
 
-        scheduled_start = schedule.start_time if schedule else school.default_start_time
-        grace = schedule.grace_minutes if schedule else school.grace_minutes
+        if schedule is None:
+            raise AppException(
+                code=ErrorCode.NO_SCHEDULE,
+                message="Бүгүнкү күнгө иш графиги табылган жок.",
+                status_code=400,
+            )
+        if schedule.is_day_off:
+            raise AppException(
+                code=ErrorCode.DAY_OFF,
+                message="Бүгүн сизде дем алыш күн.",
+                status_code=400,
+            )
+
+        scheduled_start = schedule.start_time
+        grace = schedule.grace_minutes
 
         current_time_val = server_now.time()
         start_threshold = (
@@ -163,7 +192,15 @@ class AttendanceService:
             daily.status = status
             daily.late_minutes = late_minutes
 
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError as exc:
+            await db.rollback()
+            raise AppException(
+                code=ErrorCode.ALREADY_CHECKED_IN,
+                message="Сиз бүгүн келүүңүздү каттагансыз.",
+                status_code=400,
+            ) from exc
         await db.refresh(daily)
 
         # Fetch lesson delays today if any
@@ -263,13 +300,16 @@ class AttendanceService:
         # 4. Authoritative Server Time & Date
         server_now = current_time_in_school_timezone(school.timezone)
         today = server_now.date()
+        await AttendanceService._lock_attendance_day(db, teacher.id, today)
 
         # 5. Check if check-in exists today
         daily_res = await db.execute(
-            select(DailyAttendance).where(
+            select(DailyAttendance)
+            .where(
                 DailyAttendance.teacher_id == teacher.id,
                 DailyAttendance.date == today,
             )
+            .with_for_update()
         )
         daily = daily_res.scalar_one_or_none()
         if not daily or daily.check_in_time is None:
@@ -564,6 +604,10 @@ class AttendanceService:
             record = records_by_teacher_id.get(t.id)
             t_delays = delays_by_teacher_id.get(t.id, [])
             lesson_late = sum(d.delay_minutes for d in t_delays)
+            schedule = await ScheduleService.resolve_schedule_for_date(
+                db, school_id, t.id, query_date
+            )
+            is_day_off = schedule is not None and schedule.is_day_off
 
             if record and record.check_in_time:
                 checked_in_count += 1
@@ -596,7 +640,7 @@ class AttendanceService:
                     )
                 )
             else:
-                # Not checked in yet
+                # A day off is not an absence and must not inflate the KPI.
                 read_records.append(
                     DailyAttendanceRead(
                         id=f"virtual-{t.id}",
@@ -605,7 +649,11 @@ class AttendanceService:
                         date=query_date,
                         check_in_time=None,
                         check_out_time=None,
-                        status=AttendanceStatus.ABSENT,
+                        status=(
+                            AttendanceStatus.DAY_OFF
+                            if is_day_off
+                            else AttendanceStatus.ABSENT
+                        ),
                         late_minutes=0,
                         worked_minutes=0,
                         is_manually_corrected=False,
@@ -620,7 +668,11 @@ class AttendanceService:
                     )
                 )
 
-        not_checked_in_count = total_teachers - checked_in_count
+        not_checked_in_count = sum(
+            1
+            for record in read_records
+            if record.check_in_time is None and record.status == AttendanceStatus.ABSENT
+        )
 
         return AdminDashboardSummary(
             total_teachers=total_teachers,
@@ -649,26 +701,106 @@ class AttendanceService:
                 status_code=404,
             )
 
+        school_res = await db.execute(select(School).where(School.id == teacher.school_id))
+        school = school_res.scalar_one()
+        await AttendanceService._lock_attendance_day(
+            db, teacher.id, payload.target_date
+        )
+
         daily_res = await db.execute(
             select(DailyAttendance).where(
                 DailyAttendance.teacher_id == payload.teacher_id,
                 DailyAttendance.date == payload.target_date,
-            )
+            ).with_for_update()
         )
         daily = daily_res.scalar_one_or_none()
+        if payload.daily_attendance_id and (
+            daily is None or daily.id != payload.daily_attendance_id
+        ):
+            raise AppException(
+                code=ErrorCode.VALIDATION_ERROR,
+                message="Attendance record ID мугалимге жана тандалган күнгө туура келбейт.",
+                status_code=400,
+            )
 
         old_values = {}
+        effective_check_in = payload.check_in_time
+        effective_check_out = payload.check_out_time
         if daily:
             old_values = {
                 "status": daily.status.value,
                 "check_in_time": str(daily.check_in_time) if daily.check_in_time else None,
                 "check_out_time": str(daily.check_out_time) if daily.check_out_time else None,
             }
+            effective_check_in = (
+                payload.check_in_time
+                if "check_in_time" in payload.model_fields_set
+                else daily.check_in_time
+            )
+            effective_check_out = (
+                payload.check_out_time
+                if "check_out_time" in payload.model_fields_set
+                else daily.check_out_time
+            )
+
+        if effective_check_in is not None:
+            effective_check_in = to_school_timezone(effective_check_in, school.timezone)
+            if effective_check_in.date() != payload.target_date:
+                raise AppException(
+                    code=ErrorCode.VALIDATION_ERROR,
+                    message="Check-in убактысы тандалган күнгө туура келбейт.",
+                    status_code=400,
+                )
+        if effective_check_out is not None:
+            effective_check_out = to_school_timezone(effective_check_out, school.timezone)
+            if effective_check_out.date() != payload.target_date:
+                raise AppException(
+                    code=ErrorCode.VALIDATION_ERROR,
+                    message="Check-out убактысы тандалган күнгө туура келбейт.",
+                    status_code=400,
+                )
+        if effective_check_out is not None and effective_check_in is None:
+            raise AppException(
+                code=ErrorCode.NO_CHECK_IN_FOUND,
+                message="Check-out үчүн check-in убактысы талап кылынат.",
+                status_code=400,
+            )
+        if (
+            effective_check_in is not None
+            and effective_check_out is not None
+            and effective_check_out < effective_check_in
+        ):
+            raise AppException(
+                code=ErrorCode.VALIDATION_ERROR,
+                message="Check-out убактысы check-in убактысынан мурда боло албайт.",
+                status_code=400,
+            )
+
+        worked_minutes = 0
+        if effective_check_in is not None and effective_check_out is not None:
+            worked_minutes = int(
+                (effective_check_out - effective_check_in).total_seconds() // 60
+            )
+
+        late_minutes = 0
+        if payload.status == AttendanceStatus.LATE and effective_check_in is not None:
+            schedule = await ScheduleService.resolve_schedule_for_date(
+                db, teacher.school_id, teacher.id, payload.target_date
+            )
+            scheduled_start = schedule.start_time if schedule else school.default_start_time
+            expected = datetime.combine(payload.target_date, scheduled_start).replace(
+                tzinfo=effective_check_in.tzinfo
+            )
+            late_minutes = max(
+                0, int((effective_check_in - expected).total_seconds() // 60)
+            )
+
+        if daily:
             daily.status = payload.status
-            if payload.check_in_time is not None:
-                daily.check_in_time = payload.check_in_time
-            if payload.check_out_time is not None:
-                daily.check_out_time = payload.check_out_time
+            daily.check_in_time = effective_check_in
+            daily.check_out_time = effective_check_out
+            daily.worked_minutes = worked_minutes
+            daily.late_minutes = late_minutes
             daily.is_manually_corrected = True
             daily.correction_reason = payload.reason
             daily.corrected_by_id = admin_user.id
@@ -677,9 +809,11 @@ class AttendanceService:
                 teacher_id=teacher.id,
                 school_id=teacher.school_id,
                 date=payload.target_date,
-                check_in_time=payload.check_in_time,
-                check_out_time=payload.check_out_time,
+                check_in_time=effective_check_in,
+                check_out_time=effective_check_out,
                 status=payload.status,
+                late_minutes=late_minutes,
+                worked_minutes=worked_minutes,
                 is_manually_corrected=True,
                 correction_reason=payload.reason,
                 corrected_by_id=admin_user.id,
@@ -698,6 +832,10 @@ class AttendanceService:
                 "status": payload.status.value,
                 "reason": payload.reason,
                 "target_date": str(payload.target_date),
+                "check_in_time": str(effective_check_in) if effective_check_in else None,
+                "check_out_time": str(effective_check_out) if effective_check_out else None,
+                "late_minutes": late_minutes,
+                "worked_minutes": worked_minutes,
             }),
         )
         db.add(audit)

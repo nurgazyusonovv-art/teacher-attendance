@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Depends
+from datetime import datetime, timezone
+
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -31,6 +34,7 @@ async def register_device(
         if payload.fcm_token:
             device.fcm_token = payload.fcm_token
         device.is_active = True
+        device.last_seen_at = datetime.now(timezone.utc)
     else:
         device = Device(
             user_id=current_user.id,
@@ -41,6 +45,24 @@ async def register_device(
         )
         db.add(device)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # A concurrent registration created the same user/device pair.
+        device = (
+            await db.execute(
+                select(Device).where(
+                    Device.user_id == current_user.id,
+                    Device.device_id == payload.device_id,
+                )
+            )
+        ).scalar_one()
+        device.platform = payload.platform
+        if payload.fcm_token:
+            device.fcm_token = payload.fcm_token
+        device.is_active = True
+        device.last_seen_at = datetime.now(timezone.utc)
+        await db.commit()
     await db.refresh(device)
     return DeviceRead.model_validate(device)

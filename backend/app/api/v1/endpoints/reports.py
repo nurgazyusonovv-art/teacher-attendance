@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin
+from app.api.deps import ensure_school_access, get_current_active_admin, get_user_school_id
 from app.db.session import get_db
 from app.models.user import User
 from app.services.school_service import SchoolService
@@ -40,8 +40,8 @@ async def send_telegram_report(
 ):
     school_id = payload.school_id
     if not school_id:
-        school = await SchoolService.get_first_active_school(db)
-        school_id = school.id
+        school_id = await get_user_school_id(db, admin_user)
+    await ensure_school_access(db, admin_user, school_id)
 
     success, message, report_text = await TelegramService.send_daily_report(
         db=db,
@@ -102,8 +102,8 @@ async def preview_telegram_report(
 ):
     target_school_id = school_id
     if not target_school_id:
-        school = await SchoolService.get_first_active_school(db)
-        target_school_id = school.id
+        target_school_id = await get_user_school_id(db, admin_user)
+    await ensure_school_access(db, admin_user, target_school_id)
 
     report_text, school = await TelegramService.generate_daily_attendance_report(
         db, target_school_id, target_date

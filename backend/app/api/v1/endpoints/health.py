@@ -1,4 +1,3 @@
-from datetime import datetime
 from fastapi import APIRouter
 from app.core.config import settings
 from app.core.timezone import current_time_in_school_timezone

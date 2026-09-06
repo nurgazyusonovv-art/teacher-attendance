@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppException, ErrorCode
 from app.models.school import School
 from app.schemas.school import SchoolUpdate
+from app.services.audit_service import AuditService
 
 
 class SchoolService:
@@ -36,13 +37,28 @@ class SchoolService:
 
     @staticmethod
     async def update_school(
-        db: AsyncSession, school_id: str, payload: SchoolUpdate
+        db: AsyncSession,
+        school_id: str,
+        payload: SchoolUpdate,
+        actor_user_id: Optional[str] = None,
     ) -> School:
         school = await SchoolService.get_school_by_id(db, school_id)
 
         update_data = payload.model_dump(exclude_unset=True)
+        old_values = {field: getattr(school, field) for field in update_data}
         for field, value in update_data.items():
             setattr(school, field, value)
+
+        AuditService.add(
+            db,
+            school_id=school_id,
+            user_id=actor_user_id,
+            action="SCHOOL_SETTINGS_UPDATED",
+            entity_name="school",
+            entity_id=school_id,
+            old_values=old_values,
+            new_values=update_data,
+        )
 
         await db.commit()
         await db.refresh(school)

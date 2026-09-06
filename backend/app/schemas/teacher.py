@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class TeacherCreate(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=255, description="Аты-жөнү")
     username: str = Field(..., min_length=3, max_length=100, description="Логин")
-    password: str = Field(..., min_length=6, description="Сырсөз")
+    password: str = Field(..., min_length=8, max_length=128, description="Сырсөз")
     employee_code: str = Field(..., min_length=2, max_length=50, description="Табель/кызматкер номери")
     phone_number: Optional[str] = Field(None, max_length=50, description="Телефон номери")
     subject: Optional[str] = Field(None, max_length=100, description="Окуткан предмети")
@@ -18,7 +18,7 @@ class TeacherUpdate(BaseModel):
     employee_code: Optional[str] = Field(None, min_length=2, max_length=50)
     phone_number: Optional[str] = Field(None, max_length=50)
     subject: Optional[str] = Field(None, max_length=100)
-    password: Optional[str] = Field(None, min_length=6)
+    password: Optional[str] = Field(None, min_length=8, max_length=128)
     is_active: Optional[bool] = None
 
 

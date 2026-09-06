@@ -54,6 +54,29 @@ async def test_create_and_update_schedule(
 
 
 @pytest.mark.asyncio
+async def test_workday_rejects_reversed_time_range(
+    async_client: AsyncClient, admin_auth_headers: dict
+):
+    school = await async_client.get(
+        "/api/v1/schools/current", headers=admin_auth_headers
+    )
+    response = await async_client.post(
+        "/api/v1/schedules",
+        json={
+            "school_id": school.json()["id"],
+            "day_of_week": 2,
+            "start_time": "17:00:00",
+            "end_time": "08:00:00",
+            "is_day_off": False,
+        },
+        headers=admin_auth_headers,
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.asyncio
 async def test_resolve_schedule_business_logic(db_session):
     from app.services.schedule_service import ScheduleService
     from app.models.school import School
@@ -96,4 +119,3 @@ async def test_teacher_inherits_school_schedule(db_session):
     assert len(schedules) >= 5
     for s in schedules:
         assert s.school_id == school.id
-

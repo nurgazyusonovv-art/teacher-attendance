@@ -10,6 +10,7 @@ from app.models.daily_attendance import DailyAttendance
 from app.models.audit import AuditLog
 from app.models.device import Device
 from app.models.lesson_delay import LessonDelay
+from app.models.auth_security import AuthSession, LoginAttempt, AttendanceRateBucket
 
 __all__ = [
     "Base",
@@ -27,4 +28,7 @@ __all__ = [
     "AuditLog",
     "Device",
     "LessonDelay",
+    "AuthSession",
+    "LoginAttempt",
+    "AttendanceRateBucket",
 ]

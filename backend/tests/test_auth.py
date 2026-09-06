@@ -1,6 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from app.core.security import create_access_token
 from app.models.enums import UserRole
 from app.api.deps import get_current_active_admin
 from app.core.errors import AppException, ErrorCode
@@ -60,6 +59,17 @@ async def test_login_nonexistent_user(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_login_rejects_oversized_credentials(async_client: AsyncClient):
+    response = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "x" * 256, "password": "y" * 129},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.asyncio
 async def test_token_refresh(async_client: AsyncClient):
     # 1. Login first
     login_res = await async_client.post(
@@ -78,6 +88,14 @@ async def test_token_refresh(async_client: AsyncClient):
     assert data["success"] is True
     assert "access_token" in data["data"]
     assert "refresh_token" in data["data"]
+
+    # Rotation is one-time: replaying the old refresh token revokes the session.
+    replay_res = await async_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert replay_res.status_code == 401
+    assert replay_res.json()["code"] == "TOKEN_INVALID"
 
 
 @pytest.mark.asyncio
@@ -119,6 +137,38 @@ async def test_get_me_unauthorized(async_client: AsyncClient):
     data = response.json()
     assert data["success"] is False
     assert data["code"] == "UNAUTHORIZED"
+
+
+@pytest.mark.asyncio
+async def test_logout_revokes_server_session(async_client: AsyncClient):
+    login_res = await async_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "teacher1", "password": "teacher123"},
+    )
+    access_token = login_res.json()["data"]["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    logout_res = await async_client.post("/api/v1/auth/logout", headers=headers)
+    assert logout_res.status_code == 200
+
+    me_res = await async_client.get("/api/v1/auth/me", headers=headers)
+    assert me_res.status_code == 401
+    assert me_res.json()["code"] == "TOKEN_INVALID"
+
+
+@pytest.mark.asyncio
+async def test_repeated_failed_login_is_rate_limited(async_client: AsyncClient):
+    credentials = {
+        "username_or_email": "rate-limit-target",
+        "password": "wrong-password",
+    }
+    for _ in range(5):
+        response = await async_client.post("/api/v1/auth/login", json=credentials)
+        assert response.status_code == 400
+
+    blocked = await async_client.post("/api/v1/auth/login", json=credentials)
+    assert blocked.status_code == 429
+    assert blocked.json()["code"] == "RATE_LIMITED"
 
 
 @pytest.mark.asyncio

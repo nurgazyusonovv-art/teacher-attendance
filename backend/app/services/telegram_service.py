@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.utils import current_time_in_school_timezone, today_date_in_school_timezone
+from app.core.timezone import current_time_in_school_timezone, today_date_in_school_timezone
 from app.models.school import School
 from app.services.attendance_service import AttendanceService
 
@@ -93,7 +93,7 @@ class TelegramService:
         # Build report
         lines = [
             f"🏫 <b>{school.name}</b>",
-            f"📋 <b>Мугалимдердин катышуусу боюнча күндөлүк отчет</b>",
+            "📋 <b>Мугалимдердин катышуусу боюнча күндөлүк отчет</b>",
             f"📅 <b>Күнү:</b> {day_str}",
             "",
             "📊 <b>Жалпы көрсөткүчтөр:</b>",

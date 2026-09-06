@@ -1,15 +1,15 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from app.models.enums import UserRole
 
 
 class LoginRequest(BaseModel):
-    username_or_email: str
-    password: str
+    username_or_email: str = Field(..., min_length=1, max_length=255)
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(..., min_length=1, max_length=4096)
 
 
 class UserInfo(BaseModel):

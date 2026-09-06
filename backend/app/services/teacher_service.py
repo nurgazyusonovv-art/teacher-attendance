@@ -1,15 +1,18 @@
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
-from sqlalchemy import func, or_, select, delete
+from sqlalchemy import func, or_, select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.errors import AppException, ErrorCode
 from app.core.security import get_password_hash
 from app.models.enums import UserRole
+from app.models.auth_security import AuthSession
 from app.models.school import School
 from app.models.teacher import Teacher
 from app.models.user import User
 from app.schemas.teacher import TeacherCreate, TeacherRead, TeacherUpdate
+from app.services.audit_service import AuditService
 
 
 class TeacherService:
@@ -103,7 +106,9 @@ class TeacherService:
         )
 
     @staticmethod
-    async def create_teacher(db: AsyncSession, payload: TeacherCreate) -> TeacherRead:
+    async def create_teacher(
+        db: AsyncSession, payload: TeacherCreate, actor_user_id: Optional[str] = None
+    ) -> TeacherRead:
         # Check existing username
         existing = await db.execute(
             select(User).where(User.username == payload.username)
@@ -151,6 +156,7 @@ class TeacherService:
             role=UserRole.TEACHER,
             is_active=True,
             is_demo=False,
+            school_id=school_id,
         )
         db.add(user)
         await db.flush()
@@ -165,6 +171,21 @@ class TeacherService:
             is_active=True,
         )
         db.add(teacher)
+        await db.flush()
+        AuditService.add(
+            db,
+            school_id=school_id,
+            user_id=actor_user_id,
+            action="TEACHER_CREATED",
+            entity_name="teacher",
+            entity_id=teacher.id,
+            new_values={
+                "username": user.username,
+                "full_name": user.full_name,
+                "employee_code": teacher.employee_code,
+                "is_active": True,
+            },
+        )
         await db.commit()
         await db.refresh(teacher)
         await db.refresh(user)
@@ -185,7 +206,10 @@ class TeacherService:
 
     @staticmethod
     async def update_teacher(
-        db: AsyncSession, teacher_id: str, payload: TeacherUpdate
+        db: AsyncSession,
+        teacher_id: str,
+        payload: TeacherUpdate,
+        actor_user_id: Optional[str] = None,
     ) -> TeacherRead:
         result = await db.execute(
             select(Teacher)
@@ -201,6 +225,16 @@ class TeacherService:
             )
 
         user = teacher.user
+        update_data = payload.model_dump(exclude_unset=True)
+        old_values = {
+            key: (
+                getattr(user, key)
+                if key in {"full_name", "is_active"}
+                else getattr(teacher, "phone" if key == "phone_number" else key, None)
+            )
+            for key in update_data
+            if key != "password"
+        }
         if payload.full_name is not None:
             user.full_name = payload.full_name
         if payload.is_active is not None:
@@ -215,6 +249,33 @@ class TeacherService:
             teacher.phone = payload.phone_number
         if payload.subject is not None:
             teacher.subject = payload.subject
+
+        credentials_changed = (
+            payload.password is not None and len(payload.password.strip()) > 0
+        ) or payload.is_active is False
+        if credentials_changed:
+            await db.execute(
+                update(AuthSession)
+                .where(
+                    AuthSession.user_id == user.id,
+                    AuthSession.revoked_at.is_(None),
+                )
+                .values(revoked_at=datetime.now(timezone.utc))
+            )
+
+        AuditService.add(
+            db,
+            school_id=teacher.school_id,
+            user_id=actor_user_id,
+            action="TEACHER_UPDATED",
+            entity_name="teacher",
+            entity_id=teacher.id,
+            old_values=old_values,
+            new_values={
+                key: ("[CHANGED]" if key == "password" else value)
+                for key, value in update_data.items()
+            },
+        )
 
         await db.commit()
         await db.refresh(teacher)
@@ -235,13 +296,20 @@ class TeacherService:
         )
 
     @staticmethod
-    async def deactivate_teacher(db: AsyncSession, teacher_id: str) -> TeacherRead:
+    async def deactivate_teacher(
+        db: AsyncSession, teacher_id: str, actor_user_id: Optional[str] = None
+    ) -> TeacherRead:
         return await TeacherService.update_teacher(
-            db, teacher_id, TeacherUpdate(is_active=False)
+            db,
+            teacher_id,
+            TeacherUpdate(is_active=False),
+            actor_user_id=actor_user_id,
         )
 
     @staticmethod
-    async def delete_teacher(db: AsyncSession, teacher_id: str) -> bool:
+    async def delete_teacher(
+        db: AsyncSession, teacher_id: str, actor_user_id: Optional[str] = None
+    ) -> bool:
         result = await db.execute(
             select(Teacher).where(Teacher.id == teacher_id)
         )
@@ -254,6 +322,15 @@ class TeacherService:
             )
 
         user_id = teacher.user_id
+        AuditService.add(
+            db,
+            school_id=teacher.school_id,
+            user_id=actor_user_id,
+            action="TEACHER_DELETED",
+            entity_name="teacher",
+            entity_id=teacher.id,
+            old_values={"employee_code": teacher.employee_code},
+        )
         # Delete user which cascades to teacher and all dependent records
         await db.execute(delete(User).where(User.id == user_id))
         await db.commit()

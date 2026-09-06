@@ -2,7 +2,13 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin, get_current_user
+from app.api.deps import (
+    ensure_school_access,
+    ensure_teacher_access,
+    get_current_active_admin,
+    get_current_user,
+    get_user_school_id,
+)
 from app.db.session import get_db
 from app.models.enums import UserRole
 from app.models.user import User
@@ -12,7 +18,6 @@ from app.schemas.teacher import (
     TeacherRead,
     TeacherUpdate,
 )
-from app.services.school_service import SchoolService
 from app.services.teacher_service import TeacherService
 
 router = APIRouter()
@@ -27,10 +32,10 @@ async def list_teachers(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    school = await SchoolService.get_first_active_school(db)
+    school_id = await get_user_school_id(db, admin_user)
     items, total = await TeacherService.list_teachers(
         db=db,
-        school_id=school.id,
+        school_id=school_id,
         search=search,
         is_active=is_active,
         skip=skip,
@@ -46,9 +51,11 @@ async def create_teacher(
     admin_user: User = Depends(get_current_active_admin),
 ):
     if not payload.school_id:
-        school = await SchoolService.get_first_active_school(db)
-        payload.school_id = school.id
-    return await TeacherService.create_teacher(db, payload)
+        payload.school_id = await get_user_school_id(db, admin_user)
+    await ensure_school_access(db, admin_user, payload.school_id)
+    return await TeacherService.create_teacher(
+        db, payload, actor_user_id=admin_user.id
+    )
 
 
 @router.get("/me", response_model=Optional[TeacherRead], summary="Кирген мугалимдин профилин алуу")
@@ -67,6 +74,7 @@ async def get_teacher(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
+    await ensure_teacher_access(db, admin_user, teacher_id)
     return await TeacherService.get_teacher_by_id(db, teacher_id)
 
 
@@ -77,7 +85,10 @@ async def update_teacher(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    return await TeacherService.update_teacher(db, teacher_id, payload)
+    await ensure_teacher_access(db, admin_user, teacher_id)
+    return await TeacherService.update_teacher(
+        db, teacher_id, payload, actor_user_id=admin_user.id
+    )
 
 
 @router.delete("/{teacher_id}", summary="Мугалимдин каттоосун өчүрүү же деактивациялоо (Админ)")
@@ -87,9 +98,12 @@ async def delete_teacher(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
+    await ensure_teacher_access(db, admin_user, teacher_id)
     if hard_delete:
-        await TeacherService.delete_teacher(db, teacher_id)
+        await TeacherService.delete_teacher(
+            db, teacher_id, actor_user_id=admin_user.id
+        )
         return {"success": True, "message": "Мугалим базадан толук өчүрүлдү"}
-    else:
-        teacher = await TeacherService.deactivate_teacher(db, teacher_id)
-        return {"success": True, "message": "Мугалим деактивацияланды", "teacher": teacher}
+    return await TeacherService.deactivate_teacher(
+        db, teacher_id, actor_user_id=admin_user.id
+    )

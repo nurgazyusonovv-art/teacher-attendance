@@ -1,4 +1,4 @@
-FROM python:3.13-slim as builder
+FROM python:3.13.2-slim AS builder
 
 WORKDIR /app
 
@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-FROM python:3.13-slim as runner
+FROM python:3.13.2-slim AS runner
 
 WORKDIR /app
 
@@ -19,11 +19,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed python dependencies from builder
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
+# Copy installed Python dependencies into the standard runtime path.
+COPY --from=builder /install /usr/local
 
-COPY . .
+RUN groupadd --system app && useradd --system --gid app --home-dir /app app
+
+COPY --chown=app:app . .
+
+USER app
 
 EXPOSE 8000
 

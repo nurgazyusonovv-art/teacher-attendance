@@ -1,25 +1,17 @@
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 from app.core.config import settings
 
 # Engine configuration for PostgreSQL (Supabase pooler / Direct) or SQLite fallback
 is_postgres = "postgres" in settings.DATABASE_URL
 
 async_connect_args = {}
-sync_connect_args = {}
 
 if is_postgres:
-    async_connect_args = {
-        "statement_cache_size": 0,
-        "ssl": "require",
-    }
-    sync_connect_args = {
-        "sslmode": "require",
-    }
-
-from sqlalchemy.pool import NullPool
+    async_connect_args = {"statement_cache_size": 0}
+    if settings.DB_SSL_REQUIRE:
+        async_connect_args["ssl"] = "require"
 
 pool_kwargs = {}
 if not is_postgres:
@@ -42,27 +34,6 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
     expire_on_commit=False,
 )
-
-# Synchronous Engine for Alembic migrations or sync operations (Lazy/Safe)
-sync_engine = None
-SyncSessionLocal = None
-
-try:
-    sync_engine = create_engine(
-        settings.SYNC_DATABASE_URL,
-        echo=False,
-        future=True,
-        connect_args=sync_connect_args,
-        pool_pre_ping=True,
-    )
-    SyncSessionLocal = sessionmaker(
-        autocommit=False,
-        autoflush=False,
-        bind=sync_engine,
-    )
-except Exception as e:
-    print(f"Warning: sync_engine initialization deferred: {e}")
-
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency that provides an async database session per request."""

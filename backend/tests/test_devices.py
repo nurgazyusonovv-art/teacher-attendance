@@ -20,5 +20,14 @@ async def test_register_device_and_fcm_token(
     data = response.json()
     assert data["device_id"] == "iphone-17-sim-uuid-001"
     assert data["platform"] == "IOS"
-    assert data["fcm_token"] == "mock-apns-fcm-token-abcdef123456"
+    assert "fcm_token" not in data
     assert data["is_active"] is True
+
+    repeated = await async_client.post(
+        "/api/v1/devices/register",
+        json={**payload, "fcm_token": "rotated-test-push-token"},
+        headers=teacher_auth_headers,
+    )
+    assert repeated.status_code == 200
+    assert repeated.json()["id"] == data["id"]
+    assert "fcm_token" not in repeated.json()

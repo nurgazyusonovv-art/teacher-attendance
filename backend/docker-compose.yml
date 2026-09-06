@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: teacher_attendance
     ports:
       - "5432:5432"
@@ -24,9 +24,10 @@ services:
     container_name: teacher_backend
     restart: always
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@postgres:5432/teacher_attendance
-      SYNC_DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/teacher_attendance
-      SECRET_KEY: change-this-to-a-super-secret-key-in-prod
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/teacher_attendance
+      SYNC_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/teacher_attendance
+      DB_SSL_REQUIRE: "false"
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
       ENVIRONMENT: development
       DEBUG: "True"
       TIMEZONE: "Asia/Bishkek"

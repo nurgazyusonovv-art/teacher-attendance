@@ -18,6 +18,7 @@ async def test_get_current_school_qr(
 
     # Verify payload format is valid JSON and does NOT include teacher identity
     payload_obj = json.loads(data["qr_payload"])
+    assert payload_obj["type"] == "school_attendance"
     assert "school_id" in payload_obj
     assert "qr_token" in payload_obj
     assert "teacher_id" not in payload_obj

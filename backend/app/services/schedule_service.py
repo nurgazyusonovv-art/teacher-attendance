@@ -1,12 +1,12 @@
-from datetime import date
+from datetime import date, time
 from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppException, ErrorCode
 from app.models.schedule import WorkSchedule
-from app.models.school import School
 from app.schemas.schedule import ScheduleCreate, ScheduleUpdate
+from app.services.audit_service import AuditService
 
 
 class ScheduleService:
@@ -61,19 +61,17 @@ class ScheduleService:
 
     @staticmethod
     async def create_or_update_schedule(
-        db: AsyncSession, payload: ScheduleCreate
+        db: AsyncSession,
+        payload: ScheduleCreate,
+        actor_user_id: Optional[str] = None,
     ) -> WorkSchedule:
         school_id = payload.school_id
         if not school_id:
-            first_school = await db.execute(select(School).limit(1))
-            s = first_school.scalar_one_or_none()
-            if not s:
-                raise AppException(
-                    code=ErrorCode.NOT_FOUND,
-                    message="Мектеп табылган жок",
-                    status_code=400,
-                )
-            school_id = s.id
+            raise AppException(
+                code=ErrorCode.VALIDATION_ERROR,
+                message="График үчүн мектеп ID талап кылынат.",
+                status_code=400,
+            )
 
         # Check if existing schedule for this day
         query = select(WorkSchedule).where(
@@ -96,12 +94,29 @@ class ScheduleService:
         if not end_t:
             from datetime import time as dt_time
             end_t = dt_time(17, 0)
+        ScheduleService._validate_work_period(start_t, end_t, payload.is_day_off)
 
         if existing:
+            old_values = {
+                "start_time": existing.start_time,
+                "end_time": existing.end_time,
+                "grace_minutes": existing.grace_minutes,
+                "is_day_off": existing.is_day_off,
+            }
             existing.start_time = start_t
             existing.end_time = end_t
             existing.grace_minutes = payload.grace_minutes
             existing.is_day_off = payload.is_day_off
+            AuditService.add(
+                db,
+                school_id=school_id,
+                user_id=actor_user_id,
+                action="SCHEDULE_UPDATED",
+                entity_name="work_schedule",
+                entity_id=existing.id,
+                old_values=old_values,
+                new_values=payload.model_dump(exclude={"school_id"}),
+            )
             await db.commit()
             await db.refresh(existing)
             return existing
@@ -116,13 +131,26 @@ class ScheduleService:
             is_day_off=payload.is_day_off,
         )
         db.add(schedule)
+        await db.flush()
+        AuditService.add(
+            db,
+            school_id=school_id,
+            user_id=actor_user_id,
+            action="SCHEDULE_CREATED",
+            entity_name="work_schedule",
+            entity_id=schedule.id,
+            new_values=payload.model_dump(),
+        )
         await db.commit()
         await db.refresh(schedule)
         return schedule
 
     @staticmethod
     async def update_schedule(
-        db: AsyncSession, schedule_id: str, payload: ScheduleUpdate
+        db: AsyncSession,
+        schedule_id: str,
+        payload: ScheduleUpdate,
+        actor_user_id: Optional[str] = None,
     ) -> WorkSchedule:
         result = await db.execute(
             select(WorkSchedule).where(WorkSchedule.id == schedule_id)
@@ -136,15 +164,37 @@ class ScheduleService:
             )
 
         update_data = payload.model_dump(exclude_unset=True)
+        if update_data.get("start_time") is None:
+            update_data.pop("start_time", None)
+        if update_data.get("end_time") is None:
+            update_data.pop("end_time", None)
+        next_start = update_data.get("start_time", schedule.start_time)
+        next_end = update_data.get("end_time", schedule.end_time)
+        next_day_off = update_data.get("is_day_off", schedule.is_day_off)
+        ScheduleService._validate_work_period(next_start, next_end, next_day_off)
+        old_values = {field: getattr(schedule, field) for field in update_data}
         for field, value in update_data.items():
             setattr(schedule, field, value)
+
+        AuditService.add(
+            db,
+            school_id=schedule.school_id,
+            user_id=actor_user_id,
+            action="SCHEDULE_UPDATED",
+            entity_name="work_schedule",
+            entity_id=schedule.id,
+            old_values=old_values,
+            new_values=update_data,
+        )
 
         await db.commit()
         await db.refresh(schedule)
         return schedule
 
     @staticmethod
-    async def delete_schedule(db: AsyncSession, schedule_id: str) -> None:
+    async def delete_schedule(
+        db: AsyncSession, schedule_id: str, actor_user_id: Optional[str] = None
+    ) -> None:
         result = await db.execute(
             select(WorkSchedule).where(WorkSchedule.id == schedule_id)
         )
@@ -155,6 +205,18 @@ class ScheduleService:
                 message="График табылган жок",
                 status_code=404,
             )
+        AuditService.add(
+            db,
+            school_id=schedule.school_id,
+            user_id=actor_user_id,
+            action="SCHEDULE_DELETED",
+            entity_name="work_schedule",
+            entity_id=schedule.id,
+            old_values={
+                "day_of_week": schedule.day_of_week,
+                "teacher_id": schedule.teacher_id,
+            },
+        )
         await db.delete(schedule)
         await db.commit()
 
@@ -189,3 +251,14 @@ class ScheduleService:
         )
         school_res = await db.execute(school_query)
         return school_res.scalar_one_or_none()
+
+    @staticmethod
+    def _validate_work_period(
+        start_time: Optional[time], end_time: Optional[time], is_day_off: bool
+    ) -> None:
+        if not is_day_off and (start_time is None or end_time is None or start_time >= end_time):
+            raise AppException(
+                code=ErrorCode.VALIDATION_ERROR,
+                message="Иш күнүндө аяктоо убактысы баштоо убактысынан кийин болушу керек.",
+                status_code=400,
+            )

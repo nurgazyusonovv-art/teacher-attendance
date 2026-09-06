@@ -6,6 +6,8 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     region: frankfurt
+    healthCheckPath: /api/v1/health
+    preDeployCommand: alembic upgrade head
     envVars:
       - key: PORT
         value: 8000
@@ -14,11 +16,13 @@ services:
       - key: DEBUG
         value: "False"
       - key: SECRET_KEY
-        value: teacher-attendance-secure-jwt-production-key-2026-bishkek
+        generateValue: true
       - key: DATABASE_URL
-        value: postgresql+asyncpg://postgres.jyumpwkycgorpzmaqtlj:kevzek-xucKo4-jovfav@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+        sync: false
       - key: SYNC_DATABASE_URL
-        value: postgresql://postgres.jyumpwkycgorpzmaqtlj:kevzek-xucKo4-jovfav@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+        sync: false
+      - key: DB_SSL_REQUIRE
+        value: "true"
       - key: TIMEZONE
         value: Asia/Bishkek
       - key: DEFAULT_ALLOWED_RADIUS_METERS
@@ -26,4 +30,4 @@ services:
       - key: DEFAULT_MAX_GPS_ACCURACY_METERS
         value: "80.0"
       - key: CORS_ORIGINS
-        value: '["*"]'
+        sync: false

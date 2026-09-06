@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -55,6 +56,15 @@ async def test_check_and_send_scheduled_reports(db_session, monkeypatch):
         return True, None
 
     monkeypatch.setattr(TelegramService, "send_message", mock_send_message)
+    report_time = datetime(2026, 9, 6, 18, 0, tzinfo=ZoneInfo("Asia/Bishkek"))
+    monkeypatch.setattr(
+        "app.services.telegram_service.current_time_in_school_timezone",
+        lambda _timezone: report_time,
+    )
+    monkeypatch.setattr(
+        "app.services.telegram_service.today_date_in_school_timezone",
+        lambda _timezone: report_time.date(),
+    )
 
     sent = await TelegramService.check_and_send_scheduled_reports(db_session)
     assert sent >= 1

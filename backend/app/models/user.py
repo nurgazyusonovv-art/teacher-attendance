@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, Enum as SAEnum
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db.base_class import Base
@@ -29,6 +29,9 @@ class User(Base):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    school_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("schools.id", ondelete="RESTRICT"), index=True, nullable=True
+    )
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

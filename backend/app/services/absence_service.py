@@ -49,8 +49,8 @@ class AbsenceService:
             schedule = await ScheduleService.resolve_schedule_for_date(
                 db, school_id, t.id, eval_date
             )
-            # Skip if day off
-            if schedule and schedule.is_day_off:
+            # Missing schedules and explicit days off are never inferred as absences.
+            if schedule is None or schedule.is_day_off:
                 continue
 
             record = existing_records.get(t.id)

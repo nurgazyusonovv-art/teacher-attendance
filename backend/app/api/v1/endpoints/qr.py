@@ -2,12 +2,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin, get_current_user
+from app.api.deps import ensure_school_access, get_current_active_admin, get_user_school_id
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.qr import QrPayloadResponse
 from app.services.qr_service import QrService
-from app.services.school_service import SchoolService
 
 router = APIRouter()
 
@@ -17,12 +16,8 @@ async def get_current_school_qr(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    school_id = None
-    if admin_user.teacher_profile:
-        school_id = admin_user.teacher_profile.school_id
-    if not school_id:
-        school = await SchoolService.get_first_active_school(db)
-        school_id = school.id
+    school_id = await get_user_school_id(db, admin_user)
+    await ensure_school_access(db, admin_user, school_id)
     return await QrService.get_active_school_qr(db, school_id)
 
 
@@ -32,6 +27,7 @@ async def get_school_qr(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
+    await ensure_school_access(db, admin_user, school_id)
     return await QrService.get_active_school_qr(db, school_id)
 
 
@@ -42,4 +38,7 @@ async def rotate_school_qr(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
-    return await QrService.rotate_school_qr(db, school_id, description)
+    await ensure_school_access(db, admin_user, school_id)
+    return await QrService.rotate_school_qr(
+        db, school_id, description, actor_user_id=admin_user.id
+    )

@@ -15,7 +15,6 @@ class DeviceRead(BaseModel):
     user_id: str
     device_id: str
     platform: DevicePlatform
-    fcm_token: Optional[str] = None
     is_active: bool
     last_seen_at: Optional[datetime] = None
     created_at: datetime

@@ -1,4 +1,6 @@
 import bcrypt
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Union
 import jwt
@@ -13,8 +15,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
                 plain_password.encode("utf-8"),
                 hashed_password.encode("utf-8"),
             )
-        # Fallback for plain text during testing or migration
-        return plain_password == hashed_password
+        # Never authenticate legacy/plaintext values. Password migration must be
+        # performed explicitly and offline.
+        return False
     except Exception:
         return False
 
@@ -30,6 +33,7 @@ def create_access_token(
     role: str,
     school_id: Optional[str] = None,
     teacher_id: Optional[str] = None,
+    session_id: Optional[str] = None,
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """Creates a signed JWT access token."""
@@ -51,12 +55,17 @@ def create_access_token(
         to_encode["school_id"] = str(school_id)
     if teacher_id:
         to_encode["teacher_id"] = str(teacher_id)
+    if session_id:
+        to_encode["sid"] = str(session_id)
+    to_encode["jti"] = secrets.token_urlsafe(24)
 
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_refresh_token(
     subject: Union[str, Any],
+    session_id: Optional[str] = None,
+    jti: Optional[str] = None,
     expires_delta: Optional[timedelta] = None,
 ) -> str:
     """Creates a signed JWT refresh token."""
@@ -72,8 +81,15 @@ def create_refresh_token(
         "exp": expire,
         "iat": datetime.now(timezone.utc),
         "type": "refresh",
+        "jti": jti or secrets.token_urlsafe(32),
     }
+    if session_id:
+        to_encode["sid"] = str(session_id)
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def hash_token_identifier(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def decode_token(token: str) -> Dict[str, Any]:
