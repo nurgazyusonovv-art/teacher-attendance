@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_admin/core/constants/app_constants.dart';
+import 'package:teacher_admin/core/network/admin_api_client.dart';
 
 class ScheduleItem {
   final String id;
@@ -41,19 +42,13 @@ class SchedulesRepository {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
-  SchedulesRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ?? Dio(),
-        _storage = storage ?? const FlutterSecureStorage();
+  SchedulesRepository({Dio? dio, FlutterSecureStorage? storage})
+    : _dio = dio ?? AdminApiClient.instance.dio,
+      _storage = storage ?? const FlutterSecureStorage();
 
   Future<Options> _getAuthOptions() async {
     final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    return Options(headers: {'Authorization': 'Bearer $token'});
   }
 
   Future<List<ScheduleItem>> getWeeklySchedules({String? teacherId}) async {

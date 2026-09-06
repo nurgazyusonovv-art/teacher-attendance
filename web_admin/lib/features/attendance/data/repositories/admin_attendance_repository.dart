@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_admin/core/constants/app_constants.dart';
+import 'package:teacher_admin/core/network/admin_api_client.dart';
 
 class AdminDailyAttendanceItem {
   final String id;
@@ -80,7 +81,9 @@ class AdminDashboardData {
       notCheckedInCount: json['not_checked_in_count'] as int? ?? 0,
       date: json['date'] as String? ?? '',
       records: (json['records'] as List? ?? [])
-          .map((r) => AdminDailyAttendanceItem.fromJson(r as Map<String, dynamic>))
+          .map(
+            (r) => AdminDailyAttendanceItem.fromJson(r as Map<String, dynamic>),
+          )
           .toList(),
     );
   }
@@ -90,19 +93,13 @@ class AdminAttendanceRepository {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
-  AdminAttendanceRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ?? Dio(),
-        _storage = storage ?? const FlutterSecureStorage();
+  AdminAttendanceRepository({Dio? dio, FlutterSecureStorage? storage})
+    : _dio = dio ?? AdminApiClient.instance.dio,
+      _storage = storage ?? const FlutterSecureStorage();
 
   Future<Options> _getAuthOptions() async {
     final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    return Options(headers: {'Authorization': 'Bearer $token'});
   }
 
   Future<AdminDashboardData?> getTodayDashboard({String? targetDate}) async {

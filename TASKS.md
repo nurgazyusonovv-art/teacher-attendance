@@ -74,7 +74,7 @@ Acceptance:
 Acceptance:
 - teacher admin endpoint ачпайт
 - expired token refresh болот
-- logout token'ду clientтен тазалайт
+- logout token'ду clientтен тазалайт жана server session'ду revoke кылат
 
 ---
 
@@ -150,7 +150,7 @@ Payload example:
 {
   "type": "school_attendance",
   "school_id": "uuid",
-  "token": "random-secret"
+  "qr_token": "random-secret"
 }
 ```
 
@@ -378,7 +378,7 @@ Acceptance:
 - [x] Rate limit login
 - [x] Rate limit attendance
 - [x] refresh token rotation
-- [x] secrets management
+- [ ] secrets management — repository/config оңдолду; мурда чыккан production secret/DB credential сырттан rotate кылынышы керек
 - [x] HTTPS only
 - [x] secure headers
 - [x] device metadata
@@ -417,7 +417,7 @@ Optional:
 - [x] monitoring (Healthcheck endpoints)
 - [x] Flutter production API URL
 - [x] iOS release build configuration
-- [x] Android release build configuration
+- [ ] Android release signing key provisioning — debug-key fallback алынды, fail-closed config даяр
 - [x] Web admin deploy (Nginx SPA container)
 
 ---
@@ -432,6 +432,42 @@ Optional:
 - [x] review notes
 - [x] submit preparation
 - [x] request Unlisted App Distribution if appropriate
+
+---
+
+## PHASE 24 — Security & integrity remediation (2026-09-05)
+
+- [x] Production secret жана database URL'дарды repository'ден алып салуу
+- [x] Production config'ти коопсуз эмес default'тарда fail-closed кылуу
+- [x] Runtime auto-migration жана startup demo seed'ди алып салуу
+- [x] Bootstrap seed'ди explicit opt-in жана environment password'дор менен коргоо
+- [x] Demo user/QR/schedule'ди өзүнчө demo school'го бөлүү
+- [x] Alembic schema drift'ти жабуу жана fresh schema текшерүү
+- [x] Backend тест базасын толук изоляциялоо
+- [x] Plaintext password fallback'ты алып салуу
+- [x] Login lockout жана attendance rate limit кошуу
+- [x] Auth/attendance request size limits жана concurrent failed-login race коргоосу
+- [x] Refresh rotation, replay detection жана server-side logout кошуу
+- [x] Mobile/Web refresh request'терин serialize кылып, rotation race'ти жабуу
+- [x] Web logout'ту backend session revoke endpoint менен байланыштыруу
+- [x] Tenant боюнча school/teacher access boundary кошуу
+- [x] Attendance day-off/no-schedule жана duplicate race коргоосун оңдоо
+- [x] Manual correction убакыт validation жана audit толуктоо
+- [x] Manual correction record ID binding жана concurrent row lock кошуу
+- [x] Rejected QR/location/rate-limit scan audit кошуу (raw GPS сакталбайт)
+- [x] QR payload type validation жана GPS'ке чейин invalid QR rejection кошуу
+- [x] Web admin'де placeholder ордуна реалдуу QR render кылуу
+- [x] FCM token'ди API response'тан жашыруу жана duplicate device race'ин жабуу
+- [x] Android release cleartext traffic'ти өчүрүү жана security headers кошуу
+- [x] Android release build'ден debug signing fallback'ты алып салуу
+- [x] Mobile/web analyzer жана backend lint каталарын тазалоо
+- [x] Regression: backend 60 test, mobile 14 test, web 1 test
+- [x] GitHub CI: backend lint/test, PostgreSQL migration/concurrency, mobile/web analyze/test
+- [x] Compose migration startup, private-DB SSL mode жана Nginx security headers оңдоо
+- [ ] Мурда ачыкка чыккан production JWT/DB credentials'ди provider'лерде rotate кылуу
+- [ ] Production database'ке `alembic upgrade head` жүргүзүп, deploy smoke test аткаруу
+- [x] Реалдуу PostgreSQL'де concurrent attendance integration test жүргүзүү
+- [ ] Production көлөмүнө жакын attendance load test жүргүзүү
 
 ---
 

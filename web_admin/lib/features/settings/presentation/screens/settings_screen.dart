@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:teacher_admin/core/theme/admin_theme.dart';
 import 'package:teacher_admin/features/settings/data/repositories/settings_repository.dart';
 
@@ -138,11 +139,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.school, size: 40, color: AdminTheme.accentColor),
+                    const Icon(
+                      Icons.school,
+                      size: 40,
+                      color: AdminTheme.accentColor,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       _qrData!.schoolName,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
@@ -151,11 +159,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: 180,
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
-                        border: Border.all(color: const Color(0xFF0F172A), width: 2),
+                        border: Border.all(
+                          color: const Color(0xFF0F172A),
+                          width: 2,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.qr_code_2, size: 140, color: Color(0xFF0F172A)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: QrImageView(
+                          data: _qrData!.qrPayload,
+                          version: QrVersions.auto,
+                          backgroundColor: Colors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -163,11 +179,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'Teacher Mobile тиркемеси менен сканерлеңиз',
                       style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                       textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Токен: ${_qrData!.qrToken.substring(0, 16)}...',
-                      style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Color(0xFF94A3B8)),
                     ),
                   ],
                 ),
@@ -184,7 +195,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('A4 басып чыгаруу режимине жөнөтүлдү')),
+                const SnackBar(
+                  content: Text('A4 басып чыгаруу режимине жөнөтүлдү'),
+                ),
               );
             },
             icon: const Icon(Icons.print, size: 18),
@@ -234,7 +247,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Text(
                         _saveMessage!,
                         style: TextStyle(
-                          color: _saveMessage!.contains('ийгиликтүү') ? Colors.green[800] : Colors.red[800],
+                          color: _saveMessage!.contains('ийгиликтүү')
+                              ? Colors.green[800]
+                              : Colors.red[800],
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -254,12 +269,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 const Text(
                                   'Геолокация жана Иш Параметрлери',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                                 TextField(
                                   controller: _nameController,
-                                  decoration: const InputDecoration(labelText: 'Мектептин аталышы'),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Мектептин аталышы',
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                                 Row(
@@ -267,14 +287,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     Expanded(
                                       child: TextField(
                                         controller: _latController,
-                                        decoration: const InputDecoration(labelText: 'GPS Кеңдик (Latitude)'),
+                                        decoration: const InputDecoration(
+                                          labelText: 'GPS Кеңдик (Latitude)',
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: TextField(
                                         controller: _lngController,
-                                        decoration: const InputDecoration(labelText: 'GPS Узундук (Longitude)'),
+                                        decoration: const InputDecoration(
+                                          labelText: 'GPS Узундук (Longitude)',
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -286,7 +310,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       child: TextField(
                                         controller: _radiusController,
                                         decoration: const InputDecoration(
-                                          labelText: 'Уруксат берилген радиус (метр)',
+                                          labelText:
+                                              'Уруксат берилген радиус (метр)',
                                           helperText: 'Стандарт: 80 метр',
                                         ),
                                       ),
@@ -296,7 +321,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       child: TextField(
                                         controller: _accuracyController,
                                         decoration: const InputDecoration(
-                                          labelText: 'GPS тактыгынын чеги (метр)',
+                                          labelText:
+                                              'GPS тактыгынын чеги (метр)',
                                           helperText: 'Стандарт: 50 метр',
                                         ),
                                       ),
@@ -310,7 +336,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       child: TextField(
                                         controller: _graceController,
                                         decoration: const InputDecoration(
-                                          labelText: 'Кечигүүгө жеңилдик (мүнөт)',
+                                          labelText:
+                                              'Кечигүүгө жеңилдик (мүнөт)',
                                           helperText: 'Мисалы: 5 мүнөт',
                                         ),
                                       ),
@@ -334,14 +361,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ? const SizedBox(
                                           width: 16,
                                           height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
                                         )
                                       : const Icon(Icons.save, size: 18),
                                   label: const Text('Жөндөөлөрдү сактоо'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AdminTheme.accentColor,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 14,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -365,7 +398,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   alignment: Alignment.centerLeft,
                                   child: Text(
                                     'Мектептин Туруктуу QR-Коду',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 16),
@@ -374,19 +410,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   width: 160,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFF8FAFC),
-                                    border: Border.all(color: const Color(0xFFCBD5E1), width: 2),
+                                    border: Border.all(
+                                      color: const Color(0xFFCBD5E1),
+                                      width: 2,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Center(
-                                    child: Icon(Icons.qr_code_2, size: 120, color: Color(0xFF0F172A)),
-                                  ),
+                                  child: _qrData == null
+                                      ? const Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                      : Padding(
+                                          padding: const EdgeInsets.all(10),
+                                          child: QrImageView(
+                                            data: _qrData!.qrPayload,
+                                            version: QrVersions.auto,
+                                            backgroundColor: Colors.white,
+                                          ),
+                                        ),
                                 ),
-                                const SizedBox(height: 12),
-                                if (_qrData != null)
-                                  Text(
-                                    'QR Токен: ${_qrData!.qrToken.substring(0, 18)}...',
-                                    style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF64748B)),
-                                  ),
                                 const SizedBox(height: 16),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -399,8 +441,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     const SizedBox(width: 8),
                                     OutlinedButton.icon(
                                       onPressed: _rotateQr,
-                                      icon: const Icon(Icons.refresh, size: 16, color: Colors.amber),
-                                      label: const Text('Жаңылоо', style: TextStyle(color: Colors.amber)),
+                                      icon: const Icon(
+                                        Icons.refresh,
+                                        size: 16,
+                                        color: Colors.amber,
+                                      ),
+                                      label: const Text(
+                                        'Жаңылоо',
+                                        style: TextStyle(color: Colors.amber),
+                                      ),
                                     ),
                                   ],
                                 ),

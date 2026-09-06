@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_admin/core/constants/app_constants.dart';
+import 'package:teacher_admin/core/network/admin_api_client.dart';
 
 class TeacherItem {
   final String id;
@@ -44,22 +45,19 @@ class TeachersRepository {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
-  TeachersRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ?? Dio(),
-        _storage = storage ?? const FlutterSecureStorage();
+  TeachersRepository({Dio? dio, FlutterSecureStorage? storage})
+    : _dio = dio ?? AdminApiClient.instance.dio,
+      _storage = storage ?? const FlutterSecureStorage();
 
   Future<Options> _getAuthOptions() async {
     final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    return Options(headers: {'Authorization': 'Bearer $token'});
   }
 
-  Future<List<TeacherItem>> getTeachers({String? search, bool? isActive}) async {
+  Future<List<TeacherItem>> getTeachers({
+    String? search,
+    bool? isActive,
+  }) async {
     try {
       final options = await _getAuthOptions();
       final queryParams = <String, dynamic>{};

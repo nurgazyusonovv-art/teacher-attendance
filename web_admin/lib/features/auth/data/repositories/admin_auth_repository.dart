@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_admin/core/constants/app_constants.dart';
+import 'package:teacher_admin/core/network/admin_api_client.dart';
 
 class AdminUser {
   final String id;
@@ -43,18 +44,9 @@ class AdminAuthRepository {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
-  AdminAuthRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: AppConstants.defaultBaseUrl,
-                connectTimeout: const Duration(seconds: 15),
-                receiveTimeout: const Duration(seconds: 15),
-              ),
-            ),
-        _storage = storage ?? const FlutterSecureStorage();
+  AdminAuthRepository({Dio? dio, FlutterSecureStorage? storage})
+    : _dio = dio ?? AdminApiClient.instance.dio,
+      _storage = storage ?? const FlutterSecureStorage();
 
   Future<AdminUser> login({
     required String usernameOrEmail,
@@ -79,9 +71,18 @@ class AdminAuthRepository {
       final accessToken = data['access_token'] as String;
       final refreshToken = data['refresh_token'] as String;
 
-      await _storage.write(key: AppConstants.keyAccessToken, value: accessToken);
-      await _storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
-      await _storage.write(key: 'admin_user_data', value: jsonEncode(user.toJson()));
+      await _storage.write(
+        key: AppConstants.keyAccessToken,
+        value: accessToken,
+      );
+      await _storage.write(
+        key: AppConstants.keyRefreshToken,
+        value: refreshToken,
+      );
+      await _storage.write(
+        key: 'admin_user_data',
+        value: jsonEncode(user.toJson()),
+      );
 
       return user;
     } on DioException catch (e) {
@@ -113,6 +114,12 @@ class AdminAuthRepository {
   }
 
   Future<void> logout() async {
-    await _storage.deleteAll();
+    try {
+      await _dio.post('/auth/logout');
+    } catch (_) {
+      // Local credentials must still be removed if the server is unreachable.
+    } finally {
+      await _storage.deleteAll();
+    }
   }
 }

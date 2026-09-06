@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_admin/core/constants/app_constants.dart';
+import 'package:teacher_admin/core/network/admin_api_client.dart';
 
 class SchoolSettingsData {
   final String id;
@@ -46,13 +47,11 @@ class SchoolSettingsData {
 class QrPayloadData {
   final String schoolId;
   final String schoolName;
-  final String qrToken;
   final String qrPayload;
 
   QrPayloadData({
     required this.schoolId,
     required this.schoolName,
-    required this.qrToken,
     required this.qrPayload,
   });
 
@@ -60,7 +59,6 @@ class QrPayloadData {
     return QrPayloadData(
       schoolId: json['school_id'] as String,
       schoolName: json['school_name'] as String,
-      qrToken: json['qr_token'] as String,
       qrPayload: json['qr_payload'] as String,
     );
   }
@@ -70,19 +68,13 @@ class SettingsRepository {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
-  SettingsRepository({
-    Dio? dio,
-    FlutterSecureStorage? storage,
-  })  : _dio = dio ?? Dio(),
-        _storage = storage ?? const FlutterSecureStorage();
+  SettingsRepository({Dio? dio, FlutterSecureStorage? storage})
+    : _dio = dio ?? AdminApiClient.instance.dio,
+      _storage = storage ?? const FlutterSecureStorage();
 
   Future<Options> _getAuthOptions() async {
     final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    return Options(headers: {'Authorization': 'Bearer $token'});
   }
 
   Future<SchoolSettingsData?> getSchoolSettings() async {
@@ -114,8 +106,12 @@ class SettingsRepository {
       if (name != null) data['name'] = name;
       if (latitude != null) data['latitude'] = latitude;
       if (longitude != null) data['longitude'] = longitude;
-      if (allowedRadiusMeters != null) data['allowed_radius_meters'] = allowedRadiusMeters;
-      if (maxAccuracyMeters != null) data['max_accuracy_meters'] = maxAccuracyMeters;
+      if (allowedRadiusMeters != null) {
+        data['allowed_radius_meters'] = allowedRadiusMeters;
+      }
+      if (maxAccuracyMeters != null) {
+        data['max_accuracy_meters'] = maxAccuracyMeters;
+      }
       if (graceMinutes != null) data['grace_minutes'] = graceMinutes;
       if (timezone != null) data['timezone'] = timezone;
 

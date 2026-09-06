@@ -1,5 +1,5 @@
 # Stage 1: Build Flutter Web
-FROM ghcr.io/cirruslabs/flutter:latest AS build
+FROM ghcr.io/cirruslabs/flutter:3.41.5 AS build
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY . .
 RUN flutter build web --release
 
 # Stage 2: Serve with Nginx
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 COPY --from=build /app/build/web /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
