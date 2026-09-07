@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:teacher_admin/features/attendance/data/repositories/admin_attendance_repository.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_admin/core/constants/app_constants.dart';
 import 'package:teacher_admin/core/network/admin_api_client.dart';
@@ -77,6 +78,26 @@ class TeachersRepository {
     } catch (_) {
       return [];
     }
+  }
+
+  Future<TeacherItem> getTeacher(String id) async {
+    final response = await _dio.get(
+      '${AppConstants.apiBaseUrl}/teachers/${Uri.encodeComponent(id)}',
+      options: await _getAuthOptions(),
+    );
+    return TeacherItem.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<List<AdminDailyAttendanceItem>> getHistory(String id) async {
+    final response = await _dio.get(
+      '${AppConstants.apiBaseUrl}/attendance/teacher/${Uri.encodeComponent(id)}/history',
+      options: await _getAuthOptions(),
+    );
+    return (response.data as List)
+        .map(
+          (r) => AdminDailyAttendanceItem.fromJson(r as Map<String, dynamic>),
+        )
+        .toList();
   }
 
   Future<bool> createTeacher({

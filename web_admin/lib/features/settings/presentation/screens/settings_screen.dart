@@ -119,6 +119,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _resetAttendance() async {
+    final confirmation = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Тест маалыматтарын тазалоо'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Катышуу, келүү-кетүү окуялары жана сабак кечигүүлөрү өчөт. Мугалимдер, графиктер жана аудит сакталат. Ырастоо үчүн RESET ATTENDANCE деп жазыңыз.',
+            ),
+            TextField(
+              controller: confirmation,
+              decoration: const InputDecoration(labelText: 'RESET ATTENDANCE'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Жокко чыгаруу'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (confirmation.text == 'RESET ATTENDANCE') {
+                Navigator.pop(ctx, true);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Тазалоо'),
+          ),
+        ],
+      ),
+    );
+    confirmation.dispose();
+    if (confirmed != true || !mounted) return;
+    final deleted = await _repository.resetAttendance();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          deleted == null
+              ? 'Тазалоо аткарылган жок.'
+              : '$deleted катышуу жазуусу тазаланды.',
+        ),
+        backgroundColor: deleted == null ? Colors.red : Colors.green,
+      ),
+    );
+  }
+
   void _showPrintQrDialog() {
     if (_qrData == null) return;
     showDialog(
@@ -218,6 +269,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 20),
+                  Card(
+                    color: Colors.red.withValues(alpha: 0.04),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Тест бүткөндө катышуу жазууларын нөлгө түшүрүү. Мугалимдер жана график сакталат.',
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: _resetAttendance,
+                            icon: const Icon(
+                              Icons.delete_sweep,
+                              color: Colors.red,
+                            ),
+                            label: const Text(
+                              'Базаны тазалоо',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   // Title
                   const Text(
                     'Мектеп Настройкалары',

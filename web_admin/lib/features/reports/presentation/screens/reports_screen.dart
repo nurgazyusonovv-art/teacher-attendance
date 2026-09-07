@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teacher_admin/features/attendance/presentation/widgets/attendance_details.dart';
 import 'package:teacher_admin/core/theme/admin_theme.dart';
 import 'package:teacher_admin/features/attendance/data/repositories/admin_attendance_repository.dart';
 
@@ -14,6 +15,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   AdminDashboardData? _reportData;
   bool _isLoading = true;
   String _selectedStatusFilter = 'ALL';
+  int _days = 1;
+  int _request = 0;
+  bool _failed = false;
+  List<AdminDailyAttendanceItem> _records = [];
 
   @override
   void initState() {
@@ -22,51 +27,42 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _loadReport() async {
-    setState(() => _isLoading = true);
-    final data = await _repository.getTodayDashboard();
-    if (mounted) {
+    final request = ++_request;
+    final days = _days;
+    setState(() {
+      _isLoading = true;
+      _failed = false;
+    });
+    try {
+      final data = await _repository.getTodayDashboard();
+      if (data == null) throw StateError('Unavailable');
+      final history = days == 1
+          ? data.records
+          : await _repository.getReportHistory();
+      final end = DateTime.parse(data.date);
+      final start = end.subtract(Duration(days: days - 1));
+      final records = history.where((r) {
+        final date = DateTime.parse(r.date);
+        return !date.isAfter(end) && (days == 0 || !date.isBefore(start));
+      }).toList();
+      if (!mounted || request != _request) return;
       setState(() {
         _reportData = data;
+        _records = records;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || request != _request) return;
+      setState(() {
+        _failed = true;
         _isLoading = false;
       });
     }
   }
 
-  String _formatTime(String? isoString) {
-    if (isoString == null || isoString.isEmpty) return '—';
-    try {
-      final dt = DateTime.parse(isoString);
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final minute = dt.minute.toString().padLeft(2, '0');
-      return '$hour:$minute';
-    } catch (_) {
-      return isoString.length >= 5 ? isoString.substring(0, 5) : isoString;
-    }
-  }
-
-  void _exportCsv() {
-    if (_reportData == null || _reportData!.records.isEmpty) return;
-
-    final buffer = StringBuffer();
-    buffer.writeln('Мугалим,Табель номери,Дата,Келүү,Кетүү,Статус,Кечигүү (мүнөт),Иштеген (мүнөт),Оңдолгон');
-
-    for (final r in _reportData!.records) {
-      buffer.writeln(
-        '"${r.teacherName ?? ''}","${r.employeeCode ?? ''}","${r.date}","${_formatTime(r.checkInTime)}","${_formatTime(r.checkOutTime)}","${r.status}",${r.lateMinutes},${r.workedMinutes},${r.isManuallyCorrected ? 'Ооба' : 'Жок'}',
-      );
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('CSV файлы даярдалды (${_reportData!.records.length} сап). Браузерге экспорттолду.'),
-        backgroundColor: Colors.green[700],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final filteredRecords = (_reportData?.records ?? []).where((r) {
+    final filteredRecords = _records.where((r) {
       if (_selectedStatusFilter == 'ALL') return true;
       return r.status == _selectedStatusFilter;
     }).toList();
@@ -93,15 +89,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Келүү-кетүү боюнча аналитика жана CSV форматында экспорт',
+                    'Келүү-кетүү боюнча күндүк жана мезгилдик отчеттор',
                     style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
                   ),
                 ],
               ),
               ElevatedButton.icon(
-                onPressed: _exportCsv,
-                icon: const Icon(Icons.download, size: 18),
-                label: const Text('CSV Экспорт'),
+                onPressed: _isLoading ? null : _loadReport,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Жаңылоо'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AdminTheme.accentColor,
                   foregroundColor: Colors.white,
@@ -110,33 +106,82 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ],
           ),
           const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final entry in const {
+                1: 'Бүгүн',
+                7: 'Бир жума',
+                30: 'Бир ай',
+                0: 'Баары',
+              }.entries)
+                ChoiceChip(
+                  label: Text(entry.value),
+                  selected: _days == entry.key,
+                  onSelected: (_) {
+                    setState(() => _days = entry.key);
+                    _loadReport();
+                  },
+                ),
+            ],
+          ),
+          if (_days != 1)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Сакталган каттоолор көрсөтүлөт; катталбаган күндөр автоматтык түрдө «Келген жок» деп эсептелбейт.',
+              ),
+            ),
 
           // Filters Card
           Card(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
+              child: Wrap(
+                spacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text('Статус боюнча чыпка: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Статус боюнча чыпка: ',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(width: 12),
                   DropdownButton<String>(
                     value: _selectedStatusFilter,
                     underline: const SizedBox.shrink(),
                     items: const [
                       DropdownMenuItem(value: 'ALL', child: Text('Бардыгы')),
-                      DropdownMenuItem(value: 'ON_TIME', child: Text('Өз убагында')),
+                      DropdownMenuItem(
+                        value: 'ON_TIME',
+                        child: Text('Өз убагында'),
+                      ),
                       DropdownMenuItem(value: 'LATE', child: Text('Кечиккен')),
-                      DropdownMenuItem(value: 'EXCUSED', child: Text('Себептүү')),
-                      DropdownMenuItem(value: 'ABSENT', child: Text('Келген жок')),
+                      DropdownMenuItem(
+                        value: 'EXCUSED',
+                        child: Text('Себептүү'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ABSENT',
+                        child: Text('Келген жок'),
+                      ),
                     ],
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedStatusFilter = val);
+                      if (val != null) {
+                        setState(() => _selectedStatusFilter = val);
+                      }
                     },
                   ),
-                  const Spacer(),
                   Text(
-                    'Күнү: ${_reportData?.date ?? ""}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                    '${_days == 0
+                        ? "Бардык тарых"
+                        : _days == 1
+                        ? "Бүгүн"
+                        : "Акыркы $_days күн"} • ${_reportData?.date ?? ""} • ${_isLoading ? "…" : filteredRecords.length} жазуу',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ],
               ),
@@ -149,71 +194,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: Card(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
+                  : _failed
+                  ? Center(
+                      child: TextButton(
+                        onPressed: _loadReport,
+                        child: const Text('Отчет жүктөлгөн жок. Кайра жүктөө'),
+                      ),
+                    )
                   : filteredRecords.isEmpty
-                      ? const Center(
-                          child: Text('Тандалган чыпка боюнча маалымат табылган жок'),
-                        )
-                      : SingleChildScrollView(
-                          child: DataTable(
-                            columns: const [
-                              DataColumn(label: Text('Мугалим')),
-                              DataColumn(label: Text('Табель номери')),
-                              DataColumn(label: Text('Келүү')),
-                              DataColumn(label: Text('Кетүү')),
-                              DataColumn(label: Text('Статус')),
-                              DataColumn(label: Text('Кечигүү')),
-                              DataColumn(label: Text('Иштеген убактысы')),
-                              DataColumn(label: Text('Оңдоо')),
-                            ],
-                            rows: filteredRecords.map((r) {
-                              Color statusColor = Colors.grey;
-                              String statusText = 'Келген жок';
-
-                              if (r.status == 'ON_TIME') {
-                                statusColor = Colors.green;
-                                statusText = 'Өз убагында';
-                              } else if (r.status == 'LATE') {
-                                statusColor = Colors.orange;
-                                statusText = 'Кечиккен';
-                              } else if (r.status == 'EXCUSED') {
-                                statusColor = Colors.blue;
-                                statusText = 'Себептүү';
-                              }
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(Text(r.teacherName ?? 'Мугалим', style: const TextStyle(fontWeight: FontWeight.w600))),
-                                  DataCell(Text(r.employeeCode ?? '-')),
-                                  DataCell(Text(_formatTime(r.checkInTime))),
-                                  DataCell(Text(_formatTime(r.checkOutTime))),
-                                  DataCell(
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        statusText,
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(Text(r.lateMinutes > 0 ? '+${r.lateMinutes} мин' : '—')),
-                                  DataCell(Text('${r.workedMinutes} мин')),
-                                  DataCell(
-                                    r.isManuallyCorrected
-                                        ? const Tooltip(
-                                            message: 'Администратор тарабынан кол менен оңдолгон',
-                                            child: Icon(Icons.verified_user, size: 18, color: Colors.blue),
-                                          )
-                                        : const Text('—'),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
+                  ? const Center(
+                      child: Text(
+                        'Тандалган чыпка боюнча маалымат табылган жок',
+                      ),
+                    )
+                  : AttendanceDetails(records: filteredRecords),
             ),
           ),
         ],

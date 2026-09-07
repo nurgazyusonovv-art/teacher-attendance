@@ -22,7 +22,10 @@ from app.schemas.attendance import (
     DailyAttendanceRead,
     ManualCorrectionRequest,
     TodayStatusResponse,
+    AttendanceResetRequest,
 )
+from app.services.absence_service import AbsenceService
+from app.services.attendance_reset_service import AttendanceResetService
 from app.schemas.lesson_delay import (
     LessonDelayCreate,
     LessonDelayRead,
@@ -148,6 +151,8 @@ async def get_teacher_history_for_admin(
     admin_user: User = Depends(get_current_active_admin),
 ):
     await ensure_teacher_access(db, admin_user, teacher_id)
+    teacher = (await db.execute(select(Teacher).where(Teacher.id == teacher_id))).scalar_one()
+    await AbsenceService.catch_up(db, teacher.school_id)
     return await AttendanceService.get_teacher_history(
         db=db,
         teacher_id=teacher_id,
@@ -163,11 +168,34 @@ async def get_today_dashboard(
     admin_user: User = Depends(get_current_active_admin),
 ):
     school_id = await get_user_school_id(db, admin_user)
+    await AbsenceService.catch_up(db, school_id)
     return await AttendanceService.get_admin_today_dashboard(
         db=db,
         school_id=school_id,
         target_date=target_date,
     )
+
+
+@router.post("/admin/finalize-absences", summary="Иш күндөрдөгү келбөөнү белгилөө (Админ)")
+async def finalize_absences(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_active_admin),
+):
+    school_id = await get_user_school_id(db, admin_user)
+    count = await AbsenceService.process_workdays_from(db, school_id, start_date, end_date)
+    return {"created_or_updated": count, "start_date": start_date, "end_date": end_date}
+
+
+@router.post("/admin/reset", summary="Мектептин катышуу тест маалыматтарын тазалоо (Админ)")
+async def reset_attendance(
+    payload: AttendanceResetRequest,
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_active_admin),
+):
+    school_id = await get_user_school_id(db, admin_user)
+    return await AttendanceResetService.reset(db, school_id, admin_user.id, payload.confirmation)
 
 
 @router.post("/manual-correction", response_model=DailyAttendanceRead, summary="Катышууну кол менен оңдоо (Админ)")

@@ -151,4 +151,17 @@ class SettingsRepository {
       return null;
     }
   }
+
+  Future<int?> resetAttendance() async {
+    try {
+      final response = await _dio.post(
+        '${AppConstants.apiBaseUrl}/attendance/admin/reset',
+        data: {'confirmation': 'RESET ATTENDANCE'},
+        options: await _getAuthOptions(),
+      );
+      return (response.data as Map<String, dynamic>)['deleted'] as int?;
+    } catch (_) {
+      return null;
+    }
+  }
 }

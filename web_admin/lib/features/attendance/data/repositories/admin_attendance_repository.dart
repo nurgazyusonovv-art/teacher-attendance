@@ -12,6 +12,7 @@ class AdminDailyAttendanceItem {
   final String? checkOutTime;
   final String status;
   final int lateMinutes;
+  final int lessonLateMinutes;
   final int workedMinutes;
   final bool isManuallyCorrected;
   final String? correctionReason;
@@ -27,6 +28,7 @@ class AdminDailyAttendanceItem {
     this.checkOutTime,
     required this.status,
     required this.lateMinutes,
+    this.lessonLateMinutes = 0,
     required this.workedMinutes,
     required this.isManuallyCorrected,
     this.correctionReason,
@@ -44,6 +46,7 @@ class AdminDailyAttendanceItem {
       checkOutTime: json['check_out_time'] as String?,
       status: json['status'] as String? ?? 'ON_TIME',
       lateMinutes: json['late_minutes'] as int? ?? 0,
+      lessonLateMinutes: json['lesson_late_minutes'] as int? ?? 0,
       workedMinutes: json['worked_minutes'] as int? ?? 0,
       isManuallyCorrected: json['is_manually_corrected'] as bool? ?? false,
       correctionReason: json['correction_reason'] as String?,
@@ -117,6 +120,49 @@ class AdminAttendanceRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Reads every teacher page, including inactive teachers, without hiding
+  /// partial failures as an empty or complete report.
+  Future<List<AdminDailyAttendanceItem>> getReportHistory() async {
+    final options = await _getAuthOptions();
+    final teachers = <Map<String, dynamic>>[];
+    var skip = 0;
+    while (true) {
+      final response = await _dio.get(
+        '${AppConstants.apiBaseUrl}/teachers',
+        queryParameters: {'skip': skip, 'limit': 100},
+        options: options,
+      );
+      final page = (response.data['items'] as List)
+          .cast<Map<String, dynamic>>();
+      teachers.addAll(page);
+      skip += page.length;
+      if (skip >= (response.data['total'] as int)) break;
+      if (page.isEmpty) throw StateError('Incomplete teacher list');
+    }
+    final records = <AdminDailyAttendanceItem>[];
+    // Bound concurrency so a large school cannot overwhelm the API.
+    for (var offset = 0; offset < teachers.length; offset += 4) {
+      final batch = teachers.skip(offset).take(4);
+      final results = await Future.wait(
+        batch.map((teacher) async {
+          final response = await _dio.get(
+            '${AppConstants.apiBaseUrl}/attendance/teacher/${teacher['id']}/history',
+            options: options,
+          );
+          return (response.data as List).map((raw) {
+            final json = Map<String, dynamic>.from(raw as Map);
+            json['teacher_name'] = teacher['full_name'];
+            json['employee_code'] = teacher['employee_code'];
+            return AdminDailyAttendanceItem.fromJson(json);
+          }).toList();
+        }),
+      );
+      records.addAll(results.expand((items) => items));
+    }
+    records.sort((a, b) => b.date.compareTo(a.date));
+    return records;
   }
 
   Future<bool> manualCorrection({

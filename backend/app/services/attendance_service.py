@@ -609,12 +609,12 @@ class AttendanceService:
             )
             is_day_off = schedule is not None and schedule.is_day_off
 
-            if record and record.check_in_time:
-                checked_in_count += 1
+            if record:
+                checked_in_count += int(record.check_in_time is not None)
                 total_late = record.late_minutes + lesson_late
-                if record.status == AttendanceStatus.ON_TIME and lesson_late == 0:
+                if record.check_in_time and record.status == AttendanceStatus.ON_TIME and lesson_late == 0:
                     on_time_count += 1
-                else:
+                elif record.check_in_time:
                     late_count += 1
 
                 read_records.append(

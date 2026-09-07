@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:teacher_admin/features/attendance/presentation/widgets/attendance_details.dart';
 import 'package:teacher_admin/core/theme/admin_theme.dart';
 import 'package:teacher_admin/features/attendance/data/repositories/admin_attendance_repository.dart';
 
@@ -44,13 +45,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showManualCorrectionDialog(AdminDailyAttendanceItem record) {
-    String selectedStatus = record.status == 'ABSENT' ? 'EXCUSED' : record.status;
+    String selectedStatus = record.status == 'ABSENT'
+        ? 'EXCUSED'
+        : record.status;
     final reasonController = TextEditingController();
     final checkInController = TextEditingController(
-      text: record.checkInTime != null ? _formatTime(record.checkInTime) : '08:00',
+      text: record.checkInTime != null
+          ? _formatTime(record.checkInTime)
+          : '08:00',
     );
     final checkOutController = TextEditingController(
-      text: record.checkOutTime != null ? _formatTime(record.checkOutTime) : '17:00',
+      text: record.checkOutTime != null
+          ? _formatTime(record.checkOutTime)
+          : '17:00',
     );
 
     showDialog(
@@ -74,16 +81,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     initialValue: selectedStatus,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'ON_TIME', child: Text('Өз убагында (ON_TIME)')),
-                      DropdownMenuItem(value: 'LATE', child: Text('Кечиккен (LATE)')),
-                      DropdownMenuItem(value: 'EXCUSED', child: Text('Себептүү / Кечирилген (EXCUSED)')),
-                      DropdownMenuItem(value: 'ABSENT', child: Text('Келген жок (ABSENT)')),
+                      DropdownMenuItem(
+                        value: 'ON_TIME',
+                        child: Text('Өз убагында (ON_TIME)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'LATE',
+                        child: Text('Кечиккен (LATE)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'EXCUSED',
+                        child: Text('Себептүү / Кечирилген (EXCUSED)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ABSENT',
+                        child: Text('Келген жок (ABSENT)'),
+                      ),
                     ],
                     onChanged: (val) {
-                      if (val != null) setModalState(() => selectedStatus = val);
+                      if (val != null) {
+                        setModalState(() => selectedStatus = val);
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
@@ -115,7 +139,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     controller: reasonController,
                     decoration: const InputDecoration(
                       labelText: 'Оңдоонун себеби * (Audit Trail)',
-                      hintText: 'Мис: Ооруп жаткандыгы тууралуу справка тапшырды',
+                      hintText:
+                          'Мис: Ооруп жаткандыгы тууралуу справка тапшырды',
                     ),
                     maxLines: 2,
                   ),
@@ -132,7 +157,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () async {
                 if (reasonController.text.trim().length < 4) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Сураныч, оңдоонун себебин жазыңыз!')),
+                    const SnackBar(
+                      content: Text('Сураныч, оңдоонун себебин жазыңыз!'),
+                    ),
                   );
                   return;
                 }
@@ -145,7 +172,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   checkInIso = '${dateStr}T${checkInController.text.trim()}:00';
                 }
                 if (checkOutController.text.trim().isNotEmpty) {
-                  checkOutIso = '${dateStr}T${checkOutController.text.trim()}:00';
+                  checkOutIso =
+                      '${dateStr}T${checkOutController.text.trim()}:00';
                 }
 
                 final success = await _repository.manualCorrection(
@@ -219,13 +247,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisSpacing: 16,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 2.2,
+            childAspectRatio: 1.2,
             children: [
-              _buildKpiCard('Жалпы мугалим', '${_data?.totalTeachers ?? 0}', Icons.people, AdminTheme.accentColor),
-              _buildKpiCard('Келди (Check-in)', '${_data?.checkedInCount ?? 0}', Icons.login, AdminTheme.successColor),
-              _buildKpiCard('Өз убагында', '${_data?.onTimeCount ?? 0}', Icons.check_circle_outline, AdminTheme.successColor),
-              _buildKpiCard('Кечикти', '${_data?.lateCount ?? 0}', Icons.timer_outlined, AdminTheme.warningColor),
-              _buildKpiCard('Келген жок', '${_data?.notCheckedInCount ?? 0}', Icons.person_off_outlined, AdminTheme.errorColor),
+              _buildKpiCard(
+                'Жалпы мугалим',
+                '${_data?.totalTeachers ?? 0}',
+                Icons.people,
+                AdminTheme.accentColor,
+                AttendanceGroup.all,
+              ),
+              _buildKpiCard(
+                'Келди (Check-in)',
+                '${_data?.checkedInCount ?? 0}',
+                Icons.login,
+                AdminTheme.successColor,
+                AttendanceGroup.checkedIn,
+              ),
+              _buildKpiCard(
+                'Өз убагында',
+                '${_data?.onTimeCount ?? 0}',
+                Icons.check_circle_outline,
+                AdminTheme.successColor,
+                AttendanceGroup.onTime,
+              ),
+              _buildKpiCard(
+                'Кечикти',
+                '${_data?.lateCount ?? 0}',
+                Icons.timer_outlined,
+                AdminTheme.warningColor,
+                AttendanceGroup.late,
+              ),
+              _buildKpiCard(
+                'Келген жок',
+                '${_data?.notCheckedInCount ?? 0}',
+                Icons.person_off_outlined,
+                AdminTheme.errorColor,
+                AttendanceGroup.absent,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -236,105 +294,137 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _data == null || _data!.records.isEmpty
-                      ? const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.inbox_outlined, size: 48, color: Color(0xFF94A3B8)),
-                              SizedBox(height: 8),
-                              Text(
-                                'Бүгүн азырынча мугалимдердин тизмеси бош',
-                                style: TextStyle(color: Color(0xFF64748B)),
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 48,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Бүгүн азырынча мугалимдердин тизмеси бош',
+                            style: TextStyle(color: Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Мугалим')),
+                          DataColumn(label: Text('Табель номери')),
+                          DataColumn(label: Text('Келүү убактысы')),
+                          DataColumn(label: Text('Кетүү убактысы')),
+                          DataColumn(label: Text('Статус')),
+                          DataColumn(label: Text('Кечигүү')),
+                          DataColumn(label: Text('Аракеттер')),
+                        ],
+                        rows: _data!.records.map((record) {
+                          Color statusColor = Colors.grey;
+                          String statusText = 'Келген жок';
+
+                          if (record.status == 'ON_TIME') {
+                            statusColor = Colors.green;
+                            statusText = 'Өз убагында';
+                          } else if (record.status == 'LATE') {
+                            statusColor = Colors.orange;
+                            statusText = 'Кечиккен';
+                          } else if (record.status == 'EXCUSED') {
+                            statusColor = Colors.blue;
+                            statusText = 'Себептүү';
+                          }
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: AdminTheme.accentColor
+                                          .withValues(alpha: 0.1),
+                                      child: Text(
+                                        (record.teacherName?.isNotEmpty ??
+                                                false)
+                                            ? record.teacherName![0]
+                                            : 'М',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: AdminTheme.accentColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      record.teacherName ?? 'Мугалим',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              DataCell(Text(record.employeeCode ?? '-')),
+                              DataCell(Text(_formatTime(record.checkInTime))),
+                              DataCell(Text(_formatTime(record.checkOutTime))),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    statusText,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: statusColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  record.lateMinutes > 0
+                                      ? '+${record.lateMinutes} мин'
+                                      : '—',
+                                  style: TextStyle(
+                                    fontWeight: record.lateMinutes > 0
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: record.lateMinutes > 0
+                                        ? Colors.orange
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _showManualCorrectionDialog(record),
+                                  icon: const Icon(Icons.edit_note, size: 16),
+                                  label: const Text('Оңдоо'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
-                          ),
-                        )
-                      : SingleChildScrollView(
-                          child: DataTable(
-                            columns: const [
-                              DataColumn(label: Text('Мугалим')),
-                              DataColumn(label: Text('Табель номери')),
-                              DataColumn(label: Text('Келүү убактысы')),
-                              DataColumn(label: Text('Кетүү убактысы')),
-                              DataColumn(label: Text('Статус')),
-                              DataColumn(label: Text('Кечигүү')),
-                              DataColumn(label: Text('Аракеттер')),
-                            ],
-                            rows: _data!.records.map((record) {
-                              Color statusColor = Colors.grey;
-                              String statusText = 'Келген жок';
-
-                              if (record.status == 'ON_TIME') {
-                                statusColor = Colors.green;
-                                statusText = 'Өз убагында';
-                              } else if (record.status == 'LATE') {
-                                statusColor = Colors.orange;
-                                statusText = 'Кечиккен';
-                              } else if (record.status == 'EXCUSED') {
-                                statusColor = Colors.blue;
-                                statusText = 'Себептүү';
-                              }
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: AdminTheme.accentColor.withValues(alpha: 0.1),
-                                          child: Text(
-                                            (record.teacherName?.isNotEmpty ?? false)
-                                                ? record.teacherName![0]
-                                                : 'М',
-                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AdminTheme.accentColor),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(record.teacherName ?? 'Мугалим', style: const TextStyle(fontWeight: FontWeight.w600)),
-                                      ],
-                                    ),
-                                  ),
-                                  DataCell(Text(record.employeeCode ?? '-')),
-                                  DataCell(Text(_formatTime(record.checkInTime))),
-                                  DataCell(Text(_formatTime(record.checkOutTime))),
-                                  DataCell(
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: statusColor.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        statusText,
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: statusColor),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    Text(
-                                      record.lateMinutes > 0 ? '+${record.lateMinutes} мин' : '—',
-                                      style: TextStyle(
-                                        fontWeight: record.lateMinutes > 0 ? FontWeight.bold : FontWeight.normal,
-                                        color: record.lateMinutes > 0 ? Colors.orange : Colors.grey,
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    OutlinedButton.icon(
-                                      onPressed: () => _showManualCorrectionDialog(record),
-                                      icon: const Icon(Icons.edit_note, size: 16),
-                                      label: const Text('Оңдоо'),
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
             ),
           ),
         ],
@@ -342,45 +432,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildKpiCard(String title, String value, IconData icon, Color color) {
+  void _showDetails(String title, AttendanceGroup group) {
+    final records = _data!.records
+        .where((r) => matchesGroup(r, group))
+        .toList();
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('$title — ${records.length} мугалим • ${_data!.date}'),
+        content: SizedBox(
+          width: 1100,
+          height: MediaQuery.sizeOf(context).height * 0.65,
+          child: AttendanceDetails(records: records),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Жабуу'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    AttendanceGroup group,
+  ) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: color.withValues(alpha: 0.1),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+      child: InkWell(
+        onTap: _isLoading || _data == null
+            ? null
+            : () => _showDetails(title, group),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: color.withValues(alpha: 0.1),
+                child: Icon(icon, color: color, size: 22),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$title ↗',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

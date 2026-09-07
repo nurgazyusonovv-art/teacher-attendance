@@ -90,3 +90,7 @@ class ManualCorrectionRequest(BaseModel):
     check_out_time: Optional[datetime] = None
     status: AttendanceStatus
     reason: str = Field(..., min_length=5, max_length=500, description="Оңдоонун себеби (сөзсүз)")
+
+
+class AttendanceResetRequest(BaseModel):
+    confirmation: str = Field(..., min_length=10, max_length=32)
