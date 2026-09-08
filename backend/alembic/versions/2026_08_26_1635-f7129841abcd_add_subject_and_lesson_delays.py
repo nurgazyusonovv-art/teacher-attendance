@@ -19,7 +19,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('teachers', sa.Column('subject', sa.String(length=100), nullable=True))
+    # Older production releases created these objects at startup without
+    # advancing Alembic. Adopt compatible existing objects without losing data.
+    inspector = sa.inspect(op.get_bind())
+    if 'subject' not in {c['name'] for c in inspector.get_columns('teachers')}:
+        op.add_column('teachers', sa.Column('subject', sa.String(length=100), nullable=True))
+    if inspector.has_table('lesson_delays'):
+        required = {'id', 'teacher_id', 'school_id', 'date', 'lesson_number',
+                    'delay_minutes', 'reason', 'recorded_by_user_id', 'created_at', 'updated_at'}
+        if not required.issubset({c['name'] for c in inspector.get_columns('lesson_delays')}):
+            raise RuntimeError('Existing lesson_delays schema needs reconciliation')
+        indexes = {i['name'] for i in inspector.get_indexes('lesson_delays')}
+        for column in ('date', 'school_id', 'teacher_id'):
+            name = f'ix_lesson_delays_{column}'
+            if name not in indexes:
+                op.create_index(name, 'lesson_delays', [column], unique=False)
+        return
 
     op.create_table('lesson_delays',
         sa.Column('id', sa.String(length=36), nullable=False),
