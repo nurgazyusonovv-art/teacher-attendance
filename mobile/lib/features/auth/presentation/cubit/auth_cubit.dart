@@ -1,11 +1,23 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
+import '../../../../core/network/api_client.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository authRepository;
 
-  AuthCubit({required this.authRepository}) : super(const AuthInitial());
+  late final StreamSubscription<void> _expiredSubscription;
+  AuthCubit({required this.authRepository}) : super(const AuthInitial()) {
+    _expiredSubscription = ApiClient.sessionExpired.listen((_) {
+      if (!isClosed) emit(const Unauthenticated());
+    });
+  }
+  @override
+  Future<void> close() {
+    unawaited(_expiredSubscription.cancel());
+    return super.close();
+  }
 
   Future<void> checkAuthStatus() async {
     emit(const AuthLoading());

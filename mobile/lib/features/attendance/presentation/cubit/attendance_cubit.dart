@@ -3,13 +3,19 @@ import '../../data/repositories/attendance_repository.dart';
 import 'attendance_state.dart';
 
 class AttendanceCubit extends Cubit<AttendanceState> {
+  @override
+  void emit(AttendanceState state) {
+    if (!isClosed) super.emit(state);
+  }
+
   final AttendanceRepository _repository;
 
   AttendanceCubit({AttendanceRepository? repository})
-      : _repository = repository ?? AttendanceRepository(),
-        super(AttendanceInitial());
+    : _repository = repository ?? AttendanceRepository(),
+      super(AttendanceInitial());
 
   Future<void> loadTodayStatus() async {
+    if (isClosed || state is AttendanceLoading) return;
     emit(AttendanceLoading());
     try {
       final status = await _repository.getTodayStatus();
@@ -31,6 +37,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     required double accuracy,
     String? deviceInfo,
   }) async {
+    if (isClosed || state is AttendanceLoading) return;
     emit(AttendanceLoading());
     try {
       final record = await _repository.checkIn(
@@ -41,12 +48,14 @@ class AttendanceCubit extends Cubit<AttendanceState> {
         accuracy: accuracy,
         deviceInfo: deviceInfo,
       );
-      emit(AttendanceActionSuccess(
-        record,
-        record.status == 'ON_TIME'
-            ? 'Келүү ийгиликтүү катталды! (Өз убагында)'
-            : 'Келүү катталды (Кечиккен: ${record.lateMinutes} мүнөт)',
-      ));
+      emit(
+        AttendanceActionSuccess(
+          record,
+          record.status == 'ON_TIME'
+              ? 'Келүү ийгиликтүү катталды! (Өз убагында)'
+              : 'Келүү катталды (Кечиккен: ${record.lateMinutes} мүнөт)',
+        ),
+      );
     } catch (e) {
       emit(AttendanceError(e.toString().replaceFirst('Exception: ', '')));
     }
@@ -60,6 +69,7 @@ class AttendanceCubit extends Cubit<AttendanceState> {
     required double accuracy,
     String? deviceInfo,
   }) async {
+    if (isClosed || state is AttendanceLoading) return;
     emit(AttendanceLoading());
     try {
       final record = await _repository.checkOut(
@@ -70,10 +80,12 @@ class AttendanceCubit extends Cubit<AttendanceState> {
         accuracy: accuracy,
         deviceInfo: deviceInfo,
       );
-      emit(AttendanceActionSuccess(
-        record,
-        'Кетүү ийгиликтүү катталды! Иштеген убактыңыз: ${record.workedMinutes} мүнөт.',
-      ));
+      emit(
+        AttendanceActionSuccess(
+          record,
+          'Кетүү ийгиликтүү катталды! Иштеген убактыңыз: ${record.workedMinutes} мүнөт.',
+        ),
+      );
     } catch (e) {
       emit(AttendanceError(e.toString().replaceFirst('Exception: ', '')));
     }

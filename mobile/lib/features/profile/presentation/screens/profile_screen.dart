@@ -64,7 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final username = _profile?.username ?? user?.username ?? 'teacher';
           final email = user?.email ?? '$username@school.edu.kg';
           final isDemo = _profile?.isDemo ?? user?.isDemo ?? false;
-          final schoolName = _schoolData?['name'] as String? ?? '№1 Орто Мектеп';
+          final schoolName = _schoolData?['name'] as String? ?? 'Мектеп маалыматы жүктөлгөн жок';
           final radius = (_schoolData?['allowed_radius_meters'] as num?)?.toDouble() ?? 80.0;
           final subject = _profile?.subject ?? 'Жалпы предмет';
           final employeeCode = _profile?.employeeCode ?? 'TCH-001';

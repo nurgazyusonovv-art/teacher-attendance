@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import '../features/leaves/presentation/leave_screen.dart';
 import '../features/admin/data/repositories/admin_mobile_repository.dart';
 import '../features/admin/presentation/screens/add_teacher_screen.dart';
 import '../features/admin/presentation/screens/admin_main_screen.dart';
@@ -14,18 +15,14 @@ import '../features/splash/presentation/screens/splash_screen.dart';
 final GoRouter appRouter = GoRouter(
   initialLocation: '/splash',
   routes: [
+    GoRoute(path: '/leaves', builder: (_, _) => const LeaveScreen()),
     GoRoute(
-      path: '/splash',
-      builder: (context, state) => const SplashScreen(),
+      path: '/admin/leaves',
+      builder: (_, _) => const LeaveScreen(admin: true),
     ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (context, state) => const HomeScreen(),
-    ),
+    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
     GoRoute(
       path: '/admin',
       builder: (context, state) => const AdminMainScreen(),

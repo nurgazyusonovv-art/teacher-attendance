@@ -8,6 +8,7 @@ import '../features/attendance/data/repositories/attendance_repository.dart';
 import '../features/attendance/presentation/cubit/attendance_cubit.dart';
 import '../features/auth/data/repositories/auth_repository.dart';
 import '../features/auth/presentation/cubit/auth_cubit.dart';
+import '../features/auth/presentation/cubit/auth_state.dart';
 import 'router.dart';
 
 class TeacherApp extends StatefulWidget {
@@ -53,11 +54,16 @@ class _TeacherAppState extends State<TeacherApp> {
         BlocProvider<AuthCubit>.value(value: _authCubit),
         BlocProvider<AttendanceCubit>.value(value: _attendanceCubit),
       ],
-      child: MaterialApp.router(
-        title: AppConstants.appName,
-        theme: AppTheme.lightTheme,
-        debugShowCheckedModeBanner: false,
-        routerConfig: appRouter,
+      child: BlocListener<AuthCubit, AuthState>(
+        listener: (_, state) {
+          if (state is Unauthenticated) appRouter.go('/login');
+        },
+        child: MaterialApp.router(
+          title: AppConstants.appName,
+          theme: AppTheme.lightTheme,
+          debugShowCheckedModeBanner: false,
+          routerConfig: appRouter,
+        ),
       ),
     );
   }

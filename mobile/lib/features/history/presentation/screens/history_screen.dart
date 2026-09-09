@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import '../cubit/history_cubit.dart';
+import '../../../../core/utils/attendance_presentation.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/datetime_utils.dart';
 import '../../../attendance/data/repositories/attendance_repository.dart';
@@ -11,7 +14,9 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final AttendanceRepository _attendanceRepository = AttendanceRepository();
+  final HistoryCubit _historyCubit = HistoryCubit(AttendanceRepository());
+  StreamSubscription<HistoryState>? _subscription;
+  String? _error;
 
   List<DailyAttendanceModel> _records = [];
   bool _isLoading = true;
@@ -21,21 +26,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
+    _subscription = _historyCubit.stream.listen((state) {
+      if (mounted) {
+        setState(() {
+          _records = state.records;
+          _isLoading = state.loading;
+          _error = state.error;
+        });
+      }
+    });
     _loadHistory();
   }
 
   Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
-    final list = await _attendanceRepository.getMyHistory(
-      year: _currentMonth.year,
-      month: _currentMonth.month,
-    );
-    if (mounted) {
-      setState(() {
-        _records = list;
-        _isLoading = false;
-      });
-    }
+    await _historyCubit.load(_currentMonth.year, _currentMonth.month);
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _historyCubit.close();
+    super.dispose();
   }
 
   void _changeMonth(int offset) {
@@ -389,6 +400,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
             const SizedBox(height: 14),
 
             // Record List
+            if (_error != null) ...[
+              Text(_error!),
+              TextButton(
+                onPressed: _loadHistory,
+                child: const Text('Кайра аракет кылуу'),
+              ),
+            ],
             if (_isLoading)
               const Padding(
                 padding: EdgeInsets.all(40.0),
@@ -424,19 +442,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
               )
             else
               ...filteredRecords.map((r) {
-                Color statusColor = AppTheme.successColor;
-                String statusText = 'Өз убагында';
-
-                if (r.status == 'LATE' || r.totalLateMinutes > 0) {
-                  statusColor = Colors.orange;
-                  statusText = 'Кечиккен (+${r.totalLateMinutes} мүн)';
-                } else if (r.status == 'EXCUSED') {
-                  statusColor = Colors.blue;
-                  statusText = 'Себептүү';
-                } else if (r.status == 'ABSENT') {
-                  statusColor = Colors.red;
-                  statusText = 'Келген жок';
-                }
+                final statusColor = attendanceColor(r.status);
+                final statusText = attendanceLabel(r.status);
 
                 final checkIn = _formatTime(r.checkInTime);
                 final checkOut = _formatTime(r.checkOutTime);

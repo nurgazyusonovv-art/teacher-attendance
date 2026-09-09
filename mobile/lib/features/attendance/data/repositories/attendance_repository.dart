@@ -50,7 +50,7 @@ class DailyAttendanceModel {
       date: json['date'] as String,
       checkInTime: json['check_in_time'] as String?,
       checkOutTime: json['check_out_time'] as String?,
-      status: json['status'] as String? ?? 'ON_TIME',
+      status: json['display_status'] as String? ?? json['status'] as String? ?? 'UNKNOWN',
       lateMinutes: lateMins,
       workedMinutes: json['worked_minutes'] as int? ?? 0,
       isManuallyCorrected: json['is_manually_corrected'] as bool? ?? false,
@@ -63,6 +63,8 @@ class DailyAttendanceModel {
 }
 
 class TodayStatusModel {
+  final String? schoolName;
+  final String? displayStatus;
   final String date;
   final bool hasCheckedIn;
   final bool hasCheckedOut;
@@ -79,6 +81,8 @@ class TodayStatusModel {
   final int totalLateMinutes;
 
   TodayStatusModel({
+    this.schoolName,
+    this.displayStatus,
     required this.date,
     required this.hasCheckedIn,
     required this.hasCheckedOut,
@@ -108,6 +112,8 @@ class TodayStatusModel {
         json['total_late_minutes'] as int? ?? (lateMins + lessonLateMins);
 
     return TodayStatusModel(
+      schoolName: json['school_name'] as String?,
+      displayStatus: json['display_status'] as String?,
       date: json['date'] as String,
       hasCheckedIn: json['has_checked_in'] as bool? ?? false,
       hasCheckedOut: json['has_checked_out'] as bool? ?? false,
@@ -240,7 +246,7 @@ class AttendanceRepository {
           .toList();
       return list;
     } catch (_) {
-      return [];
+      throw Exception('Тарых жүктөлгөн жок. Байланышты текшериңиз.');
     }
   }
 }

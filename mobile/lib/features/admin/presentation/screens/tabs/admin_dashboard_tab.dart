@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/utils/attendance_presentation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_theme.dart';
@@ -249,12 +250,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         filteredList = records.where((r) {
           final hasCheckIn = r['check_in_time'] != null;
           final status = r['status'];
-          final lateMins = r['late_minutes'] ?? 0;
-          final lessonLate = r['lesson_late_minutes'] ?? 0;
-          return hasCheckIn &&
-              status == 'ON_TIME' &&
-              lateMins == 0 &&
-              lessonLate == 0;
+          return hasCheckIn && status == 'ON_TIME';
         }).toList();
         break;
 
@@ -265,10 +261,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         themeColor = Colors.orange;
         filteredList = records.where((r) {
           final status = r['status'];
-          final lateMins = r['late_minutes'] ?? 0;
-          final lessonLate = r['lesson_late_minutes'] ?? 0;
-          final totalLate = r['total_late_minutes'] ?? (lateMins + lessonLate);
-          return status == 'LATE' || totalLate > 0;
+          return r['check_in_time'] != null && status == 'LATE';
         }).toList();
         break;
 
@@ -278,7 +271,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         icon = Icons.person_off_rounded;
         themeColor = AppTheme.errorColor;
         filteredList = records
-            .where((r) => r['check_in_time'] == null || r['status'] == 'ABSENT')
+            .where((r) => r['check_in_time'] == null && r['status'] == 'ABSENT')
             .toList();
         break;
     }
@@ -443,30 +436,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                             final phone = r['phone_number'] as String?;
                             final checkIn = _formatTime(r['check_in_time']);
                             final checkOut = _formatTime(r['check_out_time']);
-                            final hasCheckedIn = r['check_in_time'] != null;
                             final status = r['status'] as String? ?? 'ABSENT';
-                            final lateMins = r['late_minutes'] as int? ?? 0;
+                            final hasCheckedIn = r['check_in_time'] != null;
                             final lessonDelays =
                                 (r['lesson_delays'] as List? ?? []);
-                            final totalLate =
-                                r['total_late_minutes'] as int? ?? lateMins;
 
-                            Color badgeColor;
-                            String badgeText;
-
-                            if (!hasCheckedIn || status == 'ABSENT') {
-                              badgeColor = AppTheme.errorColor;
-                              badgeText = 'Келген жок';
-                            } else if (status == 'LATE' || totalLate > 0) {
-                              badgeColor = Colors.orange;
-                              badgeText = 'Кечиккен (+$totalLate мүн)';
-                            } else if (status == 'EXCUSED') {
-                              badgeColor = Colors.blue;
-                              badgeText = 'Себептүү';
-                            } else {
-                              badgeColor = AppTheme.successColor;
-                              badgeText = 'Өз убагында';
-                            }
+                            final badgeColor = attendanceColor(status);
+                            final badgeText = attendanceLabel(status);
 
                             return Container(
                               decoration: BoxDecoration(
@@ -959,19 +935,8 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           else
             ...records.map((r) {
               final status = r['status'] ?? 'ON_TIME';
-              Color statusColor = AppTheme.successColor;
-              String statusLabel = 'Өз уб.';
-
-              if (status == 'LATE') {
-                statusColor = Colors.orange;
-                statusLabel = 'Кечиккен';
-              } else if (status == 'EXCUSED') {
-                statusColor = Colors.blue;
-                statusLabel = 'Себептүү';
-              } else if (status == 'ABSENT') {
-                statusColor = Colors.grey;
-                statusLabel = 'Келген жок';
-              }
+              final statusColor = attendanceColor(status as String);
+              final statusLabel = attendanceLabel(status);
 
               final checkIn = _formatTime(r['check_in_time']);
               final checkOut = _formatTime(r['check_out_time']);

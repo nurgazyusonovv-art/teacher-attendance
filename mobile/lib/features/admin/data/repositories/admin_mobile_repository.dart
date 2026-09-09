@@ -159,7 +159,11 @@ class AdminMobileRepository {
             ? {'target_date': targetDate}
             : null,
       );
-      return response.data as Map<String, dynamic>;
+      final data = response.data as Map<String, dynamic>;
+      for (final record in data['records'] as List? ?? []) {
+        if (record['display_status'] != null) record['status'] = record['display_status'];
+      }
+      return data;
     } catch (_) {
       return null;
     }

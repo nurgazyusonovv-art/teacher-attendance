@@ -50,7 +50,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
     final currentName =
         _schoolData?['name'] as String? ??
         _qrData?['school_name'] as String? ??
-        '№1 Орто Мектеп';
+        'Мектеп маалыматы жүктөлгөн жок';
     final currentLat =
         (_schoolData?['latitude'] as num?)?.toDouble() ?? 42.8746;
     final currentLng =
@@ -801,7 +801,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
                           setModalState(() => isTesting = true);
                           final schoolName =
                               _schoolData?['name'] as String? ??
-                              '№1 Орто Мектеп';
+                              'Мектеп маалыматы жүктөлгөн жок';
                           final (ok, msg) = await _repository
                               .testTelegramConnection(
                                 botToken: token,
@@ -1049,7 +1049,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
     final schoolName =
         _schoolData?['name'] as String? ??
         _qrData?['school_name'] as String? ??
-        '№1 Орто Мектеп';
+        'Мектеп маалыматы жүктөлгөн жок';
     final schoolId =
         _schoolData?['id'] as String? ?? _qrData?['school_id'] as String? ?? '';
     final lat = (_schoolData?['latitude'] as num?)?.toDouble() ?? 42.8746;

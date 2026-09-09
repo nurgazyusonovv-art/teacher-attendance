@@ -216,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Footer note
                       const Center(
                         child: Text(
-                          '№1 Орто Мектеп • Электрондук Каттоо',
+                          'Электрондук каттоо',
                           style: TextStyle(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
                         ),
                       ),

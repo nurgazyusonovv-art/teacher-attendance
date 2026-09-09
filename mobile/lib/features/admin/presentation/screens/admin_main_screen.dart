@@ -630,6 +630,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
         ),
         title: Text(_titles[_currentIndex]),
         actions: [
+          IconButton(tooltip: 'Уруксат арыздары', icon: const Icon(Icons.event_available), onPressed: () => context.push('/admin/leaves')),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(7),

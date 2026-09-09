@@ -1,14 +1,19 @@
 import 'package:dio/dio.dart';
+import 'dart:async';
 import '../constants/app_constants.dart';
 import '../storage/secure_storage_service.dart';
 
 class ApiClient {
+  static final StreamController<void> _expired =
+      StreamController<void>.broadcast();
+  static Stream<void> get sessionExpired => _expired.stream;
   late final Dio dio;
   final SecureStorageService storageService;
   final String baseUrl;
-  Future<String?>? _refreshFuture;
+  final Dio? refreshClient;
+  static final Map<String, Future<String?>> _refreshes = {};
 
-  ApiClient({required this.storageService, String? baseUrl})
+  ApiClient({required this.storageService, String? baseUrl, this.refreshClient})
     : baseUrl = baseUrl ?? AppConstants.defaultBaseUrl {
     dio = Dio(
       BaseOptions(
@@ -53,6 +58,19 @@ class ApiClient {
               }
             }
           }
+          if (error.response?.statusCode == 401 &&
+              !error.requestOptions.path.contains('/auth/login') &&
+              !error.requestOptions.path.contains('/auth/refresh') &&
+              await storageService.getRefreshToken() != null) {
+            return handler.reject(
+              DioException(
+                requestOptions: error.requestOptions,
+                type: DioExceptionType.connectionError,
+                error:
+                    'Сессияны жаңыртуу мүмкүн болгон жок. Байланышты текшериңиз.',
+              ),
+            );
+          }
           return handler.next(error);
         },
       ),
@@ -60,15 +78,18 @@ class ApiClient {
   }
 
   Future<String?> _refreshAccessToken() async {
-    final activeRefresh = _refreshFuture;
+    final token = await storageService.getRefreshToken();
+    if (token == null || token.isEmpty) return null;
+    final key = '$baseUrl:$token';
+    final activeRefresh = _refreshes[key];
     if (activeRefresh != null) return activeRefresh;
 
     final refreshOperation = _performRefresh();
-    _refreshFuture = refreshOperation;
+    _refreshes[key] = refreshOperation;
     try {
       return await refreshOperation;
     } finally {
-      _refreshFuture = null;
+      _refreshes.remove(key);
     }
   }
 
@@ -77,12 +98,16 @@ class ApiClient {
     if (refreshToken == null || refreshToken.isEmpty) return null;
 
     try {
-      final refreshDio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
+      final refreshDio =
+          refreshClient ??
+          Dio(
+            BaseOptions(
+              baseUrl: baseUrl,
+              headers: {'Content-Type': 'application/json'},
+              connectTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 15),
+            ),
+          );
       final refreshResponse = await refreshDio.post(
         '/auth/refresh',
         data: {'refresh_token': refreshToken},
@@ -97,8 +122,14 @@ class ApiClient {
         refreshToken: newRefreshToken,
       );
       return newAccessToken;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 401 ||
+          error.response?.statusCode == 403) {
+        await storageService.clearAll();
+        _expired.add(null);
+      }
+      return null;
     } catch (_) {
-      await storageService.clearAll();
       return null;
     }
   }

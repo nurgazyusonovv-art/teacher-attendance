@@ -217,7 +217,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     FadeTransition(
                       opacity: _fadeAnim,
                       child: Text(
-                        '№1 Орто Мектеп • Asia/Bishkek (UTC+6)',
+                        'Мугалимдердин катышуусун каттоо',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.white.withValues(alpha: 0.35),

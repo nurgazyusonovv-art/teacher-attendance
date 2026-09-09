@@ -73,7 +73,7 @@ class _AdminQrCodeScreenState extends State<AdminQrCodeScreen> {
 
       if (!mounted) return;
 
-      final schoolName = _qrData?['school_name'] as String? ?? '№1 Орто Мектеп';
+      final schoolName = _qrData?['school_name'] as String? ?? 'Мектеп маалыматы жүктөлгөн жок';
 
       // Open native save / share sheet (Allows saving to Photos, Files, AirDrop, Print, WhatsApp)
       final box = context.findRenderObject() as RenderBox?;
@@ -254,7 +254,7 @@ class _AdminQrCodeScreenState extends State<AdminQrCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final schoolName = _qrData?['school_name'] as String? ?? '№1 Орто Мектеп';
+    final schoolName = _qrData?['school_name'] as String? ?? 'Мектеп маалыматы жүктөлгөн жок';
     final rawPayload = _qrData?['qr_payload'];
     final qrString = rawPayload is String ? rawPayload : null;
 
