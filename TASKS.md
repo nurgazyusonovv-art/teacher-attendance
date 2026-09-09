@@ -475,6 +475,31 @@ Optional:
 
 # POST-MVP
 
+## Уруксат агымы жана mobile release — 2026-09-09
+
+- [x] Teacher → PENDING арыз (күн/себеп), admin → APPROVED/REJECTED (чечимдин себеби); мектеп/роль чектөөсү, 50 саптык pagination, бир күнгө бир арыз, кайталанган бирдей request idempotent.
+- [x] APPROVED гана EXCUSED түзөт; катышуу бар болсо конфликт; чечим, катышуу өзгөрүүсү жана аудит бир transaction ичинде. EXCUSED күндү QR менен үнсүз алмаштырууга тыюу салынды.
+- [x] Mobile teacher/admin жана web admin уруксат экрандары: screen → Cubit → repository → API. Home мектеп маалыматын attendance Cubit аркылуу алат; history loading/error/race өзүнчө Cubit'ке бөлүндү.
+- [x] Server attendance status resolver; mobile home/history/dashboard жана web dashboard/analytics чыпкалары статус боюнча бирдей эсептейт. Сабак кечигүү мүнөттөрү өзүнчө метрика, ON_TIME'ды client тарапта LATE кылбайт.
+- [x] Refresh token суроолору mobile repository'лер арасында сериализацияланды; offline refresh токенди өчүрбөйт, revoked session login'ге өткөрөт; duplicate loading/submission жана disposed Cubit корголду.
+- [x] `d24f5ca6e004` migration: өзүнчө локалдык PostgreSQL базасында upgrade жана `alembic check` өттү. SQLite roundtrip/role/decision/audit tests кошулду.
+- [x] Reset диалогу жаңы уруксат арыздары да тазаланарын көрсөтөт; операция аккаунттарды жана аудитти сактайт. Production reset аткарылган жок.
+- [x] Regression: backend 78, mobile 29 жалпы + cross-repository refresh жаңы тести, web 7; analyzer/Ruff таза; iOS Simulator жана Android debug build 1.1.0+2 даяр.
+- [ ] Backend жана web deployment smoke текшерүүлөрүн толуктоо.
+- [ ] Android production signing: `mobile/android/key.properties` жана keystore жок; эски signing key керек (жаңы ачкыч өз алдынча түзүлгөн жок).
+- [ ] iOS production signing: Apple Development identity бар, Apple Distribution жок; Distribution сертификаты/private key жана provisioning керек. User-owned үч iOS файл сакталды.
+- [ ] Реалдуу iOS/Android камера/GPS E2E жана кол коюлган APK/AAB/IPA; debug/unsigned build production release катары берилбейт.
+
+## Mobile production UI — 1–3 (2026-09-09)
+
+- [x] Mobile login/splash жана authenticated экрандардагы hardcoded «№1 Орто Мектеп» алынды; реалдуу school name серверден, жүктөлбөсө мектеп аты ойлоп табылбайт.
+- [x] Teacher home жөнөкөйлөтүлдү: сервердин күнү/статусу, реалдуу график, келүү/кетүү, негизги QR action, тарых; loading/error/retry жана app resume/scan return refresh. Болжолдуу график жана телефон сааты алынды.
+- [x] `/attendance/today` additive `display_status`: PENDING/ABSENT/EXCUSED/DAY_OFF/NO_SCHEDULE/ON_TIME/LATE. Мектептин сервер убактысы жана графиктин end_time чеги колдонулат; explicit records сакталат; жаңы DB enum же migration керек эмес.
+- [x] Regression: backend 73, mobile 26, web 7 tests; mobile analyze, backend changed-file Ruff жана diff whitespace таза. 320px/1.8× text бардык 7 статус үчүн текшерилди.
+- [x] Android debug APK жана iOS Simulator debug build ийгиликтүү. Учурдагы user-owned үч iOS конфигурация файлы өзгөртүлгөн жок.
+- [ ] Бул этаптын backend өзгөрүүсүн мобилдик релизден мурда deploy кылуу (`display_status` жок эски серверде белгисиз статус коопсуз түрдө QR action'ду өчүрөт).
+- [ ] Физикалык iOS/Android түзмөктө камера/GPS end-to-end жана release signing текшерүү; бул этапта production deploy/маалымат тазалоо аткарылган жок.
+
 - [x] Мугалимдин сапын басуу → өзүнчө URL менен аналитика экраны; профиль, 6 KPI, статус/айлык кечигүү графиктери, мезгил чыпкалары жана тарых.
 - [x] Мугалим аналитикасы: сервердик дата, 1/7/30/бардык күн чектери, бош тарых, KPI/график суммалары unit test менен текшерилди.
 
@@ -489,7 +514,7 @@ Optional:
 - [ ] School Wi-Fi verification
 - [ ] Dynamic QR optional mode
 - [ ] Multiple campuses
-- [ ] Leave/permission requests
+- [x] Leave/permission requests
 - [ ] Sick leave
 - [ ] Telegram admin reports
 - [ ] Payroll integration
