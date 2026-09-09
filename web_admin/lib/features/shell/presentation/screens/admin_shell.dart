@@ -56,6 +56,7 @@ class AdminShell extends StatelessWidget {
                   _buildNavItem(context, 'Мугалимдер', Icons.people_outline, '/teachers'),
                   _buildNavItem(context, 'Иш графиги', Icons.schedule, '/schedules'),
                   _buildNavItem(context, 'Отчеттор', Icons.bar_chart, '/reports'),
+                  _buildNavItem(context, 'Уруксат арыздары', Icons.event_available, '/leaves'),
                   _buildNavItem(context, 'Настройкалар', Icons.settings_outlined, '/settings'),
                   const Spacer(),
                   const Divider(color: Color(0xFF334155), height: 1),

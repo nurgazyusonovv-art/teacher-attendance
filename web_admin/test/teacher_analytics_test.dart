@@ -40,8 +40,8 @@ void main() {
     () {
       final stats = TeacherAnalytics(history, '2026-09-07', 0);
       expect(stats.checkedIn, 2);
-      expect(stats.onTime, 1);
-      expect(stats.late, 1);
+      expect(stats.onTime, 2);
+      expect(stats.late, 0);
       expect(stats.absent, 1);
       expect(stats.lateMinutes, 10);
       expect(stats.workedMinutes, 120);

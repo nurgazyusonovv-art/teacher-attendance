@@ -22,12 +22,15 @@ AdminDailyAttendanceItem record(
 );
 
 void main() {
-  test('Dashboard categories match check-in and lesson-delay semantics', () {
+  test('Dashboard categories use server status, lesson delays remain separate', () {
     final onTime = record('ON_TIME', checked: true);
     final lessonLate = record('ON_TIME', checked: true, lessonLate: 10);
     expect(matchesGroup(onTime, AttendanceGroup.onTime), isTrue);
-    expect(matchesGroup(lessonLate, AttendanceGroup.onTime), isFalse);
-    expect(matchesGroup(lessonLate, AttendanceGroup.late), isTrue);
+    expect(matchesGroup(lessonLate, AttendanceGroup.onTime), isTrue);
+    expect(matchesGroup(lessonLate, AttendanceGroup.late), isFalse);
+    for (final status in ['EXCUSED', 'PENDING', 'NO_SCHEDULE']) {
+      expect(matchesGroup(record(status), AttendanceGroup.absent), isFalse);
+    }
     expect(matchesGroup(onTime, AttendanceGroup.checkedIn), isTrue);
     expect(matchesGroup(record('DAY_OFF'), AttendanceGroup.absent), isFalse);
     expect(matchesGroup(record('ABSENT'), AttendanceGroup.absent), isTrue);

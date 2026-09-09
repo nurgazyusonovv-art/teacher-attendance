@@ -129,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Катышуу, келүү-кетүү окуялары жана сабак кечигүүлөрү өчөт. Мугалимдер, графиктер жана аудит сакталат. Ырастоо үчүн RESET ATTENDANCE деп жазыңыз.',
+              'Катышуу, уруксат арыздары, келүү-кетүү окуялары жана сабак кечигүүлөрү өчөт. Мугалимдер, графиктер жана аудит сакталат. Ырастоо үчүн RESET ATTENDANCE деп жазыңыз.',
             ),
             TextField(
               controller: confirmation,

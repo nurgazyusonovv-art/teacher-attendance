@@ -5,17 +5,18 @@ enum AttendanceGroup { all, checkedIn, onTime, late, absent }
 
 bool matchesGroup(AdminDailyAttendanceItem r, AttendanceGroup group) {
   final checkedIn = r.checkInTime != null;
-  final onTime = r.status == 'ON_TIME' && r.lessonLateMinutes == 0;
+  final onTime = r.status == 'ON_TIME';
   return switch (group) {
     AttendanceGroup.all => true,
     AttendanceGroup.checkedIn => checkedIn,
     AttendanceGroup.onTime => checkedIn && onTime,
-    AttendanceGroup.late => checkedIn && !onTime,
-    AttendanceGroup.absent => !checkedIn && r.status != 'DAY_OFF',
+    AttendanceGroup.late => checkedIn && r.status == 'LATE',
+    AttendanceGroup.absent => !checkedIn && r.status == 'ABSENT',
   };
 }
 
 String attendanceStatus(String status) => switch (status) {
+  'PENDING' => 'Азырынча каттала элек',
   'ON_TIME' => 'Өз убагында',
   'LATE' => 'Кечиккен',
   'ABSENT' => 'Келген жок',

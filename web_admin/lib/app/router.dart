@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import '../features/leaves/presentation/leave_screen.dart';
 import '../features/auth/presentation/screens/admin_login_screen.dart';
 import '../features/shell/presentation/screens/admin_shell.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -19,6 +20,10 @@ final GoRouter adminRouter = GoRouter(
       builder: (context, state, child) =>
           AdminShell(currentRoute: state.uri.toString(), child: child),
       routes: [
+        GoRoute(
+          path: '/leaves',
+          builder: (_, _) => const LeaveScreen(admin: true),
+        ),
         GoRoute(
           path: '/dashboard',
           builder: (context, state) => const DashboardScreen(),

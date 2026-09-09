@@ -44,7 +44,7 @@ class AdminDailyAttendanceItem {
       date: json['date'] as String,
       checkInTime: json['check_in_time'] as String?,
       checkOutTime: json['check_out_time'] as String?,
-      status: json['status'] as String? ?? 'ON_TIME',
+      status: json['display_status'] as String? ?? json['status'] as String? ?? 'UNKNOWN',
       lateMinutes: json['late_minutes'] as int? ?? 0,
       lessonLateMinutes: json['lesson_late_minutes'] as int? ?? 0,
       workedMinutes: json['worked_minutes'] as int? ?? 0,

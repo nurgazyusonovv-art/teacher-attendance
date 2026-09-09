@@ -102,8 +102,12 @@ class AdminApiClient {
         value: rotatedRefreshToken,
       );
       return accessToken;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
+        await _storage.deleteAll();
+      }
+      return null;
     } catch (_) {
-      await _storage.deleteAll();
       return null;
     }
   }

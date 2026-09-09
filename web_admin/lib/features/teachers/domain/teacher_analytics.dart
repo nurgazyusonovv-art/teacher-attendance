@@ -19,15 +19,14 @@ class TeacherAnalytics {
       .where(
         (r) =>
             r.checkInTime != null &&
-            r.status == 'ON_TIME' &&
-            r.lessonLateMinutes == 0,
+            r.status == 'ON_TIME',
       )
       .length;
   int get late => records
       .where(
         (r) =>
             r.checkInTime != null &&
-            (r.status == 'LATE' || r.lateMinutes + r.lessonLateMinutes > 0),
+            r.status == 'LATE',
       )
       .length;
   int get absent => records.where((r) => r.status == 'ABSENT').length;
