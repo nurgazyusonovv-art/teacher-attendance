@@ -1,7 +1,9 @@
 from fastapi import APIRouter
+from app.api.v1.endpoints import leaves
 from app.api.v1.endpoints import attendance, auth, devices, health, qr, reports, schedules, schools, teachers
 
 api_router = APIRouter()
+api_router.include_router(leaves.router, prefix='/leaves', tags=['Leave requests'])
 api_router.include_router(health.router, tags=["Health"])
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
 api_router.include_router(schools.router, prefix="/schools", tags=["Schools"])

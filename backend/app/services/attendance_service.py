@@ -114,6 +114,9 @@ class AttendanceService:
             .with_for_update()
         )
         daily = daily_res.scalar_one_or_none()
+        if daily and daily.status == AttendanceStatus.EXCUSED:
+            raise AppException(code=ErrorCode.VALIDATION_ERROR,
+                message='Бүгүн уруксат берилген. Өзгөртүү үчүн администраторго кайрылыңыз.', status_code=409)
         if daily and daily.check_in_time is not None:
             raise AppException(
                 code=ErrorCode.ALREADY_CHECKED_IN,
@@ -445,8 +448,15 @@ class AttendanceService:
         lesson_late_minutes = sum(d.delay_minutes for d in lesson_delays)
         morning_late = daily.late_minutes if daily else 0
 
+        # Presentation state is computed from school server time, never the phone.
+        # Preserve explicit corrections even if the schedule later changes.
+        from app.services.attendance_status_service import AttendanceStatusService
+        display_status = AttendanceStatusService.resolve(daily, schedule, today, server_now)
+
         return TodayStatusResponse(
+            school_name=school.name,
             date=today,
+            display_status=display_status,
             has_checked_in=daily is not None and daily.check_in_time is not None,
             has_checked_out=daily is not None and daily.check_out_time is not None,
             check_in_time=daily.check_in_time if daily else None,
@@ -454,8 +464,8 @@ class AttendanceService:
             status=daily.status if daily else None,
             late_minutes=morning_late,
             worked_minutes=daily.worked_minutes if daily else 0,
-            scheduled_start=schedule.start_time if schedule else school.default_start_time,
-            scheduled_end=schedule.end_time if schedule else school.default_end_time,
+            scheduled_start=schedule.start_time if schedule else None,
+            scheduled_end=schedule.end_time if schedule else None,
             is_day_off=schedule.is_day_off if schedule else False,
             lesson_delays=lesson_delays,
             lesson_late_minutes=lesson_late_minutes,
@@ -541,6 +551,8 @@ class AttendanceService:
         school_res = await db.execute(select(School).where(School.id == school_id))
         school = school_res.scalar_one()
         query_date = target_date or today_date_in_school_timezone(school.timezone)
+        from app.services.attendance_status_service import AttendanceStatusService
+        server_now = current_time_in_school_timezone(school.timezone)
 
         # Get all active teachers in school
         teachers_res = await db.execute(
@@ -612,9 +624,9 @@ class AttendanceService:
             if record:
                 checked_in_count += int(record.check_in_time is not None)
                 total_late = record.late_minutes + lesson_late
-                if record.check_in_time and record.status == AttendanceStatus.ON_TIME and lesson_late == 0:
+                if record.check_in_time and record.status == AttendanceStatus.ON_TIME:
                     on_time_count += 1
-                elif record.check_in_time:
+                elif record.check_in_time and record.status == AttendanceStatus.LATE:
                     late_count += 1
 
                 read_records.append(
@@ -626,6 +638,7 @@ class AttendanceService:
                         check_in_time=record.check_in_time,
                         check_out_time=record.check_out_time,
                         status=record.status,
+                        display_status=AttendanceStatusService.resolve(record, schedule, query_date, server_now),
                         late_minutes=record.late_minutes,
                         worked_minutes=record.worked_minutes,
                         is_manually_corrected=record.is_manually_corrected,
@@ -644,6 +657,7 @@ class AttendanceService:
                 read_records.append(
                     DailyAttendanceRead(
                         id=f"virtual-{t.id}",
+                        display_status=AttendanceStatusService.resolve(None, schedule, query_date, server_now),
                         teacher_id=t.id,
                         school_id=school_id,
                         date=query_date,
@@ -671,7 +685,7 @@ class AttendanceService:
         not_checked_in_count = sum(
             1
             for record in read_records
-            if record.check_in_time is None and record.status == AttendanceStatus.ABSENT
+            if record.check_in_time is None and record.display_status == 'ABSENT'
         )
 
         return AdminDashboardSummary(

@@ -1,5 +1,5 @@
 from datetime import date, datetime, time
-from typing import List, Optional
+from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import AttendanceEventType, AttendanceStatus
@@ -33,6 +33,7 @@ class AttendanceEventRead(BaseModel):
 
 
 class DailyAttendanceRead(BaseModel):
+    display_status: Optional[str] = None
     id: str
     teacher_id: str
     school_id: str
@@ -56,7 +57,9 @@ class DailyAttendanceRead(BaseModel):
 
 
 class TodayStatusResponse(BaseModel):
+    school_name: Optional[str] = None
     date: date
+    display_status: Literal['ON_TIME', 'LATE', 'ABSENT', 'EXCUSED', 'DAY_OFF', 'PENDING', 'NO_SCHEDULE']
     has_checked_in: bool
     has_checked_out: bool
     check_in_time: Optional[datetime] = None

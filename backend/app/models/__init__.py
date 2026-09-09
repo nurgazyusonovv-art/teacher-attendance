@@ -11,9 +11,11 @@ from app.models.audit import AuditLog
 from app.models.device import Device
 from app.models.lesson_delay import LessonDelay
 from app.models.auth_security import AuthSession, LoginAttempt, AttendanceRateBucket
+from app.models.leave_request import LeaveRequest
 
 __all__ = [
     "Base",
+    "LeaveRequest",
     "UserRole",
     "AttendanceEventType",
     "AttendanceStatus",

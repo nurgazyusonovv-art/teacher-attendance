@@ -3,6 +3,7 @@ from app.core.errors import AppException, ErrorCode
 from app.models.daily_attendance import DailyAttendance
 from app.models.attendance import AttendanceEvent
 from app.models.lesson_delay import LessonDelay
+from app.models.leave_request import LeaveRequest
 from app.services.audit_service import AuditService
 
 
@@ -13,7 +14,7 @@ class AttendanceResetService:
             raise AppException(code=ErrorCode.VALIDATION_ERROR,
                                message="Ырастоо сөзү туура эмес.", status_code=400)
         counts = {}
-        for model in (LessonDelay, AttendanceEvent, DailyAttendance):
+        for model in (LeaveRequest, LessonDelay, AttendanceEvent, DailyAttendance):
             result = await db.execute(delete(model).where(model.school_id == school_id))
             counts[model.__tablename__] = result.rowcount or 0
         AuditService.add(db, school_id=school_id, user_id=actor_id,
