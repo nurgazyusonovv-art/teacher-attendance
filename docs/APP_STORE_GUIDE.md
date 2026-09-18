@@ -65,6 +65,17 @@ To set a new password, add `REVIEW_DEMO_ROTATE_PASSWORD=true`. This is the only
 way to change it: an administrator is scoped to their own school and cannot
 reach the demo account. Rotating revokes every existing session.
 
+### Verifying before submission
+
+```
+REVIEW_DEMO_PASSWORD='...' python scripts/verify_review_flow.py
+```
+
+Signs in as the demo teacher and performs the reviewer's exact sequence —
+check-in and check-out from Cupertino coordinates, history, and a rejected
+invalid QR — against the live API. Attendance rows land in the demo tenant
+only.
+
 ### Reviewer Credentials:
 - **Teacher Account:** `demo_teacher`
 - **Password:** provided in App Store Connect review notes
