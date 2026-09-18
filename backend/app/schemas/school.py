@@ -22,6 +22,10 @@ class SchoolBase(BaseModel):
         False,
         description="Катталган түзмөктөн гана каттоого уруксат берүү",
     )
+    is_review_demo: bool = Field(
+        False,
+        description="App Review үчүн изоляцияланган demo мектеп (API аркылуу өзгөртүлбөйт)",
+    )
     telegram_bot_token: Optional[str] = Field(None, description="Telegram Bot Token")
     telegram_chat_id: Optional[str] = Field(None, description="Telegram Chat/Channel ID")
     telegram_enabled: bool = Field(False, description="Telegram отчет жөнөтүү активдүүлүгү")

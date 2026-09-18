@@ -16,6 +16,12 @@ from app.models.schedule import WorkSchedule
 from app.models.qr import QrCredential
 
 
+# Half of Earth's circumference is ~20 040 km, so every point is inside.
+REVIEW_RADIUS_METERS = 20_100_000.0
+# A simulator or desktop browser reports a very coarse position.
+REVIEW_MAX_ACCURACY_METERS = 100_000.0
+
+
 async def seed_data():
     if os.getenv("ALLOW_BOOTSTRAP_SEED", "").lower() != "true":
         raise RuntimeError(
@@ -62,17 +68,26 @@ async def seed_data():
                 code="DEMO-001",
                 latitude=42.876500,
                 longitude=74.603700,
-                allowed_radius_meters=80.0,
-                max_accuracy_meters=50.0,
+                # An App Store reviewer is not in Bishkek, so this tenant's own
+                # geofence spans the planet. The production school keeps its
+                # real radius; the security code is the same for both.
+                allowed_radius_meters=REVIEW_RADIUS_METERS,
+                max_accuracy_meters=REVIEW_MAX_ACCURACY_METERS,
                 default_start_time=time(8, 0),
                 default_end_time=time(17, 0),
                 grace_minutes=5,
                 timezone="Asia/Bishkek",
                 is_active=True,
+                is_review_demo=True,
             )
             db.add(demo_school)
             await db.flush()
             print("  ✓ Created isolated App Review demo school")
+        else:
+            # Keep an existing demo row reviewable if it predates the flag.
+            demo_school.is_review_demo = True
+            demo_school.allowed_radius_meters = REVIEW_RADIUS_METERS
+            demo_school.max_accuracy_meters = REVIEW_MAX_ACCURACY_METERS
 
         # 2. Create Admin User
         stmt = select(User).where(User.username == "admin")

@@ -48,6 +48,22 @@ class AttendanceService:
             )
 
     @staticmethod
+    def _ensure_review_school_isolation(school: School, user: User) -> None:
+        """Keeps the worldwide review geofence away from real teachers.
+
+        The App Review school (PROJECT.md §13) carries a deliberately
+        unbounded radius so a reviewer can check in from anywhere. That is
+        only acceptable while the school holds demo accounts alone, so the
+        invariant is enforced here rather than left to seeding.
+        """
+        if school.is_review_demo and not user.is_demo:
+            raise AppException(
+                code=ErrorCode.REVIEW_SCHOOL_FORBIDDEN,
+                message="Бул мектеп App Review үчүн гана. Өз мектебиңиздин QR-кодун сканерлеңиз.",
+                status_code=403,
+            )
+
+    @staticmethod
     async def register_check_in(
         db: AsyncSession,
         teacher: Teacher,
@@ -72,6 +88,8 @@ class AttendanceService:
                 message="Сиз башка мектептин QR-кодун сканерледиңиз",
                 status_code=400,
             )
+
+        AttendanceService._ensure_review_school_isolation(school, user)
 
         # 2. QR Token validation
         await QrService.validate_qr_token(db, school.id, payload.qr_token)
@@ -265,6 +283,8 @@ class AttendanceService:
                 message="Сиз башка мектептин QR-кодун сканерледиңиз",
                 status_code=400,
             )
+
+        AttendanceService._ensure_review_school_isolation(school, user)
 
         # 2. QR validation
         await QrService.validate_qr_token(db, school.id, payload.qr_token)

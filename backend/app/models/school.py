@@ -39,6 +39,10 @@ class School(Base):
     # When on, a scan must come from the teacher's approved device.
     # Off by default so deployed app versions that send no device id keep working.
     device_binding_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # The isolated App Review tenant (PROJECT.md §13). Its geofence is
+    # deliberately worldwide so a reviewer can test from anywhere, which is
+    # only safe because such a school may never hold a real teacher.
+    is_review_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     # Telegram Integration Settings
     telegram_bot_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
