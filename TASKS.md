@@ -535,8 +535,16 @@ Optional:
 - [ ] Mobile ичиндеги админ панели (5 519 сап, `lib`'тин 44%) web_admin менен кайталанат — продукт чечими же жалпы пакетке чыгаруу.
 - [ ] `attendance_start_date`'ти орнотуу үчүн web admin settings экранына талаа кошуу (азыр `PATCH /schools/{id}` аркылуу гана).
 
-### Deploy эскертүүсү
-- [ ] `e35f1cb7d005` migration'ды production'го жүргүзүү, Render'де `teacher-attendance-finalize-absences` cron сервисин жана `SECRETS_ENCRYPTION_KEY` env var'ын түзүү (ал жок болсо SECRET_KEY'ге түшөт — бул учурда SECRET_KEY rotate кылынганда Telegram токен окулбай калат). Cron түзүлгөнгө чейин ABSENT жазуулары автоматтык жазылбайт (dashboard'дун `display_status`'у мурдагыдай туура иштейт, тарых/отчет үчүн кол менен `POST /attendance/admin/catch-up-absences` чакырса болот).
+### Deploy — 2026-09-18 аткарылды
+- [x] `73f11b2` → `23fb5cd` `origin/main`'ге push кылынды, Render автоматтык деплой жүрдү. Үч migration (`e35f1cb7d005`, `f46a2dc8e006`, `a7b93ef1d007`) `preDeployCommand` аркылуу колдонулду.
+- [x] Production текшерилди: `/health` healthy, OpenAPI'де `/attendance/history`, `/auth/change-password`, `/attendance/admin/catch-up-absences`, `/devices/{id}/approve|revoke`, `/devices/me` бар; `TodayStatusResponse.utc_offset_minutes`, `AttendanceScanRequest.device_id`, `SchoolRead.attendance_start_date` жана `device_binding_enabled` схемада; авторизациясыз `/attendance/history` 401 кайтарат.
+- [x] `SECRETS_ENCRYPTION_KEY` Render'де коюлду (user).
+- [x] CI `35317084366` толугу менен SUCCESS (backend, postgres-integration, контейнер, mobile, web_admin, iOS).
+
+### Деплойдон кийин калгандар
+- [ ] Render'де `teacher-attendance-finalize-absences` cron сервисин түзүү. Ал жок болгондуктан **азыр ABSENT автоматтык жазылбайт** — dashboard'дун `display_status`'у мурдагыдай туура, бирок тарых/отчет үчүн админ `POST /attendance/admin/catch-up-absences` чакырышы керек.
+- [ ] Чечим керек: demo аккаунт эми geofence'тен өтпөйт (мурда `if not user.is_demo` менен айланып өтчү). Бул PROJECT.md §13 «demo backdoor болбошу керек» талабына дал келет, бирок **App Review'га тоскоол**: Cupertino'догу рецензент Бишкектеги мектептин радиусуна кире албайт. Тандоо: (а) рецензент үчүн өзүнчө demo мектеп координаты/чоң радиус, (б) `review_demo` tenant, (в) demo bypass'ты кайтаруу.
+- [ ] Түзмөк чектөөсүн (`device_binding_enabled`) качан күйгүзүү — азыр өчүк. Мугалимдер 1.1.3+5 версиясына өткөндөн кийин гана күйгүзүү керек.
 
 # POST-MVP
 
