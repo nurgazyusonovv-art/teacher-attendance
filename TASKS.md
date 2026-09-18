@@ -520,6 +520,11 @@ Optional:
 - [x] `a7b93ef1d007` migration: `daily_attendance(school_id,date)`, `daily_attendance(teacher_id,date)`, `attendance_events(teacher_id,event_time)`, `lesson_delays(school_id,date)`, `lesson_delays(teacher_id,date)`, `audit_logs(school_id,action,created_at)`. Модель metadata'сы менен шайкеш, `alembic check` таза, downgrade roundtrip өттү.
 - [x] Absence pass: график жана мугалимдер тизмеси бүт диапазон үчүн бир жолу жүктөлөт; күнүнө бир окуу менен кайсы мугалим өзгөрүшү мүмкүн экени аныкталып, lock жана кайра окуу ошолорго гана колдонулат. Race коргоосу сакталды (чечим ар дайым lock астындагы окуудан алынат). Idempotency тест менен бекитилди.
 
+### Timezone оңдоосу production'до ырасталды (2026-09-18)
+- [x] `verify_review_flow` production'го каршы: `check_in_time`/`check_out_time`/тарых — баары `+06:00`, сааты **14:57** (мурдагы `08:57Z` эмес). Мектептин offset'и 360 мүн.
+- [x] Текшергичтин өзүндөгү кемчилик оңдолду: күн мурда катталган болсо check-in/check-out `ALREADY_CHECKED_IN` менен кыска жолго түшүп, timestamp'ти басып чыгарбай, «✅ иштейт» деп жалган ишеним бере турган. Эми скандан кийин `/attendance/today` кайра окулуп, зона дайыма текшерилет.
+- [x] Дүкөндөгү 1.1.3+5 версиясы менен шайкештик текшерилди: анын `formatBishkekTime` логикасы `+06:00` келген маанини да туура 14:57 кылып көрсөтөт (`contains('+')` → `toUtc()+6`). Демек backend өзгөрүүсү талаадагы тиркемени бузган жок.
+
 ### Phase 4 кийинки оңдоо — timezone regression (2026-09-18)
 - [x] **Phase 4'төгү «келген убакытты ошол бойдон көрсөтүү» чечими туура эмес болчу.** `DailyAttendance.check_in_time` — `TIMESTAMPTZ`, ошондуктан 14:57+06:00 деп жазылган маани PostgreSQL'ден 08:57+00:00 болуп кайтат жана `...Z` түрүндө сериализацияланат. Мобилдик тиркеме аны 08:57 деп көрсөтмөк — **6 сааттык ката**. Production'догу `verify_review_flow` чыгарган `2026-09-18T08:57:43.020697Z` менен тастыкталды.
 - [x] Мени эмне адаштырды: `/health` убакытты Python'до курат (DB round-trip жок), ошондуктан `+06:00` көрсөтөт; ал эми Phase 4 тесттерим өзүм ойлоп тапкан саптарды колдонуп, `Z` учурун каптабай калган.
