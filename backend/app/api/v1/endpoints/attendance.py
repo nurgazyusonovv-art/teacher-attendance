@@ -150,9 +150,9 @@ async def get_teacher_history_for_admin(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
+    # Absence finalization is a write and belongs to the scheduled job
+    # (scripts/finalize_absences.py), never to a read endpoint.
     await ensure_teacher_access(db, admin_user, teacher_id)
-    teacher = (await db.execute(select(Teacher).where(Teacher.id == teacher_id))).scalar_one()
-    await AbsenceService.catch_up(db, teacher.school_id)
     return await AttendanceService.get_teacher_history(
         db=db,
         teacher_id=teacher_id,
@@ -168,7 +168,6 @@ async def get_today_dashboard(
     admin_user: User = Depends(get_current_active_admin),
 ):
     school_id = await get_user_school_id(db, admin_user)
-    await AbsenceService.catch_up(db, school_id)
     return await AttendanceService.get_admin_today_dashboard(
         db=db,
         school_id=school_id,
@@ -186,6 +185,17 @@ async def finalize_absences(
     school_id = await get_user_school_id(db, admin_user)
     count = await AbsenceService.process_workdays_from(db, school_id, start_date, end_date)
     return {"created_or_updated": count, "start_date": start_date, "end_date": end_date}
+
+
+@router.post("/admin/catch-up-absences", summary="Иштелбеген күндөрдү автоматтык белгилөө (Админ)")
+async def catch_up_absences(
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_active_admin),
+):
+    """Manual trigger for the same pass the scheduled job runs. Idempotent."""
+    school_id = await get_user_school_id(db, admin_user)
+    created = await AbsenceService.catch_up(db, school_id)
+    return {"created_or_updated": created}
 
 
 @router.post("/admin/reset", summary="Мектептин катышуу тест маалыматтарын тазалоо (Админ)")

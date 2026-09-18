@@ -1,7 +1,7 @@
 import math
 from dataclasses import dataclass
 from typing import Optional
-from app.core.errors import ErrorCode
+from app.core.errors import AppException, ErrorCode
 
 
 @dataclass
@@ -39,6 +39,53 @@ class GeofenceService:
         )
         c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
         return cls.EARTH_RADIUS_METERS * c
+
+    @classmethod
+    def verify_or_raise(
+        cls,
+        *,
+        teacher_lat: float,
+        teacher_lon: float,
+        teacher_accuracy: float,
+        school_lat: float,
+        school_lon: float,
+        allowed_radius_meters: float,
+        max_accuracy_meters: float,
+    ) -> float:
+        """Single geofence gate for every attendance scan.
+
+        Returns the verified distance in meters, or raises the user-facing
+        AppException. Check-in and check-out must share this path so the two
+        can never drift apart.
+        """
+        result = cls.verify_location(
+            teacher_lat=teacher_lat,
+            teacher_lon=teacher_lon,
+            teacher_accuracy=teacher_accuracy,
+            school_lat=school_lat,
+            school_lon=school_lon,
+            allowed_radius_meters=allowed_radius_meters,
+            max_accuracy_meters=max_accuracy_meters,
+        )
+        if result.is_valid:
+            return result.distance_meters
+
+        if result.error_code == ErrorCode.LOCATION_ACCURACY_TOO_LOW:
+            message = (
+                f"GPS тактыгы жетишсиз ({teacher_accuracy:.1f}м > "
+                f"{max_accuracy_meters:.0f}м). Ачык жерге чыгып кайталаңыз."
+            )
+        else:
+            message = (
+                f"Сиз мектептин аймагынан тышкарысыз (Аралык: "
+                f"{result.distance_meters:.1f}м, уруксат: {allowed_radius_meters:.0f}м). "
+                "Мектепке жакындап кайра аракет кылыңыз."
+            )
+        raise AppException(
+            code=result.error_code,
+            message=message,
+            status_code=400,
+        )
 
     @classmethod
     def verify_location(

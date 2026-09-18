@@ -95,13 +95,20 @@ async def update_teacher(
 async def delete_teacher(
     teacher_id: str,
     hard_delete: bool = Query(False, description="Базадан толук өчүрүү"),
+    confirmation: Optional[str] = Query(
+        None,
+        description=(
+            "Катышуу тарыхы бар мугалимди толук өчүрүү үчүн талап кылынган "
+            "ырастоо сөзү: «DELETE ATTENDANCE HISTORY»"
+        ),
+    ),
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
     await ensure_teacher_access(db, admin_user, teacher_id)
     if hard_delete:
         await TeacherService.delete_teacher(
-            db, teacher_id, actor_user_id=admin_user.id
+            db, teacher_id, actor_user_id=admin_user.id, confirmation=confirmation
         )
         return {"success": True, "message": "Мугалим базадан толук өчүрүлдү"}
     return await TeacherService.deactivate_teacher(

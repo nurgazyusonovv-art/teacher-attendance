@@ -31,3 +31,35 @@ services:
         value: "80.0"
       - key: CORS_ORIGINS
         sync: false
+
+  # Finalizes ABSENT records once per day, after the latest school end time.
+  # 18:00 UTC == 00:00 Asia/Bishkek (UTC+6), so the previous workday is closed.
+  - type: cron
+    name: teacher-attendance-finalize-absences
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    region: frankfurt
+    schedule: "0 18 * * *"
+    dockerCommand: python scripts/finalize_absences.py
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: teacher-attendance-api
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        sync: false
+      - key: SYNC_DATABASE_URL
+        sync: false
+      - key: DB_SSL_REQUIRE
+        value: "true"
+      - key: TIMEZONE
+        value: Asia/Bishkek
+      - key: CORS_ORIGINS
+        sync: false

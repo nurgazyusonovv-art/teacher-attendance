@@ -473,6 +473,49 @@ Optional:
 
 ---
 
+## Толук аудит боюнча оңдоо — 2026-09-18
+
+### Phase 0 — дароо (аткарылды)
+- [x] `hard_delete` коргоосу: катышуу жазуусу бар мугалимди өчүрүү 409 менен четке кагылат; `DELETE ATTENDANCE HISTORY` ырастоосу талап кылынат, жоюлган жазуулардын саны audit log'го жазылат.
+- [x] Колдонулбаган `NSPhotoLibraryUsageDescription`/`NSPhotoLibraryAddUsageDescription` iOS Info.plist'тен алынды (`image_picker` сыяктуу плагин жок эле).
+- [ ] Мурда ачыкка чыккан production JWT/DB credentials'ди provider'лерде rotate кылуу (бул код өзгөртүүсү менен чечилбейт).
+
+### Phase 1 — attendance data integrity (аткарылды)
+- [x] `School.attendance_start_date` колонкасы + `e35f1cb7d005` migration; `absence_service.py` ичиндеги hardcode `date(2026, 9, 7)` алынды. Бар мектептер ошол эле датага backfill кылынды, жаңылары `created_at`'ка түшөт. SQLite'та upgrade/downgrade roundtrip жана `alembic check` өттү.
+- [x] `AbsenceService.catch_up` админдин GET `/teacher/{id}/history` жолунан алынды (GET эми жазбайт). Ордуна `scripts/finalize_absences.py` + Render cron (`0 18 * * *` UTC = 00:00 Asia/Bishkek) жана кол менен чакыруу үчүн `POST /attendance/admin/catch-up-absences`.
+- [x] `GeofenceService.verify_or_raise` — check-in жана check-out эми бир эле geofence дарбазасынан өтөт; эки inline көчүрмө (ар башка ката билдирүүлөрү менен) жоюлду. Мурда `verify_location` тестелген, бирок продакшн жолунда колдонулган эмес.
+- [x] Жаңы `tests/test_attendance_integrity.py`: hard delete коргоосу (эки тарабы), per-school absence start date + created_at fallback, geofence дарбазасы, check-out'тун radius/accuracy текшерүүсү. Backend 78 → 84 тест.
+
+### Phase 2 — security (кийинки)
+- [ ] `POST /auth/change-password` — мугалим админ койгон сырсөздү алмаштыра албайт (эски+жаңы сырсөз, башка session'дарды revoke, audit).
+- [ ] Login lockout `(identifier, ip)` боюнча гана — IP ротациясы аны толук айланып өтөт; identifier боюнча өзүнчө эсептегич керек.
+- [ ] `schools.telegram_bot_token` базада ачык текст (API'де write-only — туура). Шифрлөө же secret store'го көчүрүү.
+- [ ] Mobile `go_router`'да `redirect` guard жок: `/admin` жана `/home` deep link auth'сыз ачылат.
+- [ ] Чечим керек: `Device` каттоо бар, бирок check-in'де эч качан текшерилбейт (PROJECT.md §10 «registered device»). Бүтүрүү же документтен алып салуу.
+
+### Phase 3 — performance (кийинки)
+- [ ] Admin dashboard N+1: `resolve_schedule_for_date` ар бир мугалим үчүн өзүнчө чакырылат (`attendance_service.py`).
+- [ ] `get_teacher_history` бардык саптарды жүктөп, year/month'ту Python'да чыпкалайт; SQL чыпкасы + pagination керек.
+- [ ] Composite index: `daily_attendance(school_id, date)`, `attendance_events(teacher_id, event_time)`, `lesson_delays(school_id, date)`.
+- [ ] `finalize_absences`'ти batch query'ге өткөрүү (азыр күн × мугалим боюнча цикл).
+
+### Phase 4 — client correctness (кийинки)
+- [ ] `DateTimeUtils`'те UTC+6 катып калган (3 жер) — backend `school.timezone`'ду туура колдонот, клиент аны эске албайт.
+- [ ] `formatBishkekTime`: microsecond'у бар naive ISO сап (`contains('-') && length > 19`) UTC деп эсептелип, +6 саат жылдырылат.
+- [ ] Offline cache'тин күн чеги клиенттин саатына таянат (`attendance_repository.dart`).
+
+### Phase 5 — maintainability (релизди тоспойт)
+- [ ] `web_admin`'дин 7 feature'инин 5'и Cubit'ти айланып өтөт (dashboard, teachers, schedules, reports, settings — `setState` + түз repository). AGENTS.md #3.
+- [ ] API жообунун формасы эки башка: `/auth/*` → `StandardResponse`, калгандары → түз модель.
+- [ ] `attendance_service.py` ~900 сап; `DailyAttendanceRead` 6 жолу, `LessonDelayRead` 5 жолу кол менен түзүлөт — mapper'лерге чыгаруу.
+- [ ] Өлүк код: `AppConstants.defaultBaseUrl` setter жана `keyBaseUrl` эч жерде колдонулбайт.
+- [ ] Default'тордун карама-каршылыгы: `SchoolBase.grace_minutes`=5 жана `ScheduleCreate.grace_minutes`=15, ал эми модель default'у 0 жана PROJECT.md 0. Бул кимдин LATE экенин үнсүз өзгөртөт — админ менен макулдашып чечүү керек.
+- [ ] Mobile ичиндеги админ панели (5 519 сап, `lib`'тин 44%) web_admin менен кайталанат — продукт чечими же жалпы пакетке чыгаруу.
+- [ ] `attendance_start_date`'ти орнотуу үчүн web admin settings экранына талаа кошуу (азыр `PATCH /schools/{id}` аркылуу гана).
+
+### Deploy эскертүүсү
+- [ ] `e35f1cb7d005` migration'ды production'го жүргүзүү жана Render'де `teacher-attendance-finalize-absences` cron сервисин түзүү. Cron түзүлгөнгө чейин ABSENT жазуулары автоматтык жазылбайт (dashboard'дун `display_status`'у мурдагыдай туура иштейт, тарых/отчет үчүн кол менен `POST /attendance/admin/catch-up-absences` чакырса болот).
+
 # POST-MVP
 
 ## Уруксат агымы жана mobile release — 2026-09-09

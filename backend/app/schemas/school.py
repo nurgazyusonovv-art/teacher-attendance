@@ -14,6 +14,10 @@ class SchoolBase(BaseModel):
     default_end_time: time = Field(time(17, 0), description="Жалпы жумуш аяктоо убактысы")
     grace_minutes: int = Field(5, ge=0, le=60, description="Кечигүүгө берилген жеңилдик убактысы (мүнөт)")
     timezone: str = Field("Asia/Bishkek", description="Мектептин убакыт алкагы")
+    attendance_start_date: Optional[date] = Field(
+        None,
+        description="Катышуу эсептеле баштаган күн (бош болсо мектеп түзүлгөн күн)",
+    )
     telegram_bot_token: Optional[str] = Field(None, description="Telegram Bot Token")
     telegram_chat_id: Optional[str] = Field(None, description="Telegram Chat/Channel ID")
     telegram_enabled: bool = Field(False, description="Telegram отчет жөнөтүү активдүүлүгү")
@@ -35,6 +39,7 @@ class SchoolUpdate(BaseModel):
     default_end_time: Optional[time] = None
     grace_minutes: Optional[int] = Field(None, ge=0, le=60)
     timezone: Optional[str] = None
+    attendance_start_date: Optional[date] = None
     telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
     telegram_enabled: Optional[bool] = None

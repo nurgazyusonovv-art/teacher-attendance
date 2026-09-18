@@ -33,6 +33,9 @@ class School(Base):
     default_end_time: Mapped[time] = mapped_column(Time, default=time(17, 0), nullable=False)
     grace_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Bishkek", nullable=False)
+    # First day this school is accounted for. Absence finalization never looks
+    # further back than this; NULL falls back to the school creation date.
+    attendance_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     
     # Telegram Integration Settings
     telegram_bot_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

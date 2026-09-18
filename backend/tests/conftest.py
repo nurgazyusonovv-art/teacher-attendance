@@ -15,7 +15,7 @@ os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_TEST_DB_PATH}"
 os.environ["SYNC_DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
 import pytest
 import pytest_asyncio
-from datetime import time
+from datetime import date, time
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +47,8 @@ async def _create_test_database() -> None:
             default_end_time=time(17),
             grace_minutes=5,
             timezone="Asia/Bishkek",
+            # Mirrors the production backfill of the former hardcoded epoch.
+            attendance_start_date=date(2026, 9, 7),
         )
         session.add(school)
         await session.flush()

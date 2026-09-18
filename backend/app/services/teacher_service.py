@@ -8,6 +8,10 @@ from app.core.errors import AppException, ErrorCode
 from app.core.security import get_password_hash
 from app.models.enums import UserRole
 from app.models.auth_security import AuthSession
+from app.models.attendance import AttendanceEvent
+from app.models.daily_attendance import DailyAttendance
+from app.models.leave_request import LeaveRequest
+from app.models.lesson_delay import LessonDelay
 from app.models.school import School
 from app.models.teacher import Teacher
 from app.models.user import User
@@ -306,9 +310,29 @@ class TeacherService:
             actor_user_id=actor_user_id,
         )
 
+    HARD_DELETE_CONFIRMATION = "DELETE ATTENDANCE HISTORY"
+
+    @staticmethod
+    async def count_attendance_records(
+        db: AsyncSession, teacher_id: str
+    ) -> dict[str, int]:
+        """Counts every attendance artefact a hard delete would destroy."""
+        counts: dict[str, int] = {}
+        for model in (DailyAttendance, AttendanceEvent, LessonDelay, LeaveRequest):
+            result = await db.execute(
+                select(func.count())
+                .select_from(model)
+                .where(model.teacher_id == teacher_id)
+            )
+            counts[model.__tablename__] = int(result.scalar_one() or 0)
+        return counts
+
     @staticmethod
     async def delete_teacher(
-        db: AsyncSession, teacher_id: str, actor_user_id: Optional[str] = None
+        db: AsyncSession,
+        teacher_id: str,
+        actor_user_id: Optional[str] = None,
+        confirmation: Optional[str] = None,
     ) -> bool:
         result = await db.execute(
             select(Teacher).where(Teacher.id == teacher_id)
@@ -321,6 +345,22 @@ class TeacherService:
                 status_code=404,
             )
 
+        # Hard delete cascades into attendance history and cannot be undone.
+        # Refuse silently destroying records; require an explicit confirmation.
+        counts = await TeacherService.count_attendance_records(db, teacher_id)
+        total_records = sum(counts.values())
+        if total_records and confirmation != TeacherService.HARD_DELETE_CONFIRMATION:
+            raise AppException(
+                code=ErrorCode.VALIDATION_ERROR,
+                message=(
+                    f"Бул мугалимде {total_records} катышуу жазуусу бар жана алар "
+                    "биротоло өчүрүлөт. Тарыхты сактоо үчүн деактивациялаңыз "
+                    f"же ырастоо сөзүн жазыңыз: «{TeacherService.HARD_DELETE_CONFIRMATION}»."
+                ),
+                status_code=409,
+                details={"records": counts, "total": total_records},
+            )
+
         user_id = teacher.user_id
         AuditService.add(
             db,
@@ -330,6 +370,7 @@ class TeacherService:
             entity_name="teacher",
             entity_id=teacher.id,
             old_values={"employee_code": teacher.employee_code},
+            new_values={"destroyed_records": counts, "total": total_records},
         )
         # Delete user which cascades to teacher and all dependent records
         await db.execute(delete(User).where(User.id == user_id))

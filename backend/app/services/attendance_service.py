@@ -76,28 +76,15 @@ class AttendanceService:
         await QrService.validate_qr_token(db, school.id, payload.qr_token)
 
         # 3. GPS Geofence validation (AGENTS.md #6)
-        distance = GeofenceService.calculate_haversine_distance(
-            lat1=school.latitude,
-            lon1=school.longitude,
-            lat2=payload.latitude,
-            lon2=payload.longitude,
+        distance = GeofenceService.verify_or_raise(
+            teacher_lat=payload.latitude,
+            teacher_lon=payload.longitude,
+            teacher_accuracy=payload.accuracy,
+            school_lat=school.latitude,
+            school_lon=school.longitude,
+            allowed_radius_meters=school.allowed_radius_meters,
+            max_accuracy_meters=school.max_accuracy_meters,
         )
-
-        # Demo mode bypass (AGENTS.md #17: dedicated demo teacher can test anywhere)
-        if not user.is_demo:
-            if payload.accuracy > school.max_accuracy_meters:
-                raise AppException(
-                    code=ErrorCode.LOCATION_ACCURACY_TOO_LOW,
-                    message=f"GPS тактыгы жетишсиз ({payload.accuracy:.1f}м > {school.max_accuracy_meters:.0f}м). Ачык жерге чыгып кайталаңыз.",
-                    status_code=400,
-                )
-
-            if distance > school.allowed_radius_meters:
-                raise AppException(
-                    code=ErrorCode.LOCATION_OUTSIDE_SCHOOL,
-                    message=f"Сиз мектептин аймагынан тышкарысыз (Аралык: {distance:.1f}м, уруксат: {school.allowed_radius_meters:.0f}м).",
-                    status_code=400,
-                )
 
         # 4. Authoritative Server Time & Date (AGENTS.md #5)
         server_now = current_time_in_school_timezone(school.timezone)
@@ -277,28 +264,16 @@ class AttendanceService:
         # 2. QR validation
         await QrService.validate_qr_token(db, school.id, payload.qr_token)
 
-        # 3. GPS Geofence validation
-        distance = GeofenceService.calculate_haversine_distance(
-            lat1=school.latitude,
-            lon1=school.longitude,
-            lat2=payload.latitude,
-            lon2=payload.longitude,
+        # 3. GPS Geofence validation (AGENTS.md #6)
+        distance = GeofenceService.verify_or_raise(
+            teacher_lat=payload.latitude,
+            teacher_lon=payload.longitude,
+            teacher_accuracy=payload.accuracy,
+            school_lat=school.latitude,
+            school_lon=school.longitude,
+            allowed_radius_meters=school.allowed_radius_meters,
+            max_accuracy_meters=school.max_accuracy_meters,
         )
-
-        if not user.is_demo:
-            if payload.accuracy > school.max_accuracy_meters:
-                raise AppException(
-                    code=ErrorCode.LOCATION_ACCURACY_TOO_LOW,
-                    message=f"GPS тактыгы жетишсиз ({payload.accuracy:.1f}м).",
-                    status_code=400,
-                )
-
-            if distance > school.allowed_radius_meters:
-                raise AppException(
-                    code=ErrorCode.LOCATION_OUTSIDE_SCHOOL,
-                    message=f"Сиз мектептин аймагынан тышкарысыз ({distance:.1f}м).",
-                    status_code=400,
-                )
 
         # 4. Authoritative Server Time & Date
         server_now = current_time_in_school_timezone(school.timezone)
