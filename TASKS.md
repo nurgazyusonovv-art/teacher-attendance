@@ -506,10 +506,11 @@ Optional:
 - [x] `a7b93ef1d007` migration: `daily_attendance(school_id,date)`, `daily_attendance(teacher_id,date)`, `attendance_events(teacher_id,event_time)`, `lesson_delays(school_id,date)`, `lesson_delays(teacher_id,date)`, `audit_logs(school_id,action,created_at)`. Модель metadata'сы менен шайкеш, `alembic check` таза, downgrade roundtrip өттү.
 - [x] Absence pass: график жана мугалимдер тизмеси бүт диапазон үчүн бир жолу жүктөлөт; күнүнө бир окуу менен кайсы мугалим өзгөрүшү мүмкүн экени аныкталып, lock жана кайра окуу ошолорго гана колдонулат. Race коргоосу сакталды (чечим ар дайым lock астындагы окуудан алынат). Idempotency тест менен бекитилди.
 
-### Phase 4 — client correctness (кийинки)
-- [ ] `DateTimeUtils`'те UTC+6 катып калган (3 жер) — backend `school.timezone`'ду туура колдонот, клиент аны эске албайт.
-- [ ] `formatBishkekTime`: microsecond'у бар naive ISO сап (`contains('-') && length > 19`) UTC деп эсептелип, +6 саат жылдырылат.
-- [ ] Offline cache'тин күн чеги клиенттин саатына таянат (`attendance_repository.dart`).
+### Phase 4 — client correctness (аткарылды)
+- [x] `DateTimeUtils`'тен UTC+6 hardcode'у толугу менен алынды. `formatBishkekTime` → `formatSchoolTime`: backend ар бир timestamp'ты мектептин timezone'уна которуп жиберет, ошондуктан клиент жөн гана келген саатты көрсөтөт, эч кандай жылдыруу жасабайт. Колдонулбаган `bishkekNow` өчүрүлдү.
+- [x] Microsecond багы оңдолду: эски шарт `contains('-') && length > 19` эле, ал эми ар бир ISO датада дефис бар — ошондуктан `2026-09-18T08:07:00.123456` UTC деп эсептелип +6 саат жылчу. Regression тест менен жабылды (UTC+6, UTC+3, UTC-5 жана naive варианттары).
+- [x] Offline cache'тин күн чеги: жаңы `TodayStatusResponse.utc_offset_minutes` — сервер мектептин учурдагы UTC offset'ин билдирет, кэш ошол мектептин күнү боюнча эскирет. Эски жазуулар үчүн default 0. Мурдагы тест `+6`ны өзү эсептеп, UTC боюнча 18:00дөн кийин flaky боло турган; эми offset ачык берилет.
+- [x] Mobile 40 → 51 тест (datetime_utils жана кеңейтилген cache тесттери), backend 107.
 
 ### Phase 5 — maintainability (релизди тоспойт)
 - [ ] `web_admin`'дин 7 feature'инин 5'и Cubit'ти айланып өтөт (dashboard, teachers, schedules, reports, settings — `setState` + түз repository). AGENTS.md #3.

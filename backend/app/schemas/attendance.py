@@ -75,6 +75,9 @@ class DailyAttendancePage(BaseModel):
 class TodayStatusResponse(BaseModel):
     school_name: Optional[str] = None
     date: date
+    # The school's offset from UTC right now, so the client renders and
+    # expires its cache against the school's day rather than guessing.
+    utc_offset_minutes: int = 0
     display_status: Literal['ON_TIME', 'LATE', 'ABSENT', 'EXCUSED', 'DAY_OFF', 'PENDING', 'NO_SCHEDULE']
     has_checked_in: bool
     has_checked_out: bool

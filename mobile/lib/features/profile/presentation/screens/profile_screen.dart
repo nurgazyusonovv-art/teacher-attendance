@@ -208,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final isOff = sched?.isDayOff ?? (index == 6);
                             final timeText = isOff
                                 ? 'Дем алыш'
-                                : '${sched != null ? DateTimeUtils.formatBishkekTime(sched.startTime) : "08:00"} — ${sched != null ? DateTimeUtils.formatBishkekTime(sched.endTime) : "17:00"}';
+                                : '${sched != null ? DateTimeUtils.formatSchoolTime(sched.startTime) : "08:00"} — ${sched != null ? DateTimeUtils.formatSchoolTime(sched.endTime) : "17:00"}';
 
                             return Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

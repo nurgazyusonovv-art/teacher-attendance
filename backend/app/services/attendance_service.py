@@ -437,9 +437,11 @@ class AttendanceService:
         from app.services.attendance_status_service import AttendanceStatusService
         display_status = AttendanceStatusService.resolve(daily, schedule, today, server_now)
 
+        offset = server_now.utcoffset()
         return TodayStatusResponse(
             school_name=school.name,
             date=today,
+            utc_offset_minutes=int(offset.total_seconds() // 60) if offset else 0,
             display_status=display_status,
             has_checked_in=daily is not None and daily.check_in_time is not None,
             has_checked_out=daily is not None and daily.check_out_time is not None,

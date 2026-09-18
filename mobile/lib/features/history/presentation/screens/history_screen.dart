@@ -60,7 +60,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   String _formatTime(String? isoString) {
-    return DateTimeUtils.formatBishkekTime(isoString);
+    return DateTimeUtils.formatSchoolTime(isoString);
   }
 
   String _formatMonthYear(DateTime dt) {
@@ -121,6 +121,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: RefreshIndicator(
         onRefresh: _loadHistory,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
           children: [
             // Month Selector Carousel
@@ -142,6 +143,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
+                    tooltip: 'Мурунку ай',
                     icon: const Icon(Icons.chevron_left_rounded),
                     onPressed: () => _changeMonth(-1),
                     color: AppTheme.primaryColor,
@@ -172,6 +174,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Кийинки ай',
                     icon: const Icon(Icons.chevron_right_rounded),
                     onPressed: () => _changeMonth(1),
                     color: AppTheme.primaryColor,

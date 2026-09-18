@@ -1,37 +1,28 @@
 import 'package:intl/intl.dart';
 
 class DateTimeUtils {
-  /// Returns current DateTime localized to Asia/Bishkek (UTC+6)
-  static DateTime get bishkekNow {
-    return DateTime.now().toUtc().add(const Duration(hours: 6));
-  }
+  /// Matches the wall-clock time at the start of an ISO timestamp, or a bare
+  /// `HH:mm` / `HH:mm:ss`.
+  static final RegExp _wallClock = RegExp(
+    r'^(?:\d{4}-\d{2}-\d{2}[T ])?(\d{2}):(\d{2})',
+  );
 
-  /// Converts any ISO datetime or time string to Bishkek time (HH:mm)
-  static String formatBishkekTime(dynamic value) {
+  /// Renders a server time as `HH:mm`.
+  ///
+  /// The backend already localizes every timestamp to the school's timezone
+  /// (`school.timezone`), so the wall clock it sends is the one to show. This
+  /// used to add a hardcoded six hours, which was wrong for any school outside
+  /// UTC+6 and double-counted a naive timestamp carrying microseconds.
+  static String formatSchoolTime(dynamic value) {
     if (value == null) return '--:--';
-    if (value is DateTime) {
-      final bishkek = value.isUtc ? value.add(const Duration(hours: 6)) : value;
-      return DateFormat('HH:mm').format(bishkek);
-    }
-    final str = value.toString().trim();
-    if (str.isEmpty) return '--:--';
+    if (value is DateTime) return DateFormat('HH:mm').format(value);
 
-    // If string is already in HH:mm or HH:mm:ss format
-    if (RegExp(r'^\d{2}:\d{2}(:\d{2})?$').hasMatch(str)) {
-      return str.substring(0, 5);
-    }
+    final text = value.toString().trim();
+    if (text.isEmpty) return '--:--';
 
-    try {
-      final parsed = DateTime.parse(str);
-      // If parsed contains UTC timezone 'Z' or offset, convert to Bishkek
-      if (str.endsWith('Z') || str.contains('+') || str.contains('-') && str.length > 19) {
-        final bishkek = parsed.toUtc().add(const Duration(hours: 6));
-        return DateFormat('HH:mm').format(bishkek);
-      }
-      return DateFormat('HH:mm').format(parsed);
-    } catch (_) {
-      return str.length >= 5 ? str.substring(0, 5) : str;
-    }
+    final match = _wallClock.firstMatch(text);
+    if (match != null) return '${match.group(1)}:${match.group(2)}';
+    return '--:--';
   }
 
   /// Formats date in Kyrgyz language (e.g., "24-август 2026, Дүйшөмбү")

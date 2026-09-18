@@ -72,18 +72,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               if (auth is Authenticated && auth.user.isDemo)
                 const Text('Демо аккаунт'),
               const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  await context.push('/leaves');
-                  if (mounted) await _refresh();
-                },
-                icon: const Icon(Icons.event_available),
-                label: const Text('Уруксат суроо'),
-              ),
               BlocBuilder<AttendanceCubit, AttendanceState>(
                 builder: (context, state) {
                   if (state is AttendanceTodayLoaded) {
-                    return _today(state.status);
+                    return Column(
+                      children: [
+                        if (state.cached) ...[
+                          const Text(
+                            'Акыркы сакталган маалымат. Каттоо үчүн маалыматты жаңыртыңыз.',
+                          ),
+                          TextButton(
+                            onPressed: _refresh,
+                            child: const Text('Жаңыртуу'),
+                          ),
+                        ],
+                        _today(state.status, cached: state.cached),
+                      ],
+                    );
                   }
                   if (state is AttendanceError) {
                     return Column(
@@ -113,6 +118,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(height: 24),
               OutlinedButton.icon(
                 onPressed: () async {
+                  await context.push('/leaves');
+                  if (mounted) await _refresh();
+                },
+                icon: const Icon(Icons.event_available),
+                label: const Text('Уруксат суроо жана арыздарым'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () async {
                   await context.push('/history');
                   if (mounted) await _refresh();
                 },
@@ -126,14 +139,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _today(TodayStatusModel today) {
+  Widget _today(TodayStatusModel today, {bool cached = false}) {
     final status =
         today.displayStatus ??
         today.status ??
         (today.isDayOff ? 'DAY_OFF' : 'UNKNOWN');
     final canScan =
         ['PENDING', 'ABSENT', 'ON_TIME', 'LATE'].contains(status) &&
-        !today.hasCheckedOut;
+        !today.hasCheckedOut &&
+        !cached;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -156,21 +170,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 16),
+                Text(attendanceGuidance(status, today.hasCheckedOut)),
+                const SizedBox(height: 12),
                 Text(
                   today.isDayOff
                       ? 'Дем алыш күнү'
                       : today.scheduledStart == null ||
                             today.scheduledEnd == null
                       ? 'График дайындалган эмес. Администраторго кайрылыңыз.'
-                      : 'Иш убактысы: ${DateTimeUtils.formatBishkekTime(today.scheduledStart)} — ${DateTimeUtils.formatBishkekTime(today.scheduledEnd)}',
+                      : 'Иш убактысы: ${DateTimeUtils.formatSchoolTime(today.scheduledStart)} — ${DateTimeUtils.formatSchoolTime(today.scheduledEnd)}',
                 ),
                 const Divider(height: 28),
                 Text(
-                  'Келүү: ${DateTimeUtils.formatBishkekTime(today.checkInTime)}',
+                  'Келүү: ${DateTimeUtils.formatSchoolTime(today.checkInTime)}',
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Кетүү: ${DateTimeUtils.formatBishkekTime(today.checkOutTime)}',
+                  'Кетүү: ${DateTimeUtils.formatSchoolTime(today.checkOutTime)}',
                 ),
                 if (today.totalLateMinutes > 0) ...[
                   const SizedBox(height: 8),
@@ -196,12 +212,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ? 'Бүгүнкү каттоо бүттү'
                 : today.hasCheckedIn
                 ? 'Кетүүнү каттоо'
-                : 'QR менен келүүнү каттоо',
+                : canScan
+                ? 'QR менен келүүнү каттоо'
+                : 'Каттоо жеткиликсиз',
           ),
         ),
         const SizedBox(height: 12),
         const Text(
-          'Камера жана жайгашкан жер каттоо учурунда гана колдонулат. Каттоо убактысын сервер аныктайт.',
+          'Мектептеги QR-кодду сканерлеңиз. Камера жана жайгашкан жер каттоо учурунда гана колдонулат.',
           textAlign: TextAlign.center,
         ),
       ],
@@ -210,3 +228,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 }
 
 String todayStatusLabel(String status) => attendanceLabel(status);
+
+String attendanceGuidance(String status, bool checkedOut) {
+  if (checkedOut) {
+    return 'Келүү жана кетүү сакталды. Бүгүн кайра каттоонун кереги жок.';
+  }
+  return switch (status) {
+    'ON_TIME' ||
+    'LATE' => 'Келүүңүз сакталды. Мектептен кетерде кетүүнү каттаңыз.',
+    'PENDING' ||
+    'ABSENT' => 'Мектепке келгенде QR-код аркылуу келүүнү каттаңыз.',
+    'EXCUSED' => 'Бүгүнкү уруксатыңыз бекитилген. Каттоонун кереги жок.',
+    'DAY_OFF' => 'Бүгүн дем алыш. Каттоонун кереги жок.',
+    'NO_SCHEDULE' => 'Иш графигин дайындоо үчүн администраторго кайрылыңыз.',
+    _ => 'Маалыматты жаңыртуу үчүн экранды ылдый тартыңыз.',
+  };
+}

@@ -1,3 +1,5 @@
+import pytest
+
 from datetime import datetime, timezone
 from app.core.timezone import (
     get_school_timezone,
@@ -29,3 +31,15 @@ def test_to_school_timezone_conversion():
 def test_today_date_in_school_timezone():
     today = get_today_date_in_school_timezone()
     assert today == current_time_in_school_timezone().date()
+
+
+@pytest.mark.asyncio
+async def test_today_status_reports_the_school_utc_offset(
+    async_client, teacher_auth_headers
+):
+    """The client needs the school's offset so it stops assuming UTC+6."""
+    response = await async_client.get(
+        "/api/v1/attendance/today", headers=teacher_auth_headers
+    )
+    assert response.status_code == 200
+    assert response.json()["utc_offset_minutes"] == 6 * 60

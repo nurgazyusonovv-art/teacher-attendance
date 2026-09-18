@@ -72,6 +72,10 @@ class TodayStatusModel {
   final String? schoolName;
   final String? displayStatus;
   final String date;
+
+  /// The school's offset from UTC, as reported by the server. Used to decide
+  /// whether a cached status still belongs to the school's current day.
+  final int utcOffsetMinutes;
   final bool hasCheckedIn;
   final bool hasCheckedOut;
   final String? checkInTime;
@@ -90,6 +94,7 @@ class TodayStatusModel {
     this.schoolName,
     this.displayStatus,
     required this.date,
+    this.utcOffsetMinutes = 0,
     required this.hasCheckedIn,
     required this.hasCheckedOut,
     this.checkInTime,
@@ -121,6 +126,7 @@ class TodayStatusModel {
       schoolName: json['school_name'] as String?,
       displayStatus: json['display_status'] as String?,
       date: json['date'] as String,
+      utcOffsetMinutes: json['utc_offset_minutes'] as int? ?? 0,
       hasCheckedIn: json['has_checked_in'] as bool? ?? false,
       hasCheckedOut: json['has_checked_out'] as bool? ?? false,
       checkInTime: json['check_in_time'] as String?,
@@ -141,6 +147,7 @@ class TodayStatusModel {
     'school_name': schoolName,
     'display_status': displayStatus,
     'date': date,
+    'utc_offset_minutes': utcOffsetMinutes,
     'has_checked_in': hasCheckedIn,
     'has_checked_out': hasCheckedOut,
     'check_in_time': checkInTime,
@@ -277,11 +284,13 @@ class AttendanceRepository {
       final cache = data['today_attendance'];
       if (cache is! Map<String, dynamic>) return null;
       final model = TodayStatusModel.fromJson(cache);
-      final today = DateTime.now()
-          .toUtc()
-          .add(const Duration(hours: 6))
-          .toIso8601String()
-          .substring(0, 10);
+      // Expire against the school's own day. This used to assume UTC+6, which
+      // is wrong for any school on another timezone; the offset now comes from
+      // the server response that produced this cache entry.
+      final schoolNow = DateTime.now().toUtc().add(
+        Duration(minutes: model.utcOffsetMinutes),
+      );
+      final today = schoolNow.toIso8601String().substring(0, 10);
       return model.date == today ? model : null;
     } catch (_) {
       return null;
