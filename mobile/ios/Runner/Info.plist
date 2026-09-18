@@ -63,14 +63,14 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Мектептин QR-кодун сканерлеп, катышууну каттоо үчүн камера колдонулат.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Мектептин геозонасында экениңизди аныктап, катышууну тастыктоо үчүн геолокация колдонулат.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>QR-кодду галереяга сүрөт катары сактоо үчүн уруксат талап кылынат.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>QR-кодду галереяга сүрөт кылып сактоо үчүн уруксат талап кылынат.</string>
 </dict>
 </plist>

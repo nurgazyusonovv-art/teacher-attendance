@@ -1,5 +1,19 @@
 # TASKS.md
 
+- [x] Web dashboard: failed loading distinguished from empty attendance, last successful response retained, 60-second non-overlapping refresh added. Actual production school/date/API response still needs inspection; not deployed.
+
+- [x] 2026-09-15: Web teacher creation no longer silently closes on API rejection; minimum lengths, pending-submit guard, visible error and success feedback added. Production rejection cause requires actual response; deployment not yet performed.
+
+- [x] 2026-09-14: 1.1.3/build 5 Android ARM64/ARM32 APK жана Transporter IPA даяр. Кэштин окуу/жазуу форматы, аккаунт/API isolation жана cached UI белгиси оңдолду; analyzer таза, 36 тест өттү. Production backend deploy/Apple upload бул этапта жасалган жок.
+
+## Teacher UX — 2026-09-10
+
+- [x] Updated UI release 1.1.2/build 4: signed ARM64/ARM32 APKs and Transporter IPA exported to releases; previous release signing reused. No Apple upload performed.
+
+- [x] Source-based review: QR action priority, status guidance, calendar-based leave dates, pending approval feedback, empty states, credential input and scanner text wrapping improved.
+- [x] Attendance guidance regression tests added; security/backend attendance rules and user-owned iOS configuration preserved.
+- [ ] Physical iOS/Android camera/GPS, screen-reader and teacher usability acceptance; rebuild APK/IPA before distribution (existing build 3 artifacts do not include these UI changes).
+
 ## PHASE 0 — Project foundation
 
 - [x] Flutter mobile проект түзүү
@@ -417,7 +431,7 @@ Optional:
 - [x] monitoring (Healthcheck endpoints)
 - [x] Flutter production API URL
 - [x] iOS release build configuration
-- [ ] Android release signing key provisioning — debug-key fallback алынды, fail-closed config даяр
+- [x] Android release signing key provisioning — 2026-09-10 owner approval менен туруктуу release key түзүлдү; password Keychain'де, keystore Git'тен тышкары.
 - [x] Web admin deploy (Nginx SPA container)
 
 ---
@@ -528,6 +542,8 @@ Optional:
 
 ## Уруксат агымы жана mobile release — 2026-09-09
 
+- [x] 2026-09-10: GitHub CI `34308414691` толугу менен SUCCESS — backend, PostgreSQL integration, контейнер, mobile/web Flutter жана iOS. Signing кайра текшерилди: Android key.properties жок, Apple Development гана бар.
+
 - [x] Teacher → PENDING арыз (күн/себеп), admin → APPROVED/REJECTED (чечимдин себеби); мектеп/роль чектөөсү, 50 саптык pagination, бир күнгө бир арыз, кайталанган бирдей request idempotent.
 - [x] APPROVED гана EXCUSED түзөт; катышуу бар болсо конфликт; чечим, катышуу өзгөрүүсү жана аудит бир transaction ичинде. EXCUSED күндү QR менен үнсүз алмаштырууга тыюу салынды.
 - [x] Mobile teacher/admin жана web admin уруксат экрандары: screen → Cubit → repository → API. Home мектеп маалыматын attendance Cubit аркылуу алат; history loading/error/race өзүнчө Cubit'ке бөлүндү.
@@ -535,11 +551,14 @@ Optional:
 - [x] Refresh token суроолору mobile repository'лер арасында сериализацияланды; offline refresh токенди өчүрбөйт, revoked session login'ге өткөрөт; duplicate loading/submission жана disposed Cubit корголду.
 - [x] `d24f5ca6e004` migration: өзүнчө локалдык PostgreSQL базасында upgrade жана `alembic check` өттү. SQLite roundtrip/role/decision/audit tests кошулду.
 - [x] Reset диалогу жаңы уруксат арыздары да тазаланарын көрсөтөт; операция аккаунттарды жана аудитти сактайт. Production reset аткарылган жок.
-- [x] Regression: backend 78, mobile 29 жалпы + cross-repository refresh жаңы тести, web 7; analyzer/Ruff таза; iOS Simulator жана Android debug build 1.1.0+2 даяр.
-- [ ] Backend жана web deployment smoke текшерүүлөрүн толуктоо.
-- [ ] Android production signing: `mobile/android/key.properties` жана keystore жок; эски signing key керек (жаңы ачкыч өз алдынча түзүлгөн жок).
-- [ ] iOS production signing: Apple Development identity бар, Apple Distribution жок; Distribution сертификаты/private key жана provisioning керек. User-owned үч iOS файл сакталды.
-- [ ] Реалдуу iOS/Android камера/GPS E2E жана кол коюлган APK/AAB/IPA; debug/unsigned build production release катары берилбейт.
+- [x] Regression: backend 78, mobile 30 (анын ичинде cross-repository refresh), web 7; analyzer/Ruff таза; iOS Simulator жана Android debug build 1.1.0+2 даяр.
+- [x] Backend `75270d1` Render Live (`dep-dagdd6ajnfac73f2n51g`), health 200, жаңы төрт leave route OpenAPI'де бар, авторизациясыз list endpoint'тери 401. Web Vercel READY (`dpl_3d59DPWScEWDWYfvFF2dJVifhBMy`), stable alias JS SHA256 жергиликтүү текшерилген build менен бирдей; CORS туура. Production маалыматтарга тесттик арыз жөнөтүлгөн жок.
+- [x] iOS device release `--no-codesign` компиляциясы ийгиликтүү (20.1MB); бул кол коюлган IPA эмес.
+- [x] Android production signing: 2026-09-10 user жаңы release key түзүүгө макул болду. Keystore ignored/0600, password Keychain'де; Gradle environment credentials жана кайра build кылуучу script даяр.
+- [x] iOS version 1.1.1/build 3: `pubspec.yaml` жана generated Xcode config текшерилди; bundle ID/signing сакталды. TestFlight upload жасалган жок.
+- [x] Android 1.1.1 release APK даяр: ARM64 27.3MB (versionCode 2003), ARMv7 23.3MB (1003); Flutter split-per-ABI offset колдонулат. Эки файл apksigner verify'дан өттү, release RSA3072 сертификаты бирдей, debug flag жок. Артефакттар `releases/teacher-1.1.1-build3-arm64.apk` жана `releases/teacher-1.1.1-build3-arm32.apk`.
+- [x] iOS production signing: 2026-09-10 Cloud Managed Apple Distribution аркылуу App Store IPA 1.1.1/build 3 экспорттолду (`releases/ios-1.1.1-build3/teacher_mobile.ipa`). Transporter export конфигурациясы кошулду; user-owned үч iOS файл сакталды. Apple'га upload жасалган жок.
+- [ ] Реалдуу iOS/Android камера/GPS E2E жана Transporter/App Store Connect validation/upload; кол коюлган Android APK жана iOS IPA даяр, бирок бул түзмөктөгү acceptance тесттин ордун баспайт.
 
 ## Mobile production UI — 1–3 (2026-09-09)
 
@@ -548,7 +567,7 @@ Optional:
 - [x] `/attendance/today` additive `display_status`: PENDING/ABSENT/EXCUSED/DAY_OFF/NO_SCHEDULE/ON_TIME/LATE. Мектептин сервер убактысы жана графиктин end_time чеги колдонулат; explicit records сакталат; жаңы DB enum же migration керек эмес.
 - [x] Regression: backend 73, mobile 26, web 7 tests; mobile analyze, backend changed-file Ruff жана diff whitespace таза. 320px/1.8× text бардык 7 статус үчүн текшерилди.
 - [x] Android debug APK жана iOS Simulator debug build ийгиликтүү. Учурдагы user-owned үч iOS конфигурация файлы өзгөртүлгөн жок.
-- [ ] Бул этаптын backend өзгөрүүсүн мобилдик релизден мурда deploy кылуу (`display_status` жок эски серверде белгисиз статус коопсуз түрдө QR action'ду өчүрөт).
+- [x] Бул этаптын backend өзгөрүүсү мобилдик релизден мурда production'го чыгарылды (`display_status` жана school_name даяр).
 - [ ] Физикалык iOS/Android түзмөктө камера/GPS end-to-end жана release signing текшерүү; бул этапта production deploy/маалымат тазалоо аткарылган жок.
 
 - [x] Мугалимдин сапын басуу → өзүнчө URL менен аналитика экраны; профиль, 6 KPI, статус/айлык кечигүү графиктери, мезгил чыпкалары жана тарых.

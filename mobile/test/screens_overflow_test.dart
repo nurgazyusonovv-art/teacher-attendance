@@ -23,10 +23,27 @@ import 'package:teacher_mobile/features/attendance/presentation/cubit/attendance
 import 'package:teacher_mobile/features/attendance/data/repositories/attendance_repository.dart';
 import 'package:teacher_mobile/features/auth/data/repositories/auth_repository.dart';
 import 'package:teacher_mobile/core/network/api_client.dart';
+import 'package:teacher_mobile/features/leaves/presentation/leave_screen.dart';
 import 'package:teacher_mobile/core/storage/secure_storage_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('Teacher leave form uses calendar selection on a small screen', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(theme: AppTheme.lightTheme, home: const LeaveScreen()));
+    await tester.pump(const Duration(milliseconds: 100));
+    final dateField = tester.widget<TextField>(find.byType(TextField).first);
+    expect(dateField.onTap, isNotNull);
+    expect(dateField.readOnly, isTrue);
+    expect(find.text('Календардан тандаңыз'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   setUpAll(() async {
     FlutterSecureStorage.setMockInitialValues({});

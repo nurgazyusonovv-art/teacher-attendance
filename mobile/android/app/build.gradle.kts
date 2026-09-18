@@ -14,6 +14,17 @@ if (keystorePropertiesFile.exists()) {
     FileInputStream(keystorePropertiesFile).use(keystoreProperties::load)
 }
 val releaseSigningKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+// CI/local secure stores may supply credentials without a plaintext properties file.
+mapOf(
+    "storeFile" to "TEACHER_ANDROID_STORE_FILE",
+    "storePassword" to "TEACHER_ANDROID_STORE_PASSWORD",
+    "keyAlias" to "TEACHER_ANDROID_KEY_ALIAS",
+    "keyPassword" to "TEACHER_ANDROID_KEY_PASSWORD",
+).forEach { (property, environment) ->
+    if (keystoreProperties.getProperty(property).isNullOrBlank()) {
+        System.getenv(environment)?.let { keystoreProperties.setProperty(property, it) }
+    }
+}
 val hasReleaseSigning = releaseSigningKeys.all {
     !keystoreProperties.getProperty(it).isNullOrBlank()
 }

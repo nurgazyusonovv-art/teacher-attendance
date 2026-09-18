@@ -5,15 +5,24 @@ class SecureStorageService {
   final FlutterSecureStorage _storage;
 
   SecureStorageService({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
-              iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-            );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock,
+            ),
+          );
 
-  Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
+  Future<void> saveTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
     await _storage.write(key: AppConstants.keyAccessToken, value: accessToken);
-    await _storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
+    await _storage.write(
+      key: AppConstants.keyRefreshToken,
+      value: refreshToken,
+    );
   }
 
   Future<String?> getAccessToken() async {
@@ -31,6 +40,10 @@ class SecureStorageService {
   Future<String?> getUserData() async {
     return await _storage.read(key: AppConstants.keyUserData);
   }
+
+  Future<void> writeValue(String key, String value) =>
+      _storage.write(key: key, value: value);
+  Future<String?> readValue(String key) => _storage.read(key: key);
 
   Future<void> clearAll() async {
     await _storage.deleteAll();

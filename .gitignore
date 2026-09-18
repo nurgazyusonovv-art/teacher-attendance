@@ -76,6 +76,7 @@ Thumbs.db
 *.swo
 *.apk
 *.ipa
+/releases/
 
 # Generated review artifacts (contain reusable attendance credentials)
 /demo_school_qr.png

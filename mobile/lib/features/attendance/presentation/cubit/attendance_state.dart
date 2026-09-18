@@ -14,11 +14,12 @@ class AttendanceLoading extends AttendanceState {}
 
 class AttendanceTodayLoaded extends AttendanceState {
   final TodayStatusModel status;
+  final bool cached;
 
-  const AttendanceTodayLoaded(this.status);
+  const AttendanceTodayLoaded(this.status, {this.cached = false});
 
   @override
-  List<Object?> get props => [status];
+  List<Object?> get props => [status, cached];
 }
 
 class AttendanceActionSuccess extends AttendanceState {

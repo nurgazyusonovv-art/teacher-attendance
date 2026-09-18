@@ -88,6 +88,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             'GPS уруксаты өчүрүлгөн. Телефондун жөндөөлөрүнөн колдонмого геолокация уруксатын бериңиз.';
       } else if (errorMsg == 'QR_INVALID') {
         errorMsg = 'Бул мектептин жарактуу QR-коду эмес.';
+      } else {
+        errorMsg =
+            'Жайгашкан жерди аныктоо мүмкүн болгон жок. Интернетти жана GPSти текшерип, кайра аракет кылыңыз.';
       }
 
       final canOpenSettings = e.toString().contains(
@@ -193,7 +196,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     size: 28,
                   ),
                   const SizedBox(width: 8),
-                  Text(widget.isCheckOut ? 'Кетүү катталды' : 'Келүү катталды'),
+                  Expanded(
+                    child: Text(
+                      widget.isCheckOut ? 'Кетүү катталды' : 'Келүү катталды',
+                    ),
+                  ),
                 ],
               ),
               content: Text(state.message),
@@ -221,7 +228,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     size: 28,
                   ),
                   SizedBox(width: 8),
-                  Text('Катталган жок'),
+                  Expanded(child: Text('Катталган жок')),
                 ],
               ),
               content: Text(state.message),
@@ -244,11 +251,10 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         appBar: AppBar(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
-          title: Text(
-            widget.isCheckOut ? 'Кетүү (Check-out) QR' : 'Келүү (Check-in) QR',
-          ),
+          title: Text(widget.isCheckOut ? 'Кетүүнү каттоо' : 'Келүүнү каттоо'),
           actions: [
             IconButton(
+              tooltip: 'Жарыкты күйгүзүү / өчүрүү',
               icon: const Icon(Icons.flash_on),
               onPressed: () => _scannerController.toggleTorch(),
             ),
@@ -304,11 +310,13 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                             ),
                           ),
                           SizedBox(width: 12),
-                          Text(
-                            'GPS жана QR текшерилүүдө...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              'GPS жана QR текшерилүүдө...',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],

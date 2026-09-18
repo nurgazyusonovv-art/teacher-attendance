@@ -43,88 +43,142 @@ class _TeachersScreenState extends State<TeachersScreen> {
     final codeController = TextEditingController();
     final phoneController = TextEditingController();
     final subjectController = TextEditingController();
+    bool saving = false;
+    String? errorMessage;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Жаңы мугалим кошуу'),
-        content: SizedBox(
-          width: 440,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Аты-жөнү *'),
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => PopScope(
+          canPop: !saving,
+          child: AlertDialog(
+            title: const Text('Жаңы мугалим кошуу'),
+            content: SizedBox(
+              width: 440,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (errorMessage != null) ...[
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Theme.of(ctx).colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Аты-жөнү *',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: usernameController,
+                      decoration: const InputDecoration(labelText: 'Логин *'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'Сырсөз *',
+                        helperText: 'Кеминде 8 белги',
+                      ),
+                      obscureText: true,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: codeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Табель номери *',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: subjectController,
+                      decoration: const InputDecoration(labelText: 'Предмети'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Телефон номери',
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: usernameController,
-                  decoration: const InputDecoration(labelText: 'Логин *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(labelText: 'Сырсөз *'),
-                  obscureText: true,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: codeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Табель номери *',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: subjectController,
-                  decoration: const InputDecoration(labelText: 'Предмети'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Телефон номери',
-                  ),
-                ),
-              ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: saving ? null : () => Navigator.pop(ctx),
+                child: const Text('Жокко чыгаруу'),
+              ),
+              ElevatedButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (nameController.text.trim().length < 2 ||
+                            usernameController.text.trim().length < 3 ||
+                            passwordController.text.length < 8 ||
+                            codeController.text.trim().length < 2) {
+                          setDialogState(
+                            () => errorMessage =
+                                'Аты-жөнү кеминде 2, логин 3, сырсөз 8, табель номери 2 белгиден турушу керек.',
+                          );
+                          return;
+                        }
+                        setDialogState(() {
+                          saving = true;
+                          errorMessage = null;
+                        });
+                        try {
+                          final success = await _repository.createTeacher(
+                            fullName: nameController.text.trim(),
+                            username: usernameController.text.trim(),
+                            password: passwordController.text,
+                            employeeCode: codeController.text.trim(),
+                            phoneNumber: phoneController.text.trim().isEmpty
+                                ? null
+                                : phoneController.text.trim(),
+                            subject: subjectController.text.trim().isEmpty
+                                ? null
+                                : subjectController.text.trim(),
+                          );
+                          if (success && ctx.mounted) {
+                            Navigator.pop(ctx);
+                            if (!mounted) return;
+                            _loadTeachers();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Мугалим кошулду')),
+                            );
+                          } else if (ctx.mounted) {
+                            setDialogState(() {
+                              saving = false;
+                              errorMessage =
+                                  'Мугалимди кошуу ырасталган жок. Тизмени текшериңиз.';
+                            });
+                          }
+                        } catch (error) {
+                          if (ctx.mounted) {
+                            setDialogState(() {
+                              saving = false;
+                              errorMessage = error.toString().replaceFirst(
+                                'Exception: ',
+                                '',
+                              );
+                            });
+                          }
+                        }
+                      },
+                child: Text(saving ? 'Кошулууда…' : 'Кошуу'),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Жокко чыгаруу'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.trim().isEmpty ||
-                  usernameController.text.trim().isEmpty ||
-                  passwordController.text.trim().isEmpty ||
-                  codeController.text.trim().isEmpty) {
-                return;
-              }
-              final success = await _repository.createTeacher(
-                fullName: nameController.text.trim(),
-                username: usernameController.text.trim(),
-                password: passwordController.text.trim(),
-                employeeCode: codeController.text.trim(),
-                phoneNumber: phoneController.text.trim().isEmpty
-                    ? null
-                    : phoneController.text.trim(),
-                subject: subjectController.text.trim().isEmpty
-                    ? null
-                    : subjectController.text.trim(),
-              );
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (success) {
-                _loadTeachers();
-              }
-            },
-            child: const Text('Кошуу'),
-          ),
-        ],
       ),
     );
   }

@@ -9,23 +9,35 @@ class AttendanceCubit extends Cubit<AttendanceState> {
   }
 
   final AttendanceRepository _repository;
+  bool _refreshing = false;
 
   AttendanceCubit({AttendanceRepository? repository})
     : _repository = repository ?? AttendanceRepository(),
       super(AttendanceInitial());
 
   Future<void> loadTodayStatus() async {
-    if (isClosed || state is AttendanceLoading) return;
-    emit(AttendanceLoading());
+    if (isClosed || state is AttendanceLoading || _refreshing) return;
+    _refreshing = true;
+    final cached = await _repository.getCachedTodayStatus();
+    if (cached != null) {
+      emit(AttendanceTodayLoaded(cached, cached: true));
+    } else {
+      emit(AttendanceLoading());
+    }
     try {
       final status = await _repository.getTodayStatus();
       if (status != null) {
+        await _repository.cacheTodayStatus(status);
         emit(AttendanceTodayLoaded(status));
-      } else {
+      } else if (cached == null) {
         emit(const AttendanceError('Бүгүнкү абалды жүктөө мүмкүн болгон жок'));
       }
     } catch (e) {
-      emit(AttendanceError(e.toString().replaceFirst('Exception: ', '')));
+      if (cached == null) {
+        emit(AttendanceError(e.toString().replaceFirst('Exception: ', '')));
+      }
+    } finally {
+      _refreshing = false;
     }
   }
 

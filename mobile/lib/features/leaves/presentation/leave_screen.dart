@@ -24,6 +24,24 @@ class _LeaveViewState extends State<_LeaveView> {
   final _form = GlobalKey<FormState>();
   final _date = TextEditingController();
   final _reason = TextEditingController();
+  Future<void> _pickDate() async {
+    // This is only a calendar hint; the backend validates the school date.
+    final now = DateUtils.dateOnly(DateTime.now());
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: DateTime.tryParse(_date.text) ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+      helpText: 'Уруксат сурала турган күн',
+      cancelText: 'Жокко чыгаруу',
+      confirmText: 'Тандоо',
+    );
+    if (selected != null && mounted) {
+      _date.text =
+          '${selected.year}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}';
+    }
+  }
+
   @override
   void dispose() {
     _date.dispose();
@@ -86,6 +104,8 @@ class _LeaveViewState extends State<_LeaveView> {
       builder: (context, state) => RefreshIndicator(
         onRefresh: () => context.read<LeaveCubit>().load(),
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(20),
           children: [
             if (!widget.admin)
@@ -100,10 +120,13 @@ class _LeaveViewState extends State<_LeaveView> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _date,
+                      readOnly: true,
+                      onTap: state.busy ? null : _pickDate,
                       enabled: !state.busy,
                       decoration: const InputDecoration(
-                        labelText: 'Күнү (ЖЖЖЖ-АА-КК)',
-                        hintText: '2026-09-10',
+                        labelText: 'Кайсы күнгө уруксат керек?',
+                        hintText: 'Календардан тандаңыз',
+                        suffixIcon: Icon(Icons.calendar_month_outlined),
                       ),
                       validator: (v) {
                         final value = v?.trim() ?? '';
@@ -114,17 +137,21 @@ class _LeaveViewState extends State<_LeaveView> {
                                 parsed == null ||
                                 parsed.toIso8601String().substring(0, 10) !=
                                     value
-                            ? 'Күндү туура жазыңыз'
+                            ? 'Календардан күндү тандаңыз'
                             : null;
                       },
                     ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _reason,
                       enabled: !state.busy,
                       minLines: 2,
                       maxLines: 4,
                       maxLength: 500,
-                      decoration: const InputDecoration(labelText: 'Себеби'),
+                      decoration: const InputDecoration(
+                        labelText: 'Себеби',
+                        hintText: 'Мисалы: дарыгерге көрүнүүгө барам',
+                      ),
                       validator: (v) => (v?.trim().length ?? 0) < 5
                           ? 'Кеминде 5 белги жазыңыз'
                           : null,
@@ -141,7 +168,9 @@ class _LeaveViewState extends State<_LeaveView> {
                                 _reason.clear();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Арыз жөнөтүлдү'),
+                                    content: Text(
+                                      'Арыз жөнөтүлдү. Администратордун чечимин күтүңүз.',
+                                    ),
                                   ),
                                 );
                               }
@@ -152,6 +181,13 @@ class _LeaveViewState extends State<_LeaveView> {
                   ],
                 ),
               ),
+            if (!widget.admin) ...[
+              Text(
+                'Менин арыздарым',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+            ],
             if (state.busy) const LinearProgressIndicator(),
             if (state.error != null) ...[
               Text(
@@ -166,7 +202,11 @@ class _LeaveViewState extends State<_LeaveView> {
               ),
             ],
             if (!state.busy && state.error == null && state.rows.isEmpty)
-              const Text('Арыздар жок'),
+              Text(
+                widget.admin
+                    ? 'Арыздар жок'
+                    : 'Азырынча арыз жөнөтө элексиз. Жөнөтүлгөн арыздын чечими ушул жерде көрүнөт.',
+              ),
             ...state.rows.map(
               (row) => Card(
                 child: Padding(
@@ -180,7 +220,7 @@ class _LeaveViewState extends State<_LeaveView> {
                       Text(switch (row['status']) {
                         'APPROVED' => 'Бекитилди',
                         'REJECTED' => 'Четке кагылды',
-                        _ => 'Күтүүдө',
+                        _ => 'Администратордун чечимин күтүүдө',
                       }),
                       Text(row['reason'] as String),
                       if (row['decision_reason'] != null)

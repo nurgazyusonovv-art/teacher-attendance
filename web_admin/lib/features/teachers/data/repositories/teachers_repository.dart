@@ -122,9 +122,26 @@ class TeachersRepository {
         },
         options: options,
       );
-      return response.statusCode == 200;
-    } catch (_) {
-      return false;
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      final status = error.response?.statusCode;
+      if (status == 400 || status == 409) {
+        if (data is Map && data['message'] is String) {
+          throw Exception(data['message']);
+        }
+      }
+      if (status == 422) {
+        throw Exception(
+          'Маалыматтарды текшериңиз: аты-жөнү кеминде 2, логин 3, сырсөз 8, табель номери 2 белгиден турушу керек.',
+        );
+      }
+      if (status == 401 || status == 403) {
+        throw Exception('Админ сессиясын текшериңиз. Аккаунтка кайра кириңиз.');
+      }
+      throw Exception(
+        'Мугалимди кошуу ырасталган жок. Тизмени текшерип, кайра аракет кылыңыз.',
+      );
     }
   }
 

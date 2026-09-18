@@ -200,7 +200,7 @@ async def test_checkin_invalid_qr_rejected(
 
 
 @pytest.mark.asyncio
-async def test_demo_account_bypasses_geofence(
+async def test_demo_account_is_also_rejected_outside_geofence(
     async_client: AsyncClient, db_session, monkeypatch
 ):
     monday = datetime(2026, 9, 7, 8, 0, tzinfo=ZoneInfo("Asia/Bishkek"))
@@ -219,7 +219,7 @@ async def test_demo_account_bypasses_geofence(
     )
     demo_headers = {"Authorization": f"Bearer {demo_login.json()['data']['access_token']}"}
 
-    # Demo teacher anywhere in the world (e.g. Cupertino, CA)
+    # Demo users must follow the same geofence; demo data is isolated, not location-exempt.
     demo_payload = {
         "school_id": school.id,
         "qr_token": qr_info.qr_token,
@@ -232,7 +232,8 @@ async def test_demo_account_bypasses_geofence(
         json=demo_payload,
         headers=demo_headers,
     )
-    assert res.status_code == 200 or res.json().get("code") == "ALREADY_CHECKED_IN"
+    assert res.status_code == 400
+    assert res.json()["code"] == "LOCATION_OUTSIDE_SCHOOL"
 
 
 @pytest.mark.asyncio

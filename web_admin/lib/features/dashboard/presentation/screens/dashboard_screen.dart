@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:teacher_admin/features/attendance/presentation/widgets/attendance_details.dart';
 import 'package:teacher_admin/core/theme/admin_theme.dart';
@@ -14,19 +15,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AdminAttendanceRepository _repository = AdminAttendanceRepository();
   AdminDashboardData? _data;
   bool _isLoading = true;
+  bool _requestActive = false;
+  bool _loadFailed = false;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadDashboard();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        _loadDashboard();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadDashboard() async {
-    setState(() => _isLoading = true);
+    if (_requestActive || !mounted) return;
+    _requestActive = true;
+    setState(() => _isLoading = _data == null);
     final data = await _repository.getTodayDashboard();
+    _requestActive = false;
     if (mounted) {
       setState(() {
-        _data = data;
+        _loadFailed = data == null;
+        if (data != null) _data = data;
         _isLoading = false;
       });
     }
@@ -222,7 +241,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Реалдуу убакыттагы мугалимдердин келүү-кетүү абалы',
+                    'Келүү-кетүү абалы ар 60 секундда жаңыланат',
                     style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
                   ),
                 ],
@@ -239,6 +258,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 20),
+          if (_loadFailed)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Маалымат жүктөлгөн жок. Байланышты жана админ сессиясын текшерип, «Жаңылоо» басыңыз. Көрсөтүлгөн сандар эски болушу мүмкүн.',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
 
           // KPI Grid
           GridView.count(
@@ -293,7 +320,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Card(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _data == null || _data!.records.isEmpty
+                  : _data == null
+                  ? const Center(
+                      child: Text(
+                        'Катышуу маалыматы азыр жеткиликсиз. «Жаңылоо» басыңыз.',
+                      ),
+                    )
+                  : _data!.records.isEmpty
                   ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
