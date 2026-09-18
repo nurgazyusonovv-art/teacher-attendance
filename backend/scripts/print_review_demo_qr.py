@@ -32,9 +32,36 @@ async def main() -> None:
             ).scalars().first()
 
             if school is None:
+                # Say what IS there, so the next step is obvious: a DEMO-001
+                # row that simply is not flagged needs a different fix than a
+                # deployment that was never seeded at all.
+                rows = (
+                    await db.execute(
+                        select(School).order_by(School.created_at.asc())
+                    )
+                ).scalars().all()
+
+                print("App Review demo мектеби (is_review_demo) табылган жок.")
+                print()
+                if not rows:
+                    print("  Бул базада бир да мектеп жок.")
+                else:
+                    print(f"  Бул базадагы мектептер ({len(rows)}):")
+                    for row in rows:
+                        print(
+                            f"    - {row.code:<12} {row.name}"
+                            f"  (radius {row.allowed_radius_meters:,.0f} m,"
+                            f" review={row.is_review_demo}, active={row.is_active})"
+                        )
+                print()
                 print(
-                    "App Review demo мектеби табылган жок. "
-                    "Адегенде scripts/seed.py жүргүзүңүз.",
+                    "  DEMO-001 бар болсо: b8c04fa2e008 migration колдонулганын"
+                    " текшериңиз (alembic current).",
+                    file=sys.stderr,
+                )
+                print(
+                    "  DEMO-001 жок болсо: бул деплойдо scripts/seed.py эч качан"
+                    " жүргүзүлгөн эмес.",
                     file=sys.stderr,
                 )
                 raise SystemExit(1)
