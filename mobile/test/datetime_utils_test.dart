@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teacher_mobile/core/utils/datetime_utils.dart';
 
 void main() {
+  _timezoneRegressionTests();
+
   group('formatSchoolTime', () {
     test('renders the wall clock the server sent, whatever the offset', () {
       // The backend localizes to school.timezone before serializing, so the
@@ -75,6 +77,56 @@ void main() {
       expect(DateTimeUtils.getDayName(0), 'Дүйшөмбү');
       expect(DateTimeUtils.getDayName(6), 'Жекшемби');
       expect(DateTimeUtils.formatShortDay(0), 'Дүй');
+    });
+  });
+}
+
+void _timezoneRegressionTests() {
+  group('formatSchoolTime with a known school offset', () {
+    // The columns are TIMESTAMPTZ, so a server that forgets to localize sends
+    // UTC. Rendering that literally showed 08:57 for a 14:57 check-in.
+    test('a UTC timestamp is converted, not shown literally', () {
+      expect(
+        DateTimeUtils.formatSchoolTime(
+          '2026-09-18T08:57:43.020697Z',
+          utcOffsetMinutes: 360,
+        ),
+        '14:57',
+      );
+    });
+
+    test('an already localized timestamp survives the round trip', () {
+      expect(
+        DateTimeUtils.formatSchoolTime(
+          '2026-09-18T14:57:43+06:00',
+          utcOffsetMinutes: 360,
+        ),
+        '14:57',
+      );
+    });
+
+    test('the offset used is the school\'s, not the string\'s', () {
+      expect(
+        DateTimeUtils.formatSchoolTime(
+          '2026-09-18T08:57:43Z',
+          utcOffsetMinutes: -300,
+        ),
+        '03:57',
+      );
+    });
+
+    test('a bare schedule time is left alone', () {
+      expect(
+        DateTimeUtils.formatSchoolTime('08:00:00', utcOffsetMinutes: 360),
+        '08:00',
+      );
+    });
+
+    test('without an offset the wall clock is taken as sent', () {
+      expect(
+        DateTimeUtils.formatSchoolTime('2026-09-18T14:57:43+06:00'),
+        '14:57',
+      );
     });
   });
 }

@@ -241,6 +241,7 @@ class AttendanceService:
         lesson_late_minutes = sum(d.delay_minutes for d in lesson_delays)
 
         return DailyAttendanceRead(
+            school_timezone=school.timezone,
             id=daily.id,
             teacher_id=daily.teacher_id,
             school_id=daily.school_id,
@@ -385,6 +386,7 @@ class AttendanceService:
         lesson_late_minutes = sum(d.delay_minutes for d in lesson_delays)
 
         return DailyAttendanceRead(
+            school_timezone=school.timezone,
             id=daily.id,
             teacher_id=daily.teacher_id,
             school_id=daily.school_id,
@@ -459,6 +461,7 @@ class AttendanceService:
 
         offset = server_now.utcoffset()
         return TodayStatusResponse(
+            school_timezone=school.timezone,
             school_name=school.name,
             date=today,
             utc_offset_minutes=int(offset.total_seconds() // 60) if offset else 0,
@@ -522,6 +525,16 @@ class AttendanceService:
         result = await db.execute(query)
         records = result.scalars().all()
 
+        # Timestamps are returned in the school's zone, not the UTC the
+        # TIMESTAMPTZ columns read back as.
+        school_tz = (
+            await db.execute(
+                select(School.timezone)
+                .join(Teacher, Teacher.school_id == School.id)
+                .where(Teacher.id == teacher_id)
+            )
+        ).scalar_one_or_none()
+
         # Lesson delays are fetched for exactly the days that came back, so a
         # paged request does not drag in the teacher's whole delay history.
         delay_query = select(LessonDelay).where(LessonDelay.teacher_id == teacher_id)
@@ -557,6 +570,7 @@ class AttendanceService:
             lesson_late = sum(d.delay_minutes for d in day_delays)
             output.append(
                 DailyAttendanceRead(
+                    school_timezone=school_tz,
                     id=r.id,
                     teacher_id=r.teacher_id,
                     school_id=r.school_id,
@@ -591,6 +605,9 @@ class AttendanceService:
         Reports used to fetch the teacher list and then one history request per
         teacher, which grew with the size of the school.
         """
+        school_tz = (
+            await db.execute(select(School.timezone).where(School.id == school_id))
+        ).scalar_one_or_none()
         base = (
             select(DailyAttendance)
             .join(Teacher, DailyAttendance.teacher_id == Teacher.id)
@@ -648,6 +665,7 @@ class AttendanceService:
             teacher = r.teacher
             items.append(
                 DailyAttendanceRead(
+                    school_timezone=school_tz,
                     id=r.id,
                     teacher_id=r.teacher_id,
                     school_id=r.school_id,
@@ -758,6 +776,7 @@ class AttendanceService:
 
                 read_records.append(
                     DailyAttendanceRead(
+                        school_timezone=school.timezone,
                         id=record.id,
                         teacher_id=t.id,
                         school_id=school_id,
@@ -783,6 +802,7 @@ class AttendanceService:
                 # A day off is not an absence and must not inflate the KPI.
                 read_records.append(
                     DailyAttendanceRead(
+                        school_timezone=school.timezone,
                         id=f"virtual-{t.id}",
                         display_status=AttendanceStatusService.resolve(None, schedule, query_date, server_now),
                         teacher_id=t.id,
@@ -984,6 +1004,7 @@ class AttendanceService:
         await db.refresh(daily)
 
         return DailyAttendanceRead(
+            school_timezone=school.timezone,
             id=daily.id,
             teacher_id=daily.teacher_id,
             school_id=daily.school_id,

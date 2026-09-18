@@ -182,11 +182,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 const Divider(height: 28),
                 Text(
-                  'Келүү: ${DateTimeUtils.formatSchoolTime(today.checkInTime)}',
+                  'Келүү: ${DateTimeUtils.formatSchoolTime(today.checkInTime, utcOffsetMinutes: today.utcOffsetMinutes)}',
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Кетүү: ${DateTimeUtils.formatSchoolTime(today.checkOutTime)}',
+                  'Кетүү: ${DateTimeUtils.formatSchoolTime(today.checkOutTime, utcOffsetMinutes: today.utcOffsetMinutes)}',
                 ),
                 if (today.totalLateMinutes > 0) ...[
                   const SizedBox(height: 8),

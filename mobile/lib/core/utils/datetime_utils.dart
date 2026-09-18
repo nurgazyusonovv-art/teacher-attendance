@@ -7,18 +7,34 @@ class DateTimeUtils {
     r'^(?:\d{4}-\d{2}-\d{2}[T ])?(\d{2}):(\d{2})',
   );
 
+  /// Matches an explicit timezone designator at the end of an ISO timestamp.
+  static final RegExp _hasZone = RegExp(r'(Z|[+-]\d{2}:?\d{2})$');
+
   /// Renders a server time as `HH:mm`.
   ///
-  /// The backend already localizes every timestamp to the school's timezone
-  /// (`school.timezone`), so the wall clock it sends is the one to show. This
-  /// used to add a hardcoded six hours, which was wrong for any school outside
+  /// The API returns attendance timestamps already localized to the school's
+  /// timezone, so the wall clock in the string is the one to show. This used
+  /// to add a hardcoded six hours, which was wrong for any school outside
   /// UTC+6 and double-counted a naive timestamp carrying microseconds.
-  static String formatSchoolTime(dynamic value) {
+  ///
+  /// Pass [utcOffsetMinutes] where the school's offset is known: a timestamp
+  /// that carries a zone is then converted to that offset rather than trusted
+  /// to already be in it. TIMESTAMPTZ columns read back as UTC, so a server
+  /// that forgets to localize would otherwise be displayed hours out.
+  static String formatSchoolTime(dynamic value, {int? utcOffsetMinutes}) {
     if (value == null) return '--:--';
     if (value is DateTime) return DateFormat('HH:mm').format(value);
 
     final text = value.toString().trim();
     if (text.isEmpty) return '--:--';
+
+    if (utcOffsetMinutes != null && _hasZone.hasMatch(text)) {
+      final parsed = DateTime.tryParse(text);
+      if (parsed != null) {
+        final atSchool = parsed.toUtc().add(Duration(minutes: utcOffsetMinutes));
+        return DateFormat('HH:mm').format(atSchool);
+      }
+    }
 
     final match = _wallClock.firstMatch(text);
     if (match != null) return '${match.group(1)}:${match.group(2)}';

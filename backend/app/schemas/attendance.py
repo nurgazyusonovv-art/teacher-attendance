@@ -1,7 +1,8 @@
 from datetime import date, datetime, time
 from typing import List, Optional, Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.core.timezone import to_school_timezone
 from app.models.enums import AttendanceEventType, AttendanceStatus
 from app.schemas.lesson_delay import LessonDelayRead
 
@@ -21,6 +22,29 @@ class AttendanceScanRequest(BaseModel):
     )
 
 
+
+class SchoolLocalTimes(BaseModel):
+    """Emits attendance timestamps in the school's own timezone.
+
+    The columns are TIMESTAMPTZ, so a value read back from PostgreSQL arrives
+    as UTC no matter what timezone it was written in. Serialized as-is it
+    becomes `...Z`, and every client would then need the school's offset just
+    to show a wall clock. Normalizing here keeps the documented contract:
+    a time in an attendance response is the time at the school.
+    """
+
+    # Callers pass the school's zone; never part of the response body.
+    school_timezone: Optional[str] = Field(default=None, exclude=True)
+
+    @model_validator(mode="after")
+    def _localize_times(self) -> "SchoolLocalTimes":
+        for field in ("check_in_time", "check_out_time"):
+            value = getattr(self, field, None)
+            if value is not None:
+                setattr(self, field, to_school_timezone(value, self.school_timezone))
+        return self
+
+
 class AttendanceEventRead(BaseModel):
     id: str
     teacher_id: str
@@ -38,7 +62,7 @@ class AttendanceEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class DailyAttendanceRead(BaseModel):
+class DailyAttendanceRead(SchoolLocalTimes):
     display_status: Optional[str] = None
     id: str
     teacher_id: str
@@ -72,7 +96,7 @@ class DailyAttendancePage(BaseModel):
     limit: int
 
 
-class TodayStatusResponse(BaseModel):
+class TodayStatusResponse(SchoolLocalTimes):
     school_name: Optional[str] = None
     date: date
     # The school's offset from UTC right now, so the client renders and

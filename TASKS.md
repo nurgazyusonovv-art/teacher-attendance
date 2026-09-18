@@ -520,6 +520,14 @@ Optional:
 - [x] `a7b93ef1d007` migration: `daily_attendance(school_id,date)`, `daily_attendance(teacher_id,date)`, `attendance_events(teacher_id,event_time)`, `lesson_delays(school_id,date)`, `lesson_delays(teacher_id,date)`, `audit_logs(school_id,action,created_at)`. Модель metadata'сы менен шайкеш, `alembic check` таза, downgrade roundtrip өттү.
 - [x] Absence pass: график жана мугалимдер тизмеси бүт диапазон үчүн бир жолу жүктөлөт; күнүнө бир окуу менен кайсы мугалим өзгөрүшү мүмкүн экени аныкталып, lock жана кайра окуу ошолорго гана колдонулат. Race коргоосу сакталды (чечим ар дайым lock астындагы окуудан алынат). Idempotency тест менен бекитилди.
 
+### Phase 4 кийинки оңдоо — timezone regression (2026-09-18)
+- [x] **Phase 4'төгү «келген убакытты ошол бойдон көрсөтүү» чечими туура эмес болчу.** `DailyAttendance.check_in_time` — `TIMESTAMPTZ`, ошондуктан 14:57+06:00 деп жазылган маани PostgreSQL'ден 08:57+00:00 болуп кайтат жана `...Z` түрүндө сериализацияланат. Мобилдик тиркеме аны 08:57 деп көрсөтмөк — **6 сааттык ката**. Production'догу `verify_review_flow` чыгарган `2026-09-18T08:57:43.020697Z` менен тастыкталды.
+- [x] Мени эмне адаштырды: `/health` убакытты Python'до курат (DB round-trip жок), ошондуктан `+06:00` көрсөтөт; ал эми Phase 4 тесттерим өзүм ойлоп тапкан саптарды колдонуп, `Z` учурун каптабай калган.
+- [x] Тамырдагы оңдоо серверде: `SchoolLocalTimes` mixin — `DailyAttendanceRead` жана `TodayStatusResponse` timestamp'терди мектептин timezone'уна которуп сериализациялайт. Жети куруу чекитинин баары `school_timezone` берет. Контракт калыбына келди: attendance жообундагы убакыт — мектептеги убакыт.
+- [x] Клиентте коргоо: `formatSchoolTime(value, utcOffsetMinutes:)` — zone көрсөтүлгөн timestamp белгилүү offset'ке которулат, сервер кайрадан localize кылбай калса да туура көрсөтөт. Home экраны `today.utcOffsetMinutes` берет.
+- [x] Тесттер чындап кармаарын текшердим: оңдоону өчүргөндө 5 backend тесттин 4өө кулайт. Mobile'га `Z`, `+06:00`, UTC−5 жана bare `HH:mm` учурлары кошулду.
+- [x] Backend 118 → 123, mobile 51 → 56.
+
 ### Phase 4 — client correctness (аткарылды)
 - [x] `DateTimeUtils`'тен UTC+6 hardcode'у толугу менен алынды. `formatBishkekTime` → `formatSchoolTime`: backend ар бир timestamp'ты мектептин timezone'уна которуп жиберет, ошондуктан клиент жөн гана келген саатты көрсөтөт, эч кандай жылдыруу жасабайт. Колдонулбаган `bishkekNow` өчүрүлдү.
 - [x] Microsecond багы оңдолду: эски шарт `contains('-') && length > 19` эле, ал эми ар бир ISO датада дефис бар — ошондуктан `2026-09-18T08:07:00.123456` UTC деп эсептелип +6 саат жылчу. Regression тест менен жабылды (UTC+6, UTC+3, UTC-5 жана naive варианттары).
