@@ -6,6 +6,8 @@ property that matters — provisioning touches the review tenant and nothing
 else — plus idempotency, since it will be re-run.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from sqlalchemy import func, select
 
@@ -160,3 +162,51 @@ async def test_provisioning_repairs_a_narrowed_or_unflagged_tenant(db_session):
 async def test_creating_without_a_password_is_refused(db_session):
     with pytest.raises(ValueError):
         await rts.provision(db_session)
+
+
+@pytest.mark.asyncio
+async def test_password_rotation_is_opt_in_and_revokes_sessions(db_session):
+    from app.core.security import verify_password
+    from app.models.auth_security import AuthSession
+
+    tenant = await rts.provision(db_session, "review-password-123")
+    original_hash = tenant.user.hashed_password
+
+    # A session held by whoever knew the old password.
+    db_session.add(
+        AuthSession(
+            user_id=tenant.user.id,
+            refresh_jti_hash="rotation-test-hash",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+    )
+    await db_session.commit()
+
+    # Without the flag the password is left alone, even if one is supplied.
+    untouched = await rts.provision(db_session, "a-different-password")
+    assert untouched.password_rotated is False
+    assert untouched.user.hashed_password == original_hash
+
+    rotated = await rts.provision(
+        db_session, "brand-new-password-456", rotate_password=True
+    )
+    assert rotated.password_rotated is True
+    assert verify_password("brand-new-password-456", rotated.user.hashed_password)
+    assert not verify_password("review-password-123", rotated.user.hashed_password)
+
+    live = (
+        await db_session.execute(
+            select(func.count()).select_from(AuthSession).where(
+                AuthSession.user_id == tenant.user.id,
+                AuthSession.revoked_at.is_(None),
+            )
+        )
+    ).scalar_one()
+    assert live == 0
+
+
+@pytest.mark.asyncio
+async def test_rotation_without_a_password_is_refused(db_session):
+    await rts.provision(db_session, "review-password-123")
+    with pytest.raises(ValueError):
+        await rts.provision(db_session, rotate_password=True)

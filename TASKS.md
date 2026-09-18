@@ -555,9 +555,10 @@ Optional:
   - Backend 107 → 112 тест.
 - [x] Production текшерилди: бир гана чыныгы мектеп бар («Баткен Ыйман», SCH-001, 50 м), demo tenant такыр жок — бул деплойдо `seed.py` эч качан жүргүзүлгөн эмес.
 - [x] `scripts/provision_review_tenant.py` + `app/services/review_tenant_service.py` — бир гана review tenant'ты түзөт. **`seed.py`ди production'го жүргүзүүгө болбойт**: ал чыныгы мектепке жасалма `teacher1` («Асанов Асан») жана `admin` аккаунттарын кошуп, аларды dashboard'до, отчетто жана келбегендердин эсебинде көрсөтүп коёт. `seed.py` эми ошол эле сервисти колдонот (кайталануу жоюлду).
-- [ ] Production'да review tenant'ты түзүү (сырсөздү өзүңүз тандайсыз):
-      `ALLOW_REVIEW_TENANT_PROVISION=true REVIEW_DEMO_PASSWORD='...' .venv/bin/python scripts/provision_review_tenant.py`
-      Чыккан `school_id`/`qr_token`/сырсөз App Store Connect review notes'ко жазылат.
+- [x] Production'да review tenant түзүлдү (`DEMO-001`, `f3af47a5-…`). Чыныгы мектеп тийилген жок.
+- [ ] **Demo сырсөзүн алмаштыруу**: биринчи провизияда командадагы placeholder сырсөз колдонулуп калды, ал бул сессиянын текстинде турат. Ротация:
+      `ALLOW_REVIEW_TENANT_PROVISION=true REVIEW_DEMO_ROTATE_PASSWORD=true REVIEW_DEMO_PASSWORD='...' .venv/bin/python scripts/provision_review_tenant.py`
+      Сырсөздү алмаштыруунун башка жолу жок — админ өз мектебине байланган, demo аккаунтка жете албайт.
 - [ ] Түзмөк чектөөсүн (`device_binding_enabled`) качан күйгүзүү — азыр өчүк. Мугалимдер 1.1.3+5 версиясына өткөндөн кийин гана күйгүзүү керек.
 
 # POST-MVP

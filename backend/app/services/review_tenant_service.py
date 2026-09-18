@@ -11,13 +11,14 @@ against a live deployment, unlike the full bootstrap seed.
 """
 
 from dataclasses import dataclass
-from datetime import time
+from datetime import datetime, time, timezone
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash
+from app.models.auth_security import AuthSession
 from app.models.enums import UserRole
 from app.models.qr import QrCredential
 from app.models.school import School
@@ -43,6 +44,7 @@ class ReviewTenant:
     credential: QrCredential
     user: User
     created: bool
+    password_rotated: bool = False
 
     @property
     def qr_payload(self) -> dict:
@@ -54,13 +56,15 @@ class ReviewTenant:
 
 
 async def provision(
-    db: AsyncSession, password: Optional[str] = None
+    db: AsyncSession, password: Optional[str] = None, *, rotate_password: bool = False
 ) -> ReviewTenant:
     """Creates or repairs the review tenant. Idempotent.
 
     `password` is applied only when the demo user is first created, so a
     re-run never silently rotates a credential already sitting in the App
-    Store Connect review notes.
+    Store Connect review notes. Pass `rotate_password` to set a new one
+    deliberately — there is no other way to change it, because an ordinary
+    administrator is scoped to their own school and cannot reach this account.
     """
     created = False
 
@@ -162,6 +166,22 @@ async def provision(
         await db.flush()
         created = True
     else:
+        if rotate_password:
+            if not password:
+                raise ValueError("A password is required to rotate it.")
+            user.hashed_password = get_password_hash(password)
+            # Anyone holding the old password keeps a working session
+            # otherwise, which defeats the point of rotating it.
+            now = datetime.now(timezone.utc)
+            for session in (
+                await db.execute(
+                    select(AuthSession).where(
+                        AuthSession.user_id == user.id,
+                        AuthSession.revoked_at.is_(None),
+                    )
+                )
+            ).scalars():
+                session.revoked_at = now
         # A demo account must never end up pointing at a production school.
         user.is_demo = True
         user.is_active = True
@@ -187,5 +207,9 @@ async def provision(
     await db.refresh(credential)
     await db.refresh(user)
     return ReviewTenant(
-        school=school, credential=credential, user=user, created=created
+        school=school,
+        credential=credential,
+        user=user,
+        created=created,
+        password_rotated=rotate_password and not created,
     )

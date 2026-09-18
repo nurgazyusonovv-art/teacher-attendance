@@ -12,6 +12,10 @@ the absence counts.
 Idempotent: re-running repairs the tenant and never rotates an existing
 password, so the credentials already in the App Store Connect review notes
 keep working.
+
+To deliberately set a new password — the only way to change it, since an
+administrator is scoped to their own school and cannot reach this account —
+add REVIEW_DEMO_ROTATE_PASSWORD=true. Every existing session is revoked.
 """
 
 import asyncio
@@ -35,11 +39,14 @@ async def main() -> None:
         raise SystemExit(1)
 
     password = os.getenv("REVIEW_DEMO_PASSWORD")
+    rotate = os.getenv("REVIEW_DEMO_ROTATE_PASSWORD", "").lower() == "true"
 
     try:
         async with AsyncSessionLocal() as db:
             try:
-                tenant = await review_tenant_service.provision(db, password)
+                tenant = await review_tenant_service.provision(
+                    db, password, rotate_password=rotate
+                )
             except ValueError as exc:
                 print(f"{exc} REVIEW_DEMO_PASSWORD коюңуз.", file=sys.stderr)
                 raise SystemExit(1) from exc
@@ -58,11 +65,14 @@ async def main() -> None:
             print()
             print("QR payload for the review notes:")
             print(json.dumps(tenant.qr_payload, indent=2, ensure_ascii=False))
-            if not tenant.created:
+            if tenant.password_rotated:
+                print()
+                print("  Сырсөз жаңыртылды, эски сессиялар жокко чыгарылды.")
+            elif not tenant.created:
                 print()
                 print(
-                    "  Сырсөз өзгөртүлгөн жок. Билбесеңиз, админ панелинен "
-                    "demo мугалимге жаңы сырсөз коюңуз."
+                    "  Сырсөз өзгөртүлгөн жок. Жаңыртуу үчүн "
+                    "REVIEW_DEMO_ROTATE_PASSWORD=true кошуңуз."
                 )
     finally:
         await async_engine.dispose()

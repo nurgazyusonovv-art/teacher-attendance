@@ -61,6 +61,10 @@ It is idempotent and never rotates an existing password, so it is safe to
 re-run. It prints the `school_id` and `qr_token` for the review notes;
 `scripts/print_review_demo_qr.py` reprints them later without writing anything.
 
+To set a new password, add `REVIEW_DEMO_ROTATE_PASSWORD=true`. This is the only
+way to change it: an administrator is scoped to their own school and cannot
+reach the demo account. Rotating revokes every existing session.
+
 ### Reviewer Credentials:
 - **Teacher Account:** `demo_teacher`
 - **Password:** provided in App Store Connect review notes
