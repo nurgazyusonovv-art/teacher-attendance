@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.crypto import decrypt_secret
 from app.core.timezone import current_time_in_school_timezone, today_date_in_school_timezone
 from app.models.school import School
 from app.services.attendance_service import AttendanceService
@@ -160,7 +161,11 @@ class TelegramService:
             db, school_id, target_date
         )
 
-        bot_token = override_bot_token or school.telegram_bot_token or getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+        bot_token = (
+            override_bot_token
+            or decrypt_secret(school.telegram_bot_token)
+            or getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+        )
         chat_id = override_chat_id or school.telegram_chat_id or getattr(settings, "TELEGRAM_CHAT_ID", None)
 
         if not bot_token or not chat_id:
@@ -204,7 +209,9 @@ class TelegramService:
 
         sent_count = 0
         for school in schools:
-            bot_token = school.telegram_bot_token or getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+            bot_token = decrypt_secret(school.telegram_bot_token) or getattr(
+                settings, "TELEGRAM_BOT_TOKEN", None
+            )
             chat_id = school.telegram_chat_id or getattr(settings, "TELEGRAM_CHAT_ID", None)
 
             if not bot_token or not chat_id:

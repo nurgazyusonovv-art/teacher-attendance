@@ -486,11 +486,12 @@ Optional:
 - [x] `GeofenceService.verify_or_raise` — check-in жана check-out эми бир эле geofence дарбазасынан өтөт; эки inline көчүрмө (ар башка ката билдирүүлөрү менен) жоюлду. Мурда `verify_location` тестелген, бирок продакшн жолунда колдонулган эмес.
 - [x] Жаңы `tests/test_attendance_integrity.py`: hard delete коргоосу (эки тарабы), per-school absence start date + created_at fallback, geofence дарбазасы, check-out'тун radius/accuracy текшерүүсү. Backend 78 → 84 тест.
 
-### Phase 2 — security (кийинки)
-- [ ] `POST /auth/change-password` — мугалим админ койгон сырсөздү алмаштыра албайт (эски+жаңы сырсөз, башка session'дарды revoke, audit).
-- [ ] Login lockout `(identifier, ip)` боюнча гана — IP ротациясы аны толук айланып өтөт; identifier боюнча өзүнчө эсептегич керек.
-- [ ] `schools.telegram_bot_token` базада ачык текст (API'де write-only — туура). Шифрлөө же secret store'го көчүрүү.
-- [ ] Mobile `go_router`'да `redirect` guard жок: `/admin` жана `/home` deep link auth'сыз ачылат.
+### Phase 2 — security (аткарылды)
+- [x] `POST /auth/change-password` — колдонуучу өз сырсөзүн алмаштыра алат (учурдагы сырсөз текшерилет, жаңысы эскисинен айырмалуу болушу керек, башка бардык session'дар revoke кылынат, audit'ке `PASSWORD_CHANGED` жазылат).
+- [x] Login lockout эми эки катмарлуу: мурдагы `(identifier, ip)` эсептегичинин үстүнө `LOGIN_MAX_FAILED_ATTEMPTS_PER_IDENTIFIER` (default 15) — бир аккаунт боюнча бардык IP'лердеги жаңылыштыктар `LOGIN_LOCKOUT_MINUTES` терезесинде кошулат. Ийгиликтүү кирүү бардык IP'лердеги жазууларды тазалайт. Migration талап кылынбайт.
+- [x] `schools.telegram_bot_token` эми at-rest шифрленет (`app/core/crypto.py`, Fernet, `enc:v1:` префикси). Эски ачык текст маанилер иштей берет жана кийинки сактоодо шифрленет. Ачкыч `SECRETS_ENCRYPTION_KEY` — SECRET_KEY'ден өзүнчө, ошондуктан JWT ачкычын rotate кылуу токенди бузбайт; чечмелөө ишке ашпаса `None` кайтат (админ кайра киргизет), exception ыргытылбайт. `cryptography` requirements'ке ачык кошулду.
+- [x] Mobile router guard: `createAppRouter(authCubit)` — `refreshListenable` + `redirect`. Session жок болсо `/login`, session текшерилип жатса `/splash`, admin эмес колдонуучу `/admin*` жолдоруна кире албайт, кирген колдонуучу `/login`'де калбайт.
+- [x] Жанаша табылган ката: splash жана login `role == 'ADMIN'` деп текшерчү, ошондуктан SUPER_ADMIN мугалимдин экранына түшүп калчу. Экөө тең `user.isAdmin`'ге которулду.
 - [ ] Чечим керек: `Device` каттоо бар, бирок check-in'де эч качан текшерилбейт (PROJECT.md §10 «registered device»). Бүтүрүү же документтен алып салуу.
 
 ### Phase 3 — performance (кийинки)
@@ -514,7 +515,7 @@ Optional:
 - [ ] `attendance_start_date`'ти орнотуу үчүн web admin settings экранына талаа кошуу (азыр `PATCH /schools/{id}` аркылуу гана).
 
 ### Deploy эскертүүсү
-- [ ] `e35f1cb7d005` migration'ды production'го жүргүзүү жана Render'де `teacher-attendance-finalize-absences` cron сервисин түзүү. Cron түзүлгөнгө чейин ABSENT жазуулары автоматтык жазылбайт (dashboard'дун `display_status`'у мурдагыдай туура иштейт, тарых/отчет үчүн кол менен `POST /attendance/admin/catch-up-absences` чакырса болот).
+- [ ] `e35f1cb7d005` migration'ды production'го жүргүзүү, Render'де `teacher-attendance-finalize-absences` cron сервисин жана `SECRETS_ENCRYPTION_KEY` env var'ын түзүү (ал жок болсо SECRET_KEY'ге түшөт — бул учурда SECRET_KEY rotate кылынганда Telegram токен окулбай калат). Cron түзүлгөнгө чейин ABSENT жазуулары автоматтык жазылбайт (dashboard'дун `display_status`'у мурдагыдай туура иштейт, тарых/отчет үчүн кол менен `POST /attendance/admin/catch-up-absences` чакырса болот).
 
 # POST-MVP
 

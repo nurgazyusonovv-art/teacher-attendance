@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Optional, Union
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,10 +11,17 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = "development-only-insecure-secret-key"
+    # Encrypts stored secrets (Telegram bot token). Kept separate from
+    # SECRET_KEY so JWT signing keys can be rotated without making the
+    # stored secrets unreadable. Falls back to SECRET_KEY when unset.
+    SECRETS_ENCRYPTION_KEY: Optional[str] = None
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     LOGIN_MAX_FAILED_ATTEMPTS: int = 5
+    # Second gate across every source IP, so rotating addresses cannot
+    # brute-force a single account past the per-IP limit.
+    LOGIN_MAX_FAILED_ATTEMPTS_PER_IDENTIFIER: int = 15
     LOGIN_LOCKOUT_MINUTES: int = 15
     ATTENDANCE_RATE_LIMIT_PER_MINUTE: int = 10
 

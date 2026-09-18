@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (state is AuthLoading) return; // Wait until auth check finishes
 
     if (state is Authenticated) {
-      if (state.user.role == 'ADMIN') {
+      if (state.user.isAdmin) {
         context.go('/admin');
       } else {
         context.go('/home');

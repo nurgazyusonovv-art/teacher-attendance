@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppException, ErrorCode
 from app.models.school import School
 from app.schemas.school import SchoolUpdate
+from app.core.crypto import encrypt_secret
 from app.services.audit_service import AuditService
 
 
@@ -45,6 +46,12 @@ class SchoolService:
         school = await SchoolService.get_school_by_id(db, school_id)
 
         update_data = payload.model_dump(exclude_unset=True)
+        # The bot token has to be replayed to Telegram, so it is encrypted at
+        # rest rather than hashed. AuditService already redacts the field.
+        if "telegram_bot_token" in update_data:
+            update_data["telegram_bot_token"] = encrypt_secret(
+                update_data["telegram_bot_token"]
+            )
         old_values = {field: getattr(school, field) for field in update_data}
         for field, value in update_data.items():
             setattr(school, field, value)

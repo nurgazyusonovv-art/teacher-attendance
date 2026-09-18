@@ -2,10 +2,11 @@ from datetime import datetime, timedelta, timezone
 import secrets
 from typing import Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import func, select, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from app.core.security import (
+    get_password_hash,
     verify_password,
     create_access_token,
     create_refresh_token,
@@ -18,7 +19,7 @@ from app.models.user import User
 from app.models.teacher import Teacher
 from app.models.audit import AuditLog
 from app.models.auth_security import AuthSession, LoginAttempt
-from app.schemas.auth import LoginRequest, UserInfo
+from app.schemas.auth import ChangePasswordRequest, LoginRequest, UserInfo
 from app.schemas.common import TokenResponse
 
 
@@ -38,6 +39,38 @@ class AuthService:
             )
         )
         return result.scalar_one_or_none()
+
+    @classmethod
+    async def _identifier_is_locked(
+        cls, db: AsyncSession, identifier: str
+    ) -> bool:
+        """Per-IP lockout alone lets a rotating attacker keep guessing.
+
+        Count every recent failure for this account across all source IPs and
+        stop once they exceed the wider threshold.
+        """
+        window_start = datetime.now(timezone.utc) - timedelta(
+            minutes=settings.LOGIN_LOCKOUT_MINUTES
+        )
+        result = await db.execute(
+            select(func.coalesce(func.sum(LoginAttempt.failed_count), 0)).where(
+                LoginAttempt.identifier_hash == cls._login_key(identifier),
+                LoginAttempt.last_attempt_at >= window_start,
+            )
+        )
+        total_failures = int(result.scalar_one() or 0)
+        return total_failures >= settings.LOGIN_MAX_FAILED_ATTEMPTS_PER_IDENTIFIER
+
+    @classmethod
+    async def _clear_login_attempts(cls, db: AsyncSession, identifier: str) -> None:
+        """A successful login clears the account's failures from every IP."""
+        result = await db.execute(
+            select(LoginAttempt).where(
+                LoginAttempt.identifier_hash == cls._login_key(identifier)
+            )
+        )
+        for attempt in result.scalars().all():
+            await db.delete(attempt)
 
     @classmethod
     async def _record_failed_login(
@@ -95,6 +128,13 @@ class AuthService:
         """
         Authenticates a user by username or email and returns access/refresh tokens along with user info.
         """
+        if await cls._identifier_is_locked(db, login_data.username_or_email):
+            raise AppException(
+                code=ErrorCode.RATE_LIMITED,
+                message="Бул аккаунт убактылуу бөгөттөлдү. Бир аздан кийин кайра кириңиз.",
+                status_code=429,
+            )
+
         attempt = await cls._get_login_attempt(
             db, login_data.username_or_email, client_ip
         )
@@ -166,8 +206,7 @@ class AuthService:
             teacher_id = user.teacher_profile.id
             school_id = user.teacher_profile.school_id
 
-        if attempt:
-            await db.delete(attempt)
+        await cls._clear_login_attempts(db, login_data.username_or_email)
 
         # Persist a server-controlled refresh session before issuing tokens.
         refresh_jti = secrets.token_urlsafe(32)
@@ -330,6 +369,66 @@ class AuthService:
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
+
+    @classmethod
+    async def change_password(
+        cls,
+        db: AsyncSession,
+        user: User,
+        payload: ChangePasswordRequest,
+        current_session_id: Optional[str] = None,
+        client_ip: str = "unknown",
+    ) -> None:
+        """Lets a user rotate a password their administrator chose for them.
+
+        Every other session is revoked so a leaked password stops working
+        everywhere but the device performing the change.
+        """
+        if not verify_password(payload.current_password, user.hashed_password):
+            raise AppException(
+                code=ErrorCode.INVALID_CREDENTIALS,
+                message="Учурдагы сырсөз туура эмес.",
+                status_code=400,
+            )
+        if payload.current_password == payload.new_password:
+            raise AppException(
+                code=ErrorCode.VALIDATION_ERROR,
+                message="Жаңы сырсөз эскисинен айырмаланышы керек.",
+                status_code=400,
+            )
+
+        user.hashed_password = get_password_hash(payload.new_password)
+
+        sessions = await db.execute(
+            select(AuthSession).where(
+                AuthSession.user_id == user.id,
+                AuthSession.revoked_at.is_(None),
+            )
+        )
+        revoked = 0
+        now = datetime.now(timezone.utc)
+        for auth_session in sessions.scalars().all():
+            if current_session_id and auth_session.id == current_session_id:
+                continue
+            auth_session.revoked_at = now
+            revoked += 1
+
+        db.add(
+            AuditLog(
+                school_id=(
+                    user.teacher_profile.school_id
+                    if user.teacher_profile
+                    else user.school_id
+                ),
+                user_id=user.id,
+                action="PASSWORD_CHANGED",
+                entity_name="user",
+                entity_id=user.id,
+                new_values=f'{{"revoked_sessions": {revoked}}}',
+                ip_address=client_ip,
+            )
+        )
+        await db.commit()
 
     @staticmethod
     async def revoke_session(

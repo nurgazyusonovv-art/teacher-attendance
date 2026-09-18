@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../core/constants/app_constants.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/secure_storage_service.dart';
@@ -25,6 +26,7 @@ class _TeacherAppState extends State<TeacherApp> {
   late final AuthCubit _authCubit;
   late final AttendanceRepository _attendanceRepository;
   late final AttendanceCubit _attendanceCubit;
+  late final GoRouter _router;
 
   @override
   void initState() {
@@ -38,6 +40,8 @@ class _TeacherAppState extends State<TeacherApp> {
     _authCubit = AuthCubit(authRepository: _authRepository)..checkAuthStatus();
     _attendanceRepository = AttendanceRepository();
     _attendanceCubit = AttendanceCubit(repository: _attendanceRepository);
+    // Built here so the router can read the live session for its guards.
+    _router = createAppRouter(_authCubit);
   }
 
   @override
@@ -56,13 +60,15 @@ class _TeacherAppState extends State<TeacherApp> {
       ],
       child: BlocListener<AuthCubit, AuthState>(
         listener: (_, state) {
-          if (state is Unauthenticated) appRouter.go('/login');
+          // The router guard already redirects; this keeps an expired session
+          // from leaving a stale screen on top of the stack.
+          if (state is Unauthenticated) _router.go('/login');
         },
         child: MaterialApp.router(
           title: AppConstants.appName,
           theme: AppTheme.lightTheme,
           debugShowCheckedModeBanner: false,
-          routerConfig: appRouter,
+          routerConfig: _router,
         ),
       ),
     );

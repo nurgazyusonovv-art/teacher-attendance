@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
-            if (state.user.role == 'ADMIN') {
+            if (state.user.isAdmin) {
               context.go('/admin');
             } else {
               context.go('/home');
@@ -147,6 +147,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _usernameController,
+                              autocorrect: false,
+                              enableSuggestions: false,
                               textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
                                 hintText: 'Логинди жазыңыз',
@@ -163,6 +165,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _passwordController,
+                              autocorrect: false,
+                              enableSuggestions: false,
                               obscureText: _obscurePassword,
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _handleLogin(),
@@ -170,6 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 hintText: 'Сырсөздү жазыңыз',
                                 prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary),
                                 suffixIcon: IconButton(
+                                  tooltip: _obscurePassword ? 'Сырсөздү көрсөтүү' : 'Сырсөздү жашыруу',
                                   icon: Icon(
                                     _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                                     color: AppTheme.textSecondary,
