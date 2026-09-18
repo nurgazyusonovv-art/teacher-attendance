@@ -62,6 +62,16 @@ class DailyAttendanceRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DailyAttendancePage(BaseModel):
+    """Paged school-wide history, so a report is one request instead of one
+    per teacher."""
+
+    items: List[DailyAttendanceRead]
+    total: int
+    skip: int
+    limit: int
+
+
 class TodayStatusResponse(BaseModel):
     school_name: Optional[str] = None
     date: date

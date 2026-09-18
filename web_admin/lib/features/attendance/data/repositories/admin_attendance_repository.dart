@@ -122,48 +122,49 @@ class AdminAttendanceRepository {
     }
   }
 
-  /// Reads every teacher page, including inactive teachers, without hiding
-  /// partial failures as an empty or complete report.
-  Future<List<AdminDailyAttendanceItem>> getReportHistory() async {
+  /// Reads the school's attendance history for a period in one paged call.
+  ///
+  /// This used to fetch every teacher page and then one history request per
+  /// teacher, so the cost grew with the size of the school. Partial failures
+  /// still surface as an error rather than as a short report.
+  Future<List<AdminDailyAttendanceItem>> getReportHistory({
+    DateTime? start,
+    DateTime? end,
+  }) async {
+    const pageSize = 1000;
     final options = await _getAuthOptions();
-    final teachers = <Map<String, dynamic>>[];
+    final records = <AdminDailyAttendanceItem>[];
     var skip = 0;
+
     while (true) {
       final response = await _dio.get(
-        '${AppConstants.apiBaseUrl}/teachers',
-        queryParameters: {'skip': skip, 'limit': 100},
+        '${AppConstants.apiBaseUrl}/attendance/history',
+        queryParameters: {
+          'skip': skip,
+          'limit': pageSize,
+          if (start != null) 'start_date': _isoDate(start),
+          if (end != null) 'end_date': _isoDate(end),
+        },
         options: options,
       );
-      final page = (response.data['items'] as List)
-          .cast<Map<String, dynamic>>();
-      teachers.addAll(page);
+      final body = response.data as Map<String, dynamic>;
+      final page = (body['items'] as List).cast<Map<String, dynamic>>();
+      records.addAll(page.map(AdminDailyAttendanceItem.fromJson));
+
+      final total = body['total'] as int;
       skip += page.length;
-      if (skip >= (response.data['total'] as int)) break;
-      if (page.isEmpty) throw StateError('Incomplete teacher list');
+      if (skip >= total) break;
+      if (page.isEmpty) throw StateError('Incomplete attendance history');
     }
-    final records = <AdminDailyAttendanceItem>[];
-    // Bound concurrency so a large school cannot overwhelm the API.
-    for (var offset = 0; offset < teachers.length; offset += 4) {
-      final batch = teachers.skip(offset).take(4);
-      final results = await Future.wait(
-        batch.map((teacher) async {
-          final response = await _dio.get(
-            '${AppConstants.apiBaseUrl}/attendance/teacher/${teacher['id']}/history',
-            options: options,
-          );
-          return (response.data as List).map((raw) {
-            final json = Map<String, dynamic>.from(raw as Map);
-            json['teacher_name'] = teacher['full_name'];
-            json['employee_code'] = teacher['employee_code'];
-            return AdminDailyAttendanceItem.fromJson(json);
-          }).toList();
-        }),
-      );
-      records.addAll(results.expand((items) => items));
-    }
+
     records.sort((a, b) => b.date.compareTo(a.date));
     return records;
   }
+
+  static String _isoDate(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 
   Future<bool> manualCorrection({
     required String teacherId,

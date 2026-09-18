@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, date
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Integer, Date, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Date, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db.base_class import Base
@@ -31,3 +31,9 @@ class LessonDelay(Base):
     teacher: Mapped["Teacher"] = relationship("Teacher", back_populates="lesson_delays")
     school: Mapped["School"] = relationship("School")
     recorded_by: Mapped[Optional["User"]] = relationship("User")
+
+    __table_args__ = (
+        # Delays are read per school-day (dashboard) and per teacher-day (history).
+        Index("ix_lesson_delays_school_date", "school_id", "date"),
+        Index("ix_lesson_delays_teacher_date", "teacher_id", "date"),
+    )

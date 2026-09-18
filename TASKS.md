@@ -499,11 +499,12 @@ Optional:
   - Mobile: `DeviceIdentityService` — secure storage'да туруктуу id (reinstall жаңы түзмөк катары ырастоону күтөт, бул атайылап). Login жана session restore'до каттайт, эки сканда тең `device_id` жөнөтөт; жаңы ката коддору кыргызча билдирүүгө айландырылды.
   - Web admin: Жөндөөлөр экранында «Катталган түзмөктөр» карточкасы — чектөө которгучу, күтүүдөгү/ырасталган түзмөктөр, ырастоо жана жокко чыгаруу.
 
-### Phase 3 — performance (кийинки)
-- [ ] Admin dashboard N+1: `resolve_schedule_for_date` ар бир мугалим үчүн өзүнчө чакырылат (`attendance_service.py`).
-- [ ] `get_teacher_history` бардык саптарды жүктөп, year/month'ту Python'да чыпкалайт; SQL чыпкасы + pagination керек.
-- [ ] Composite index: `daily_attendance(school_id, date)`, `attendance_events(teacher_id, event_time)`, `lesson_delays(school_id, date)`.
-- [ ] `finalize_absences`'ти batch query'ге өткөрүү (азыр күн × мугалим боюнча цикл).
+### Phase 3 — performance (аткарылды)
+- [x] `ResolvedSchedules` — мектептин бардык графиги бир суроодо жүктөлүп, эсте индекстелет. Admin dashboard'догу мугалим башына эки суроо жоголду; тест 5 мугалим кошулганда суроолордун саны **өзгөрбөй турганын** текшерет.
+- [x] `get_teacher_history`: year/month эми SQL'де чыпкаланат (мурда бардык саптар жүктөлүп Python'да чыпкаланчу), `start_date`/`end_date`, `skip`/`limit` кошулду. Сабак кечигүүлөрү кайтарылган күндөр боюнча гана суралат. Суроолордун саны саптардын санына көз каранды эмес (≤3).
+- [x] Жаңы `GET /attendance/history` — мектеп боюнча пагинацияланган отчет (`items`/`total`/`skip`/`limit`). Web admin отчеттору эми 1+N HTTP сурам ордуна бир пагинацияланган чакырык кылат; мезгилди сервер чыпкалайт.
+- [x] `a7b93ef1d007` migration: `daily_attendance(school_id,date)`, `daily_attendance(teacher_id,date)`, `attendance_events(teacher_id,event_time)`, `lesson_delays(school_id,date)`, `lesson_delays(teacher_id,date)`, `audit_logs(school_id,action,created_at)`. Модель metadata'сы менен шайкеш, `alembic check` таза, downgrade roundtrip өттү.
+- [x] Absence pass: график жана мугалимдер тизмеси бүт диапазон үчүн бир жолу жүктөлөт; күнүнө бир окуу менен кайсы мугалим өзгөрүшү мүмкүн экени аныкталып, lock жана кайра окуу ошолорго гана колдонулат. Race коргоосу сакталды (чечим ар дайым lock астындагы окуудан алынат). Idempotency тест менен бекитилди.
 
 ### Phase 4 — client correctness (кийинки)
 - [ ] `DateTimeUtils`'те UTC+6 катып калган (3 жер) — backend `school.timezone`'ду туура колдонот, клиент аны эске албайт.
@@ -557,7 +558,7 @@ Optional:
 - [x] Иш күндөрдү bounded диапазондо автоматтык ABSENT кылуу; EXCUSED жазуулары өзгөртүлбөйт.
 - [x] Admin attendance reset endpoint: так `RESET ATTENDANCE` ырастоосу жана audit log менен мектептин катышуу жазууларын тазалоо.
 - [x] Web regression: карточка чыпкалары, мектеп убактысынын көрсөтүлүшү, деталдар жана бош тизме тесттери.
-- [ ] Чоң мектептер үчүн сервердик пагинацияланган жалпы отчет endpoint'и (азыр бардык teacher pages + 4 параллелдүү history request колдонулат).
+- [x] Чоң мектептер үчүн сервердик пагинацияланган жалпы отчет endpoint'и — `GET /attendance/history` (2026-09-18).
 
 - [x] Registered device binding
 - [ ] School Wi-Fi verification

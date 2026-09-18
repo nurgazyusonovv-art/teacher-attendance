@@ -11,7 +11,7 @@ from app.models.enums import AttendanceStatus
 from app.models.school import School
 from app.models.teacher import Teacher
 from app.models.audit import AuditLog
-from app.services.schedule_service import ScheduleService
+from app.services.schedule_service import ResolvedSchedules, ScheduleService
 
 MAX_CATCH_UP_DAYS = 366
 
@@ -70,18 +70,40 @@ class AbsenceService:
                 message="Күндөрдүн аралыгы туура эмес.",
                 status_code=400,
             )
+        # Loaded once for the whole range rather than per day per teacher.
+        schedules = await ScheduleService.load_school_schedules(db, school_id)
+        teachers = list(
+            (
+                await db.execute(
+                    select(Teacher)
+                    .where(
+                        Teacher.school_id == school_id,
+                        Teacher.is_active == True,  # noqa: E712
+                    )
+                    .options(selectinload(Teacher.user))
+                )
+            )
+            .scalars()
+            .all()
+        )
         total = 0
         current = start_date
         while current <= end_date:
             total += len(
-                await AbsenceService.process_daily_absences(db, school_id, current)
+                await AbsenceService.process_daily_absences(
+                    db, school_id, current, schedules, teachers
+                )
             )
             current += timedelta(days=1)
         return total
 
     @staticmethod
     async def process_daily_absences(
-        db: AsyncSession, school_id: str, target_date: date | None = None
+        db: AsyncSession,
+        school_id: str,
+        target_date: date | None = None,
+        schedules: ResolvedSchedules | None = None,
+        teachers: List[Teacher] | None = None,
     ) -> List[DailyAttendance]:
         """
         Иш күнү аяктаганда келбеген (Check-in жасабаган) мугалимдерди автоматтык
@@ -89,35 +111,63 @@ class AbsenceService:
         """
         school_res = await db.execute(select(School).where(School.id == school_id))
         school = school_res.scalar_one()
+        if schedules is None:
+            schedules = await ScheduleService.load_school_schedules(db, school_id)
         now = current_time_in_school_timezone(school.timezone)
         eval_date = target_date or now.date()
         if eval_date < AbsenceService.resolve_start_date(school) or eval_date > now.date():
             return []
 
         # 1. Get all active teachers
-        teachers_res = await db.execute(
-            select(Teacher)
-            .where(Teacher.school_id == school_id, Teacher.is_active == True)  # noqa: E712
-            .options(selectinload(Teacher.user))
-        )
-        teachers = teachers_res.scalars().all()
+        if teachers is None:
+            teachers_res = await db.execute(
+                select(Teacher)
+                .where(Teacher.school_id == school_id, Teacher.is_active == True)  # noqa: E712
+                .options(selectinload(Teacher.user))
+            )
+            teachers = list(teachers_res.scalars().all())
 
-        created_absences: List[DailyAttendance] = []
-
+        # 2. Narrow to the teachers this day could actually mark absent, so the
+        #    row lock and re-read below run for those only rather than for
+        #    every teacher on every day of a long catch-up range.
+        candidates: List[Teacher] = []
         for t in teachers:
             if t.created_at and eval_date < to_school_timezone(t.created_at, school.timezone).date():
                 continue
-            # Check schedule for this date
-            schedule = await ScheduleService.resolve_schedule_for_date(
-                db, school_id, t.id, eval_date
-            )
+            schedule = schedules.for_teacher(t.id, eval_date)
             # Missing schedules and explicit days off are never inferred as absences.
             if schedule is None or schedule.is_day_off:
                 continue
             if eval_date == now.date() and now.time().replace(tzinfo=None) < schedule.end_time:
                 continue
+            candidates.append(t)
 
-            from app.services.attendance_service import AttendanceService
+        if not candidates:
+            return []
+
+        # 3. One read for the whole day instead of one per teacher. It only
+        #    decides who is worth locking; the authoritative read happens
+        #    under the lock, because a scan may land in between.
+        existing_rows = await db.execute(
+            select(DailyAttendance).where(
+                DailyAttendance.school_id == school_id,
+                DailyAttendance.date == eval_date,
+            )
+        )
+        prefetched = {row.teacher_id: row for row in existing_rows.scalars().all()}
+
+        created_absences: List[DailyAttendance] = []
+        from app.services.attendance_service import AttendanceService
+
+        for t in candidates:
+            known = prefetched.get(t.id)
+            if known is not None and (
+                known.check_in_time is not None
+                or known.status in (AttendanceStatus.EXCUSED, AttendanceStatus.ABSENT)
+            ):
+                # Already settled; nothing this pass would change.
+                continue
+
             await AttendanceService._lock_attendance_day(db, t.id, eval_date)
             record = (await db.execute(select(DailyAttendance).where(
                 DailyAttendance.teacher_id == t.id, DailyAttendance.date == eval_date

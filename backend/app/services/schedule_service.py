@@ -1,5 +1,5 @@
 from datetime import date, time
-from typing import List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +7,37 @@ from app.core.errors import AppException, ErrorCode
 from app.models.schedule import WorkSchedule
 from app.schemas.schedule import ScheduleCreate, ScheduleUpdate
 from app.services.audit_service import AuditService
+
+
+class ResolvedSchedules:
+    """Every schedule of one school, indexed for lookup without more queries.
+
+    Resolving a schedule per teacher per day cost two queries each, so an
+    admin dashboard or a multi-day absence pass scaled linearly in round
+    trips. Load the school's schedules once and answer from memory instead.
+    """
+
+    __slots__ = ("_by_day_teacher", "_defaults_by_day")
+
+    def __init__(self, rows: Iterable[WorkSchedule]):
+        self._by_day_teacher: Dict[Tuple[int, str], WorkSchedule] = {}
+        self._defaults_by_day: Dict[int, WorkSchedule] = {}
+        for row in rows:
+            if row.teacher_id is None:
+                self._defaults_by_day[row.day_of_week] = row
+            else:
+                self._by_day_teacher[(row.day_of_week, row.teacher_id)] = row
+
+    def for_teacher(
+        self, teacher_id: Optional[str], target_date: date
+    ) -> Optional[WorkSchedule]:
+        """Teacher override first, then the school default for that weekday."""
+        day_of_week = target_date.weekday()
+        if teacher_id is not None:
+            override = self._by_day_teacher.get((day_of_week, teacher_id))
+            if override is not None:
+                return override
+        return self._defaults_by_day.get(day_of_week)
 
 
 class ScheduleService:
@@ -219,6 +250,19 @@ class ScheduleService:
         )
         await db.delete(schedule)
         await db.commit()
+
+    @staticmethod
+    async def load_school_schedules(
+        db: AsyncSession, school_id: str
+    ) -> ResolvedSchedules:
+        """Loads every schedule of a school in one query.
+
+        Use this instead of calling resolve_schedule_for_date in a loop.
+        """
+        rows = await db.execute(
+            select(WorkSchedule).where(WorkSchedule.school_id == school_id)
+        )
+        return ResolvedSchedules(rows.scalars().all())
 
     @staticmethod
     async def resolve_schedule_for_date(

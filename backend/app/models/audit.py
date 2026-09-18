@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, DateTime, ForeignKey
+from sqlalchemy import String, Text, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db.base_class import Base
@@ -35,3 +35,8 @@ class AuditLog(Base):
     # Relationships
     school: Mapped[Optional["School"]] = relationship("School", back_populates="audit_logs")
     user: Mapped[Optional["User"]] = relationship("User", back_populates="audit_logs")
+
+    __table_args__ = (
+        # Latest ATTENDANCE_RESET for a school, read on every catch-up pass.
+        Index("ix_audit_logs_school_action_created", "school_id", "action", "created_at"),
+    )

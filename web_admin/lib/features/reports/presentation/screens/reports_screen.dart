@@ -36,15 +36,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
     try {
       final data = await _repository.getTodayDashboard();
       if (data == null) throw StateError('Unavailable');
-      final history = days == 1
-          ? data.records
-          : await _repository.getReportHistory();
       final end = DateTime.parse(data.date);
-      final start = end.subtract(Duration(days: days - 1));
-      final records = history.where((r) {
-        final date = DateTime.parse(r.date);
-        return !date.isAfter(end) && (days == 0 || !date.isBefore(start));
-      }).toList();
+      // days == 0 means the whole stored history; otherwise the server
+      // narrows the period so the client never pulls every record.
+      final start = days == 0 ? null : end.subtract(Duration(days: days - 1));
+      final records = days == 1
+          ? data.records
+          : await _repository.getReportHistory(start: start, end: end);
       if (!mounted || request != _request) return;
       setState(() {
         _reportData = data;

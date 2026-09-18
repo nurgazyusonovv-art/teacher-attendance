@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Integer, Float, Boolean, DateTime, ForeignKey, Enum as SAEnum
+from sqlalchemy import String, Integer, Float, Boolean, DateTime, ForeignKey, Index, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db.base_class import Base
@@ -52,3 +52,8 @@ class AttendanceEvent(Base):
     # Relationships
     teacher: Mapped["Teacher"] = relationship("Teacher", back_populates="attendance_events")
     school: Mapped["School"] = relationship("School", back_populates="attendance_events")
+
+    __table_args__ = (
+        # Event timeline for one teacher.
+        Index("ix_attendance_events_teacher_time", "teacher_id", "event_time"),
+    )

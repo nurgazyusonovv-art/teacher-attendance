@@ -18,6 +18,7 @@ from app.models.lesson_delay import LessonDelay
 from app.models.user import User
 from app.schemas.attendance import (
     AdminDashboardSummary,
+    DailyAttendancePage,
     AttendanceScanRequest,
     DailyAttendanceRead,
     ManualCorrectionRequest,
@@ -132,7 +133,11 @@ async def get_today_status(
 @router.get("/my-history", response_model=List[DailyAttendanceRead], summary="Өзүнүн катышуу тарыхын көрүү")
 async def get_my_history(
     year: Optional[int] = Query(None, description="Жыл боюнча чыпка"),
-    month: Optional[int] = Query(None, description="Ай боюнча чыпка (1-12)"),
+    month: Optional[int] = Query(None, ge=1, le=12, description="Ай боюнча чыпка (1-12)"),
+    start_date: Optional[date] = Query(None, description="Мезгилдин башы"),
+    end_date: Optional[date] = Query(None, description="Мезгилдин аягы"),
+    skip: int = Query(0, ge=0),
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="Максимум жазуу саны"),
     db: AsyncSession = Depends(get_db),
     current_teacher: Teacher = Depends(get_current_active_teacher),
 ):
@@ -141,6 +146,10 @@ async def get_my_history(
         teacher_id=current_teacher.id,
         year=year,
         month=month,
+        start_date=start_date,
+        end_date=end_date,
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -148,7 +157,11 @@ async def get_my_history(
 async def get_teacher_history_for_admin(
     teacher_id: str,
     year: Optional[int] = Query(None, description="Жыл боюнча чыпка"),
-    month: Optional[int] = Query(None, description="Ай боюнча чыпка (1-12)"),
+    month: Optional[int] = Query(None, ge=1, le=12, description="Ай боюнча чыпка (1-12)"),
+    start_date: Optional[date] = Query(None, description="Мезгилдин башы"),
+    end_date: Optional[date] = Query(None, description="Мезгилдин аягы"),
+    skip: int = Query(0, ge=0),
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="Максимум жазуу саны"),
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_active_admin),
 ):
@@ -160,7 +173,41 @@ async def get_teacher_history_for_admin(
         teacher_id=teacher_id,
         year=year,
         month=month,
+        start_date=start_date,
+        end_date=end_date,
+        skip=skip,
+        limit=limit,
     )
+
+
+@router.get("/history", response_model=DailyAttendancePage, summary="Мектептин катышуу тарыхы (Админ)")
+async def get_school_history(
+    start_date: Optional[date] = Query(None, description="Мезгилдин башы"),
+    end_date: Optional[date] = Query(None, description="Мезгилдин аягы"),
+    teacher_id: Optional[str] = Query(None, description="Бир мугалим боюнча чыпка"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+    admin_user: User = Depends(get_current_active_admin),
+):
+    """All teachers' records for a period in one paged request.
+
+    Replaces fetching the teacher list and then one history request per
+    teacher, which grew with the size of the school.
+    """
+    school_id = await get_user_school_id(db, admin_user)
+    if teacher_id:
+        await ensure_teacher_access(db, admin_user, teacher_id)
+    items, total = await AttendanceService.get_school_history(
+        db=db,
+        school_id=school_id,
+        start_date=start_date,
+        end_date=end_date,
+        teacher_id=teacher_id,
+        skip=skip,
+        limit=limit,
+    )
+    return DailyAttendancePage(items=items, total=total, skip=skip, limit=limit)
 
 
 @router.get("/dashboard/today", response_model=AdminDashboardSummary, summary="Бүгүнкү катышуу дашборду (Админ)")

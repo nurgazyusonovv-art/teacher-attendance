@@ -457,33 +457,59 @@ class AttendanceService:
         )
 
     @staticmethod
+    def _apply_period_filter(query, date_column, year, month, start_date, end_date):
+        """Filters in SQL. This used to load every row and filter in Python."""
+        if year and month:
+            first = date(year, month, 1)
+            last = date(year + (month == 12), (month % 12) + 1, 1) - timedelta(days=1)
+            query = query.where(date_column >= first, date_column <= last)
+        elif year:
+            query = query.where(
+                date_column >= date(year, 1, 1), date_column <= date(year, 12, 31)
+            )
+        if start_date:
+            query = query.where(date_column >= start_date)
+        if end_date:
+            query = query.where(date_column <= end_date)
+        return query
+
+    @staticmethod
     async def get_teacher_history(
         db: AsyncSession,
         teacher_id: str,
         year: Optional[int] = None,
         month: Optional[int] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
     ) -> List[DailyAttendanceRead]:
-        query = (
-            select(DailyAttendance)
-            .where(DailyAttendance.teacher_id == teacher_id)
-            .order_by(DailyAttendance.date.desc())
-        )
+        query = AttendanceService._apply_period_filter(
+            select(DailyAttendance).where(DailyAttendance.teacher_id == teacher_id),
+            DailyAttendance.date,
+            year,
+            month,
+            start_date,
+            end_date,
+        ).order_by(DailyAttendance.date.desc())
+        if skip:
+            query = query.offset(skip)
+        if limit is not None:
+            query = query.limit(limit)
 
         result = await db.execute(query)
         records = result.scalars().all()
 
-        if year and month:
-            records = [
-                r for r in records if r.date.year == year and r.date.month == month
-            ]
-
-        # Fetch lesson delays in this date range
+        # Lesson delays are fetched for exactly the days that came back, so a
+        # paged request does not drag in the teacher's whole delay history.
         delay_query = select(LessonDelay).where(LessonDelay.teacher_id == teacher_id)
-        if year and month:
-            from sqlalchemy import extract
+        if records:
             delay_query = delay_query.where(
-                extract("year", LessonDelay.date) == year,
-                extract("month", LessonDelay.date) == month,
+                LessonDelay.date.in_([r.date for r in records])
+            )
+        else:
+            delay_query = AttendanceService._apply_period_filter(
+                delay_query, LessonDelay.date, year, month, start_date, end_date
             )
         delay_res = await db.execute(delay_query)
         all_delays = delay_res.scalars().all()
@@ -529,6 +555,100 @@ class AttendanceService:
         return output
 
     @staticmethod
+    async def get_school_history(
+        db: AsyncSession,
+        school_id: str,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        teacher_id: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 500,
+    ) -> tuple[List[DailyAttendanceRead], int]:
+        """Every teacher's records for a period, in one paged query.
+
+        Reports used to fetch the teacher list and then one history request per
+        teacher, which grew with the size of the school.
+        """
+        base = (
+            select(DailyAttendance)
+            .join(Teacher, DailyAttendance.teacher_id == Teacher.id)
+            .where(DailyAttendance.school_id == school_id)
+        )
+        base = AttendanceService._apply_period_filter(
+            base, DailyAttendance.date, None, None, start_date, end_date
+        )
+        if teacher_id:
+            base = base.where(DailyAttendance.teacher_id == teacher_id)
+
+        total = (
+            await db.execute(
+                select(func.count()).select_from(base.order_by(None).subquery())
+            )
+        ).scalar_one()
+
+        rows = await db.execute(
+            base.options(selectinload(DailyAttendance.teacher).selectinload(Teacher.user))
+            .order_by(DailyAttendance.date.desc(), DailyAttendance.teacher_id.asc())
+            .offset(skip)
+            .limit(limit)
+        )
+        records = rows.scalars().all()
+        if not records:
+            return [], int(total)
+
+        delay_rows = await db.execute(
+            select(LessonDelay).where(
+                LessonDelay.school_id == school_id,
+                LessonDelay.date.in_({r.date for r in records}),
+                LessonDelay.teacher_id.in_({r.teacher_id for r in records}),
+            )
+        )
+        delays_by_key: Dict[tuple, List[LessonDelayRead]] = {}
+        for d in delay_rows.scalars().all():
+            delays_by_key.setdefault((d.teacher_id, d.date), []).append(
+                LessonDelayRead(
+                    id=d.id,
+                    teacher_id=d.teacher_id,
+                    school_id=d.school_id,
+                    date=d.date,
+                    lesson_number=d.lesson_number,
+                    delay_minutes=d.delay_minutes,
+                    reason=d.reason,
+                    recorded_by_user_id=d.recorded_by_user_id,
+                    created_at=d.created_at,
+                )
+            )
+
+        items: List[DailyAttendanceRead] = []
+        for r in records:
+            day_delays = delays_by_key.get((r.teacher_id, r.date), [])
+            lesson_late = sum(d.delay_minutes for d in day_delays)
+            teacher = r.teacher
+            items.append(
+                DailyAttendanceRead(
+                    id=r.id,
+                    teacher_id=r.teacher_id,
+                    school_id=r.school_id,
+                    date=r.date,
+                    check_in_time=r.check_in_time,
+                    check_out_time=r.check_out_time,
+                    status=r.status,
+                    late_minutes=r.late_minutes,
+                    worked_minutes=r.worked_minutes,
+                    is_manually_corrected=r.is_manually_corrected,
+                    correction_reason=r.correction_reason,
+                    teacher_name=teacher.user.full_name if teacher and teacher.user else None,
+                    employee_code=teacher.employee_code if teacher else None,
+                    phone_number=teacher.phone if teacher else None,
+                    subject=teacher.subject if teacher else None,
+                    lesson_delays=day_delays,
+                    lesson_late_minutes=lesson_late,
+                    total_late_minutes=r.late_minutes + lesson_late,
+                )
+            )
+        return items, int(total)
+
+    @staticmethod
     async def get_admin_today_dashboard(
         db: AsyncSession, school_id: str, target_date: Optional[date] = None
     ) -> AdminDashboardSummary:
@@ -550,6 +670,9 @@ class AttendanceService:
         )
         teachers = teachers_res.scalars().all()
         total_teachers = len(teachers)
+
+        # One query for every schedule in the school, instead of two per teacher.
+        schedules = await ScheduleService.load_school_schedules(db, school_id)
 
         # Get attendance records for this date
         records_res = await db.execute(
@@ -600,9 +723,7 @@ class AttendanceService:
             record = records_by_teacher_id.get(t.id)
             t_delays = delays_by_teacher_id.get(t.id, [])
             lesson_late = sum(d.delay_minutes for d in t_delays)
-            schedule = await ScheduleService.resolve_schedule_for_date(
-                db, school_id, t.id, query_date
-            )
+            schedule = schedules.for_teacher(t.id, query_date)
             is_day_off = schedule is not None and schedule.is_day_off
 
             if record:

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, date
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Integer, Boolean, Date, DateTime, ForeignKey, UniqueConstraint, Enum as SAEnum
+from sqlalchemy import String, Integer, Boolean, Date, DateTime, ForeignKey, Index, UniqueConstraint, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db.base_class import Base
@@ -52,4 +52,7 @@ class DailyAttendance(Base):
 
     __table_args__ = (
         UniqueConstraint("teacher_id", "date", name="uq_teacher_date_attendance"),
+        # The dashboard filters by school+date, a history by teacher+date.
+        Index("ix_daily_attendance_school_date", "school_id", "date"),
+        Index("ix_daily_attendance_teacher_date", "teacher_id", "date"),
     )
