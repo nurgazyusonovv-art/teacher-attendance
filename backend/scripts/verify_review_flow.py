@@ -13,6 +13,7 @@ tenant only, which is what that tenant exists for.
 
 import asyncio
 import os
+import re
 import sys
 
 import httpx
@@ -39,6 +40,36 @@ def _ok(label: str, detail: str = "") -> None:
 
 def _fail(label: str, detail: str) -> None:
     print(f"  ✗ {label} — {detail}")
+
+
+_ZONE = re.compile(r"(Z|[+-]\d{2}:?\d{2})$")
+
+
+def _check_school_local(label: str, raw: object, offset_minutes: int) -> bool:
+    """A timestamp must arrive in the school's zone, never as UTC.
+
+    The columns are TIMESTAMPTZ and read back as UTC, so a server that skips
+    localizing sends `...Z` and every client shows the wrong hour.
+    """
+    if raw is None:
+        print(f"  – {label} — жазылган эмес, текшерилген жок")
+        return True
+    text = str(raw)
+    zone = _ZONE.search(text)
+    if zone is None:
+        _fail(label, f"timezone жок: {text}")
+        return False
+    if zone.group(1) == "Z":
+        _fail(label, f"UTC болуп келди, мектептин убактысы эмес: {text}")
+        return False
+    sign = 1 if zone.group(1)[0] == "+" else -1
+    digits = zone.group(1)[1:].replace(":", "")
+    got = sign * (int(digits[:2]) * 60 + int(digits[2:]))
+    if got != offset_minutes:
+        _fail(label, f"offset {got} мүн, күтүлгөн {offset_minutes}: {text}")
+        return False
+    _ok(label, f"{text[11:16]} (offset {got // 60:+d} саат)")
+    return True
 
 
 async def _tenant() -> tuple[str, str]:
@@ -111,6 +142,7 @@ async def main() -> None:
         else:
             failures += 1
             _fail("бүгүнкү статус", today.text[:160])
+            body = {}
 
         scan = {
             "school_id": school_id,
@@ -135,11 +167,11 @@ async def main() -> None:
             f"{api}/attendance/check-out", json=scan, headers=headers
         )
         if check_out.status_code == 200:
-            body = check_out.json()
+            done = check_out.json()
             _ok(
                 "check-out",
-                f"убакыт {body['check_out_time']}, "
-                f"иштеген {body['worked_minutes']} мүн",
+                f"убакыт {done['check_out_time']}, "
+                f"иштеген {done['worked_minutes']} мүн",
             )
         elif check_out.json().get("code") == "ALREADY_CHECKED_OUT":
             _ok("check-out", "бүгүн мурда катталган (кайра иштетүү)")
@@ -147,9 +179,34 @@ async def main() -> None:
             failures += 1
             _fail("check-out", check_out.text[:200])
 
+        # Re-read after the scans so the check runs whether or not this
+        # particular run was the one that recorded them.
+        today = await client.get(f"{api}/attendance/today", headers=headers)
+        if today.status_code == 200:
+            body = today.json()
+            offset = body.get("utc_offset_minutes", 0)
+            _ok("мектептин offset'и", f"{offset} мүн")
+            for label, key in (
+                ("check_in_time зонасы", "check_in_time"),
+                ("check_out_time зонасы", "check_out_time"),
+            ):
+                if not _check_school_local(label, body.get(key), offset):
+                    failures += 1
+        else:
+            failures += 1
+            _fail("статусту кайра окуу", today.text[:160])
+
         history = await client.get(f"{api}/attendance/my-history", headers=headers)
         if history.status_code == 200:
-            _ok("тарых", f"{len(history.json())} жазуу")
+            rows = history.json()
+            _ok("тарых", f"{len(rows)} жазуу")
+            dated = [r for r in rows if r.get("check_in_time")]
+            if dated and not _check_school_local(
+                "тарыхтагы убакыт зонасы",
+                dated[0]["check_in_time"],
+                body.get("utc_offset_minutes", 0),
+            ):
+                failures += 1
         else:
             failures += 1
             _fail("тарых", history.text[:160])
