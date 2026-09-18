@@ -45,6 +45,22 @@ account flag that skips the geofence: an account marked `is_demo` inside an
 ordinary school is rejected outside that school's radius exactly like any
 other teacher.
 
+### Provisioning the tenant on a deployment
+
+The review tenant is created by its own script, never by `scripts/seed.py` —
+the full seed would also insert a fake administrator and a fake teacher into
+the real school, where they would appear in the dashboard, the reports and the
+absence counts.
+
+```
+ALLOW_REVIEW_TENANT_PROVISION=true REVIEW_DEMO_PASSWORD='...' \
+  python scripts/provision_review_tenant.py
+```
+
+It is idempotent and never rotates an existing password, so it is safe to
+re-run. It prints the `school_id` and `qr_token` for the review notes;
+`scripts/print_review_demo_qr.py` reprints them later without writing anything.
+
 ### Reviewer Credentials:
 - **Teacher Account:** `demo_teacher`
 - **Password:** provided in App Store Connect review notes

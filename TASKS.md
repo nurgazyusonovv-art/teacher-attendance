@@ -553,7 +553,11 @@ Optional:
   - `scripts/print_review_demo_qr.py` — рецензенттин QR payload'ын чыгарат (токен кокустан жаралат, ошондуктан документте hardcode кылынбайт).
   - `docs/APP_STORE_GUIDE.md` кайра жазылды: эскирген «is_demo bypass flag» түшүндүрмөсү жана репозиторийде жаткан `demo123` сырсөзү алынды; сырсөз/токен App Store Connect review notes аркылуу берилет.
   - Backend 107 → 112 тест.
-- [ ] Production'да demo tenant даярбы текшерүү: `python scripts/print_review_demo_qr.py`. Эгер `DEMO-001` сабы жок болсо (seed эч качан жүргүзүлбөсө), migration аны түзбөйт — `scripts/seed.py` жүргүзүү керек. Чыккан `school_id`/`qr_token` App Store Connect review notes'ко жазылат.
+- [x] Production текшерилди: бир гана чыныгы мектеп бар («Баткен Ыйман», SCH-001, 50 м), demo tenant такыр жок — бул деплойдо `seed.py` эч качан жүргүзүлгөн эмес.
+- [x] `scripts/provision_review_tenant.py` + `app/services/review_tenant_service.py` — бир гана review tenant'ты түзөт. **`seed.py`ди production'го жүргүзүүгө болбойт**: ал чыныгы мектепке жасалма `teacher1` («Асанов Асан») жана `admin` аккаунттарын кошуп, аларды dashboard'до, отчетто жана келбегендердин эсебинде көрсөтүп коёт. `seed.py` эми ошол эле сервисти колдонот (кайталануу жоюлду).
+- [ ] Production'да review tenant'ты түзүү (сырсөздү өзүңүз тандайсыз):
+      `ALLOW_REVIEW_TENANT_PROVISION=true REVIEW_DEMO_PASSWORD='...' .venv/bin/python scripts/provision_review_tenant.py`
+      Чыккан `school_id`/`qr_token`/сырсөз App Store Connect review notes'ко жазылат.
 - [ ] Түзмөк чектөөсүн (`device_binding_enabled`) качан күйгүзүү — азыр өчүк. Мугалимдер 1.1.3+5 версиясына өткөндөн кийин гана күйгүзүү керек.
 
 # POST-MVP

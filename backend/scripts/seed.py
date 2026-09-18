@@ -14,12 +14,7 @@ from app.models.user import User
 from app.models.teacher import Teacher
 from app.models.schedule import WorkSchedule
 from app.models.qr import QrCredential
-
-
-# Half of Earth's circumference is ~20 040 km, so every point is inside.
-REVIEW_RADIUS_METERS = 20_100_000.0
-# A simulator or desktop browser reports a very coarse position.
-REVIEW_MAX_ACCURACY_METERS = 100_000.0
+from app.services import review_tenant_service
 
 
 async def seed_data():
@@ -58,36 +53,6 @@ async def seed_data():
             print(f"  ✓ Created School: {school.name} ({school.id})")
         else:
             print(f"  • School already exists: {school.name}")
-
-        demo_school = (
-            await db.execute(select(School).where(School.code == "DEMO-001"))
-        ).scalar_one_or_none()
-        if not demo_school:
-            demo_school = School(
-                name="App Review Demo School",
-                code="DEMO-001",
-                latitude=42.876500,
-                longitude=74.603700,
-                # An App Store reviewer is not in Bishkek, so this tenant's own
-                # geofence spans the planet. The production school keeps its
-                # real radius; the security code is the same for both.
-                allowed_radius_meters=REVIEW_RADIUS_METERS,
-                max_accuracy_meters=REVIEW_MAX_ACCURACY_METERS,
-                default_start_time=time(8, 0),
-                default_end_time=time(17, 0),
-                grace_minutes=5,
-                timezone="Asia/Bishkek",
-                is_active=True,
-                is_review_demo=True,
-            )
-            db.add(demo_school)
-            await db.flush()
-            print("  ✓ Created isolated App Review demo school")
-        else:
-            # Keep an existing demo row reviewable if it predates the flag.
-            demo_school.is_review_demo = True
-            demo_school.allowed_radius_meters = REVIEW_RADIUS_METERS
-            demo_school.max_accuracy_meters = REVIEW_MAX_ACCURACY_METERS
 
         # 2. Create Admin User
         stmt = select(User).where(User.username == "admin")
@@ -143,36 +108,6 @@ async def seed_data():
         else:
             print("  • Teacher user already exists")
 
-        # 4. Create App Store Review Demo User
-        stmt = select(User).where(User.username == "demo_teacher")
-        res = await db.execute(stmt)
-        demo_user = res.scalar_one_or_none()
-
-        if not demo_user:
-            demo_user = User(
-                username="demo_teacher",
-                email="demo@school.edu.kg",
-                hashed_password=get_password_hash(demo_password),
-                full_name="Apple Review Demo Teacher",
-                role=UserRole.TEACHER,
-                is_active=True,
-                is_demo=True,
-                school_id=demo_school.id,
-            )
-            db.add(demo_user)
-            await db.flush()
-
-            demo_teacher_profile = Teacher(
-                user_id=demo_user.id,
-                school_id=demo_school.id,
-                employee_code="DEMO-001",
-                phone="+996555000000",
-                is_active=True,
-            )
-            db.add(demo_teacher_profile)
-            await db.flush()
-            print("  ✓ Created App Store Review Demo Teacher")
-
         # 5. Create Default Weekly Schedules (Monday to Friday 08:00-17:00, Sat/Sun Day Off)
         for day in range(7):
             stmt = select(WorkSchedule).where(
@@ -197,29 +132,6 @@ async def seed_data():
                 db.add(schedule)
         print("  ✓ Created Default Work Schedules for School (Mon-Sun)")
 
-        for day in range(7):
-            demo_schedule = (
-                await db.execute(
-                    select(WorkSchedule).where(
-                        WorkSchedule.school_id == demo_school.id,
-                        WorkSchedule.teacher_id.is_(None),
-                        WorkSchedule.day_of_week == day,
-                    )
-                )
-            ).scalar_one_or_none()
-            if not demo_schedule:
-                db.add(
-                    WorkSchedule(
-                        school_id=demo_school.id,
-                        teacher_id=None,
-                        day_of_week=day,
-                        start_time=time(8, 0),
-                        end_time=time(17, 0),
-                        grace_minutes=5,
-                        is_day_off=False,
-                    )
-                )
-
         # 6. Create Permanent QR Credential for School
         stmt = select(QrCredential).where(
             QrCredential.school_id == school.id,
@@ -237,25 +149,15 @@ async def seed_data():
             db.add(qr)
             print("  ✓ Created random School QR Credential")
 
-        demo_qr = (
-            await db.execute(
-                select(QrCredential).where(
-                    QrCredential.school_id == demo_school.id,
-                    QrCredential.is_active.is_(True),
-                )
-            )
-        ).scalar_one_or_none()
-        if not demo_qr:
-            db.add(
-                QrCredential(
-                    school_id=demo_school.id,
-                    label="App Review Demo QR",
-                    is_active=True,
-                )
-            )
-            print("  ✓ Created isolated random demo QR credential")
-
         await db.commit()
+
+        # The App Review tenant is provisioned by the same code path that
+        # scripts/provision_review_tenant.py uses against a live deployment.
+        tenant = await review_tenant_service.provision(db, demo_password)
+        print(
+            "  ✓ App Review demo tenant "
+            + ("created" if tenant.created else "already present")
+        )
         print("✅ Database seeding complete!")
 
 
