@@ -18,6 +18,10 @@ class SchoolBase(BaseModel):
         None,
         description="Катышуу эсептеле баштаган күн (бош болсо мектеп түзүлгөн күн)",
     )
+    device_binding_enabled: bool = Field(
+        False,
+        description="Катталган түзмөктөн гана каттоого уруксат берүү",
+    )
     telegram_bot_token: Optional[str] = Field(None, description="Telegram Bot Token")
     telegram_chat_id: Optional[str] = Field(None, description="Telegram Chat/Channel ID")
     telegram_enabled: bool = Field(False, description="Telegram отчет жөнөтүү активдүүлүгү")
@@ -40,6 +44,7 @@ class SchoolUpdate(BaseModel):
     grace_minutes: Optional[int] = Field(None, ge=0, le=60)
     timezone: Optional[str] = None
     attendance_start_date: Optional[date] = None
+    device_binding_enabled: Optional[bool] = None
     telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
     telegram_enabled: Optional[bool] = None

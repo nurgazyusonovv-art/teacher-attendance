@@ -39,4 +39,11 @@ class User(Base):
     # Relationships
     teacher_profile: Mapped[Optional["Teacher"]] = relationship("Teacher", back_populates="user", uselist=False, cascade="all, delete-orphan")
     audit_logs: Mapped[List["AuditLog"]] = relationship("AuditLog", back_populates="user")
-    devices: Mapped[List["Device"]] = relationship("Device", back_populates="user", cascade="all, delete-orphan")
+    # devices now has a second FK to users (approved_by_id), so the join
+    # column has to be named explicitly.
+    devices: Mapped[List["Device"]] = relationship(
+        "Device",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="Device.user_id",
+    )

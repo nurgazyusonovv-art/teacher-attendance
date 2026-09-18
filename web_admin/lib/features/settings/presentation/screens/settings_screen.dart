@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:teacher_admin/core/theme/admin_theme.dart';
+import 'package:teacher_admin/features/settings/data/repositories/devices_repository.dart';
 import 'package:teacher_admin/features/settings/data/repositories/settings_repository.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsRepository _repository = SettingsRepository();
+  final DevicesRepository _devicesRepository = DevicesRepository();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _latController = TextEditingController();
@@ -26,6 +28,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   String? _saveMessage;
+
+  List<TeacherDeviceData> _devices = const [];
+  bool _devicesLoading = false;
+  String? _devicesError;
+  String? _busyDeviceId;
+  bool _bindingSaving = false;
 
   @override
   void initState() {
@@ -52,6 +60,242 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
     }
+    await _loadDevices();
+  }
+
+  Future<void> _loadDevices() async {
+    if (!mounted) return;
+    setState(() {
+      _devicesLoading = true;
+      _devicesError = null;
+    });
+    try {
+      final devices = await _devicesRepository.listDevices();
+      if (!mounted) return;
+      setState(() {
+        _devices = devices;
+        _devicesLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _devicesLoading = false;
+        _devicesError = 'Түзмөктөрдү жүктөө ишке ашкан жок.';
+      });
+    }
+  }
+
+  Future<void> _setDeviceBinding(bool enabled) async {
+    final school = _school;
+    if (school == null || _bindingSaving) return;
+    setState(() => _bindingSaving = true);
+    final success = await _repository.updateSchoolSettings(
+      schoolId: school.id,
+      deviceBindingEnabled: enabled,
+    );
+    if (!mounted) return;
+    setState(() {
+      _bindingSaving = false;
+      _saveMessage = success
+          ? (enabled
+                ? 'Түзмөк чектөөсү күйгүзүлдү.'
+                : 'Түзмөк чектөөсү өчүрүлдү.')
+          : 'Ката кетти, кайра аракет кылыңыз.';
+    });
+    if (success) await _loadData();
+  }
+
+  Future<void> _changeDeviceStatus(
+    TeacherDeviceData device, {
+    required bool approve,
+  }) async {
+    if (_busyDeviceId != null) return;
+    setState(() => _busyDeviceId = device.id);
+    try {
+      if (approve) {
+        await _devicesRepository.approve(device.id);
+      } else {
+        await _devicesRepository.revoke(device.id);
+      }
+      if (!mounted) return;
+      setState(() {
+        _busyDeviceId = null;
+        _saveMessage = approve
+            ? '${device.teacherName}: түзмөк ырасталды.'
+            : '${device.teacherName}: түзмөк жокко чыгарылды.';
+      });
+      await _loadDevices();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busyDeviceId = null;
+        _devicesError = 'Аракет ишке ашкан жок. Кайра аракет кылыңыз.';
+      });
+    }
+  }
+
+  Widget _buildDevicesCard() {
+    final school = _school;
+    final pending = _devices.where((d) => d.isPending).toList();
+    final others = _devices.where((d) => !d.isPending).toList();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Катталган түзмөктөр',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Жаңылоо',
+                  onPressed: _devicesLoading ? null : _loadDevices,
+                  icon: const Icon(Icons.refresh, size: 18),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Ар бир мугалимге бир гана ырасталган түзмөк. Жаңы түзмөк '
+              'администратор ырастаганга чейин каттай албайт.',
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: school?.deviceBindingEnabled ?? false,
+              onChanged: school == null || _bindingSaving
+                  ? null
+                  : (value) => _setDeviceBinding(value),
+              title: const Text('Түзмөк чектөөсүн күйгүзүү'),
+              subtitle: const Text(
+                'Күйгүзүлгөндө эски версиядагы тиркемелер каттай албайт — '
+                'мугалимдер адегенде тиркемени жаңыртышы керек.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+            const Divider(height: 24),
+            if (_devicesLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_devicesError != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _devicesError!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _loadDevices,
+                    child: const Text('Кайра аракет'),
+                  ),
+                ],
+              )
+            else if (_devices.isEmpty)
+              const Text(
+                'Азырынча катталган түзмөк жок.',
+                style: TextStyle(color: Color(0xFF64748B)),
+              )
+            else ...[
+              if (pending.isNotEmpty) ...[
+                Text(
+                  'Ырастоону күтүүдө (${pending.length})',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                ...pending.map(_buildDeviceRow),
+                const SizedBox(height: 12),
+              ],
+              if (others.isNotEmpty) ...[
+                const Text(
+                  'Башка түзмөктөр',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                ...others.map(_buildDeviceRow),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeviceRow(TeacherDeviceData device) {
+    final busy = _busyDeviceId == device.id;
+    final (Color color, String label) = switch (device.status) {
+      'APPROVED' => (Colors.green, 'Ырасталган'),
+      'PENDING' => (Colors.amber, 'Күтүүдө'),
+      _ => (Colors.red, 'Жокко чыгарылган'),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
+        children: [
+          SizedBox(
+            width: 220,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  device.teacherName,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${device.platform} · ${device.deviceId}',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF64748B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Chip(
+            label: Text(label, style: TextStyle(fontSize: 11, color: color)),
+            backgroundColor: color.withValues(alpha: 0.1),
+            side: BorderSide(color: color.withValues(alpha: 0.3)),
+            visualDensity: VisualDensity.compact,
+          ),
+          if (busy)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else ...[
+            if (!device.isApproved)
+              TextButton(
+                onPressed: () => _changeDeviceStatus(device, approve: true),
+                child: const Text('Ырастоо'),
+              ),
+            if (device.isApproved)
+              TextButton(
+                onPressed: () => _changeDeviceStatus(device, approve: false),
+                child: const Text(
+                  'Жокко чыгаруу',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
   }
 
   Future<void> _saveSettings() async {
@@ -538,6 +782,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  _buildDevicesCard(),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),

@@ -13,6 +13,7 @@ class SchoolSettingsData {
   final double maxAccuracyMeters;
   final int graceMinutes;
   final String timezone;
+  final bool deviceBindingEnabled;
   final bool isActive;
 
   SchoolSettingsData({
@@ -25,6 +26,7 @@ class SchoolSettingsData {
     required this.maxAccuracyMeters,
     required this.graceMinutes,
     required this.timezone,
+    required this.deviceBindingEnabled,
     required this.isActive,
   });
 
@@ -39,6 +41,7 @@ class SchoolSettingsData {
       maxAccuracyMeters: (json['max_accuracy_meters'] as num).toDouble(),
       graceMinutes: json['grace_minutes'] as int? ?? 5,
       timezone: json['timezone'] as String? ?? 'Asia/Bishkek',
+      deviceBindingEnabled: json['device_binding_enabled'] as bool? ?? false,
       isActive: json['is_active'] as bool? ?? true,
     );
   }
@@ -99,6 +102,7 @@ class SettingsRepository {
     double? maxAccuracyMeters,
     int? graceMinutes,
     String? timezone,
+    bool? deviceBindingEnabled,
   }) async {
     try {
       final options = await _getAuthOptions();
@@ -114,6 +118,9 @@ class SettingsRepository {
       }
       if (graceMinutes != null) data['grace_minutes'] = graceMinutes;
       if (timezone != null) data['timezone'] = timezone;
+      if (deviceBindingEnabled != null) {
+        data['device_binding_enabled'] = deviceBindingEnabled;
+      }
 
       final response = await _dio.patch(
         '${AppConstants.apiBaseUrl}/schools/$schoolId',

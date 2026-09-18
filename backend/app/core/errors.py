@@ -23,6 +23,10 @@ class ErrorCode(str, Enum):
     NO_SCHEDULE = "NO_SCHEDULE"
     DAY_OFF = "DAY_OFF"
 
+    # Device binding
+    DEVICE_REQUIRED = "DEVICE_REQUIRED"
+    DEVICE_NOT_APPROVED = "DEVICE_NOT_APPROVED"
+
     # Auth & Permissions
     UNAUTHORIZED = "UNAUTHORIZED"
     PERMISSION_DENIED = "PERMISSION_DENIED"

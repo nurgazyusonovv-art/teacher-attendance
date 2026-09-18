@@ -36,6 +36,9 @@ class School(Base):
     # First day this school is accounted for. Absence finalization never looks
     # further back than this; NULL falls back to the school creation date.
     attendance_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # When on, a scan must come from the teacher's approved device.
+    # Off by default so deployed app versions that send no device id keep working.
+    device_binding_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     # Telegram Integration Settings
     telegram_bot_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

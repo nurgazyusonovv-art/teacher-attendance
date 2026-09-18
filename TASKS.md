@@ -492,7 +492,12 @@ Optional:
 - [x] `schools.telegram_bot_token` эми at-rest шифрленет (`app/core/crypto.py`, Fernet, `enc:v1:` префикси). Эски ачык текст маанилер иштей берет жана кийинки сактоодо шифрленет. Ачкыч `SECRETS_ENCRYPTION_KEY` — SECRET_KEY'ден өзүнчө, ошондуктан JWT ачкычын rotate кылуу токенди бузбайт; чечмелөө ишке ашпаса `None` кайтат (админ кайра киргизет), exception ыргытылбайт. `cryptography` requirements'ке ачык кошулду.
 - [x] Mobile router guard: `createAppRouter(authCubit)` — `refreshListenable` + `redirect`. Session жок болсо `/login`, session текшерилип жатса `/splash`, admin эмес колдонуучу `/admin*` жолдоруна кире албайт, кирген колдонуучу `/login`'де калбайт.
 - [x] Жанаша табылган ката: splash жана login `role == 'ADMIN'` деп текшерчү, ошондуктан SUPER_ADMIN мугалимдин экранына түшүп калчу. Экөө тең `user.isAdmin`'ге которулду.
-- [ ] Чечим керек: `Device` каттоо бар, бирок check-in'де эч качан текшерилбейт (PROJECT.md §10 «registered device»). Бүтүрүү же документтен алып салуу.
+- [x] Device binding бүтүрүлдү (PROJECT.md §10): бир мугалим = бир ырасталган түзмөк.
+  - `DeviceStatus` (PENDING/APPROVED/REVOKED), `devices.approved_at/approved_by_id/revoked_at` жана `schools.device_binding_enabled` — `f46a2dc8e006` migration. Бар түзмөктөр APPROVED (эски `is_active=false` болсо REVOKED) кылып backfill кылынды, эч ким бөгөттөлбөйт.
+  - Биринчи түзмөк каттоодо эле ырасталат (болбосо эч ким каттай албай калмак), кийинкиси PENDING. Админ ырастаганда мугалимдин мурункусу автоматтык REVOKED болот. REVOKED түзмөк кайра каттоо менен тирилбейт. Бардык өзгөрүүлөр audit log'до.
+  - Chek-in/check-out `DeviceService.enforce_binding` аркылуу өтөт. Чектөө **мектеп боюнча күйгүзүлөт жана демейде өчүк** — талаадагы 1.1.3 версиялары `device_id` жөнөтпөйт, ошондуктан аларды бузбайт. Күйгүзүлгөндө `device_id` жок сурам `DEVICE_REQUIRED`, ырасталбаган түзмөк `DEVICE_NOT_APPROVED` алат; экөө тең audit'ке шектүү скан катары жазылат.
+  - Mobile: `DeviceIdentityService` — secure storage'да туруктуу id (reinstall жаңы түзмөк катары ырастоону күтөт, бул атайылап). Login жана session restore'до каттайт, эки сканда тең `device_id` жөнөтөт; жаңы ката коддору кыргызча билдирүүгө айландырылды.
+  - Web admin: Жөндөөлөр экранында «Катталган түзмөктөр» карточкасы — чектөө которгучу, күтүүдөгү/ырасталган түзмөктөр, ырастоо жана жокко чыгаруу.
 
 ### Phase 3 — performance (кийинки)
 - [ ] Admin dashboard N+1: `resolve_schedule_for_date` ар бир мугалим үчүн өзүнчө чакырылат (`attendance_service.py`).
@@ -554,7 +559,7 @@ Optional:
 - [x] Web regression: карточка чыпкалары, мектеп убактысынын көрсөтүлүшү, деталдар жана бош тизме тесттери.
 - [ ] Чоң мектептер үчүн сервердик пагинацияланган жалпы отчет endpoint'и (азыр бардык teacher pages + 4 параллелдүү history request колдонулат).
 
-- [ ] Registered device binding
+- [x] Registered device binding
 - [ ] School Wi-Fi verification
 - [ ] Dynamic QR optional mode
 - [ ] Multiple campuses

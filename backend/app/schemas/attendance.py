@@ -13,6 +13,12 @@ class AttendanceScanRequest(BaseModel):
     longitude: float = Field(..., ge=-180.0, le=180.0, description="GPS узундук")
     accuracy: float = Field(..., ge=0.0, description="GPS тактыгы (метр)")
     device_info: Optional[str] = Field(None, max_length=255, description="Түзмөктүн маалыматы")
+    device_id: Optional[str] = Field(
+        None,
+        min_length=3,
+        max_length=255,
+        description="Катталган түзмөктүн идентификатору (device binding күйгүзүлгөндө талап кылынат)",
+    )
 
 
 class AttendanceEventRead(BaseModel):

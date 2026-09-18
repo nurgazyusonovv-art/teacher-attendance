@@ -28,6 +28,7 @@ from app.schemas.attendance import (
     TodayStatusResponse,
 )
 from app.schemas.lesson_delay import LessonDelayRead
+from app.services.device_service import DeviceService
 from app.services.geofence_service import GeofenceService
 from app.services.qr_service import QrService
 from app.services.schedule_service import ScheduleService
@@ -74,6 +75,10 @@ class AttendanceService:
 
         # 2. QR Token validation
         await QrService.validate_qr_token(db, school.id, payload.qr_token)
+
+        # 2b. Registered device (PROJECT.md §10); a no-op unless the school
+        # enabled binding.
+        await DeviceService.enforce_binding(db, school, teacher, payload.device_id)
 
         # 3. GPS Geofence validation (AGENTS.md #6)
         distance = GeofenceService.verify_or_raise(
@@ -263,6 +268,10 @@ class AttendanceService:
 
         # 2. QR validation
         await QrService.validate_qr_token(db, school.id, payload.qr_token)
+
+        # 2b. Registered device (PROJECT.md §10); a no-op unless the school
+        # enabled binding.
+        await DeviceService.enforce_binding(db, school, teacher, payload.device_id)
 
         # 3. GPS Geofence validation (AGENTS.md #6)
         distance = GeofenceService.verify_or_raise(

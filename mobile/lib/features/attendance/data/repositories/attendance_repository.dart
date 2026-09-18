@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
+import 'dart:convert';
 import '../../../../core/errors/error_messages.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/device_identity_service.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../../admin/data/repositories/admin_mobile_repository.dart';
 
@@ -50,7 +53,10 @@ class DailyAttendanceModel {
       date: json['date'] as String,
       checkInTime: json['check_in_time'] as String?,
       checkOutTime: json['check_out_time'] as String?,
-      status: json['display_status'] as String? ?? json['status'] as String? ?? 'UNKNOWN',
+      status:
+          json['display_status'] as String? ??
+          json['status'] as String? ??
+          'UNKNOWN',
       lateMinutes: lateMins,
       workedMinutes: json['worked_minutes'] as int? ?? 0,
       isManuallyCorrected: json['is_manually_corrected'] as bool? ?? false,
@@ -130,6 +136,25 @@ class TodayStatusModel {
       totalLateMinutes: totalLateMins,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'school_name': schoolName,
+    'display_status': displayStatus,
+    'date': date,
+    'has_checked_in': hasCheckedIn,
+    'has_checked_out': hasCheckedOut,
+    'check_in_time': checkInTime,
+    'check_out_time': checkOutTime,
+    'status': status,
+    'late_minutes': lateMinutes,
+    'worked_minutes': workedMinutes,
+    'scheduled_start': scheduledStart,
+    'scheduled_end': scheduledEnd,
+    'is_day_off': isDayOff,
+    'lesson_late_minutes': lessonLateMinutes,
+    'total_late_minutes': totalLateMinutes,
+    'lesson_delays': const [],
+  };
 }
 
 class AttendanceRepository {
@@ -140,6 +165,8 @@ class AttendanceRepository {
           apiClient ?? ApiClient(storageService: SecureStorageService());
 
   Dio get _dio => _apiClient.dio;
+
+  final DeviceIdentityService _deviceIdentity = DeviceIdentityService();
 
   Future<DailyAttendanceModel> checkIn({
     required String schoolId,
@@ -159,6 +186,9 @@ class AttendanceRepository {
           'longitude': longitude,
           'accuracy': accuracy,
           'device_info': deviceInfo,
+          // Device binding (PROJECT.md §10); ignored by schools that have
+          // not enabled it.
+          'device_id': await _deviceIdentity.getDeviceId(),
         },
       );
       return DailyAttendanceModel.fromJson(
@@ -198,6 +228,9 @@ class AttendanceRepository {
           'longitude': longitude,
           'accuracy': accuracy,
           'device_info': deviceInfo,
+          // Device binding (PROJECT.md §10); ignored by schools that have
+          // not enabled it.
+          'device_id': await _deviceIdentity.getDeviceId(),
         },
       );
       return DailyAttendanceModel.fromJson(
@@ -225,6 +258,50 @@ class AttendanceRepository {
       return TodayStatusModel.fromJson(response.data as Map<String, dynamic>);
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<TodayStatusModel?> getCachedTodayStatus() async {
+    try {
+      final raw = await _apiClient.storageService.readValue(
+        AppConstants.keyTodayAttendanceCache,
+      );
+      if (raw == null) return null;
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      final user = await _apiClient.storageService.getUserData();
+      if (user == null ||
+          data['owner'] != user ||
+          data['api'] != _apiClient.baseUrl) {
+        return null;
+      }
+      final cache = data['today_attendance'];
+      if (cache is! Map<String, dynamic>) return null;
+      final model = TodayStatusModel.fromJson(cache);
+      final today = DateTime.now()
+          .toUtc()
+          .add(const Duration(hours: 6))
+          .toIso8601String()
+          .substring(0, 10);
+      return model.date == today ? model : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> cacheTodayStatus(TodayStatusModel model) async {
+    try {
+      final user = await _apiClient.storageService.getUserData();
+      if (user == null) return;
+      await _apiClient.storageService.writeValue(
+        AppConstants.keyTodayAttendanceCache,
+        jsonEncode({
+          'owner': user,
+          'api': _apiClient.baseUrl,
+          'today_attendance': model.toJson(),
+        }),
+      );
+    } catch (_) {
+      // Cache failures must not hide a successful server response.
     }
   }
 

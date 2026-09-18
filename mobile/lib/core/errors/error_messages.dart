@@ -34,6 +34,12 @@ class ErrorMessages {
         return 'Сессиянын мөөнөтү бүттү. Кайра кириңиз.';
       case 'RATE_LIMITED':
         return 'Өтө көп аракет жасалды. Бир аздан кийин кайра аракет кылыңыз.';
+      case 'DEVICE_NOT_APPROVED':
+        return 'Бул түзмөк ырасталган эмес. Администратор ырастагандан кийин '
+            'каттоо мүмкүн болот.';
+      case 'DEVICE_REQUIRED':
+        return 'Тиркеменин жаңы версиясы талап кылынат. Жаңыртып кайра аракет '
+            'кылыңыз.';
       case 'PERMISSION_DENIED':
         return 'Бул аракетти аткарууга уруксат жок.';
       case 'NETWORK_ERROR':

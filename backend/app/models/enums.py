@@ -24,3 +24,15 @@ class DevicePlatform(str, Enum):
     IOS = "IOS"
     ANDROID = "ANDROID"
     WEB = "WEB"
+
+
+class DeviceStatus(str, Enum):
+    """Lifecycle of a teacher's registered device.
+
+    A teacher's first device is trusted on registration; every later one waits
+    for an administrator so a stolen password alone cannot register a scanner.
+    """
+
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REVOKED = "REVOKED"

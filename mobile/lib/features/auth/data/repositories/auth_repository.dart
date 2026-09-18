@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/device_identity_service.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../../../core/errors/error_messages.dart';
 import '../models/auth_tokens_model.dart';
@@ -10,7 +11,35 @@ class AuthRepository {
   final ApiClient apiClient;
   final SecureStorageService storageService;
 
-  AuthRepository({required this.apiClient, required this.storageService});
+  AuthRepository({
+    required this.apiClient,
+    required this.storageService,
+    DeviceIdentityService? deviceIdentity,
+  }) : deviceIdentity =
+           deviceIdentity ??
+           DeviceIdentityService(storageService: storageService);
+
+  final DeviceIdentityService deviceIdentity;
+
+  /// Registers this install so device binding has something to approve.
+  ///
+  /// The first device is approved by the server on the spot; a later one
+  /// waits for an administrator. A failure here must never block sign-in:
+  /// binding is off for schools that have not enabled it, and the scan
+  /// itself reports the real problem when it is on.
+  Future<void> registerDevice() async {
+    try {
+      await apiClient.dio.post(
+        '/devices/register',
+        data: {
+          'device_id': await deviceIdentity.getDeviceId(),
+          'platform': DeviceIdentityService.platform,
+        },
+      );
+    } catch (_) {
+      // Retried on the next sign-in or session restore.
+    }
+  }
 
   Future<UserModel> login({
     required String usernameOrEmail,
@@ -35,6 +64,7 @@ class AuthRepository {
         refreshToken: tokens.refreshToken,
       );
       await storageService.saveUserData(jsonEncode(user.toJson()));
+      await registerDevice();
 
       return user;
     } on DioException catch (e) {
@@ -62,6 +92,9 @@ class AuthRepository {
       if (response.data['success'] == true) {
         final user = UserModel.fromJson(response.data['data']);
         await storageService.saveUserData(jsonEncode(user.toJson()));
+        // Covers installs that signed in before binding existed, and retries
+        // a registration that failed at sign-in.
+        await registerDevice();
         return user;
       }
     } on DioException catch (error) {
