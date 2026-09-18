@@ -539,6 +539,7 @@ Optional:
 - [x] `73f11b2` → `23fb5cd` `origin/main`'ге push кылынды, Render автоматтык деплой жүрдү. Үч migration (`e35f1cb7d005`, `f46a2dc8e006`, `a7b93ef1d007`) `preDeployCommand` аркылуу колдонулду.
 - [x] Production текшерилди: `/health` healthy, OpenAPI'де `/attendance/history`, `/auth/change-password`, `/attendance/admin/catch-up-absences`, `/devices/{id}/approve|revoke`, `/devices/me` бар; `TodayStatusResponse.utc_offset_minutes`, `AttendanceScanRequest.device_id`, `SchoolRead.attendance_start_date` жана `device_binding_enabled` схемада; авторизациясыз `/attendance/history` 401 кайтарат.
 - [x] `SECRETS_ENCRYPTION_KEY` Render'де коюлду (user).
+- [x] `15b2b35` (App Review tenant) деплой кылынды; CI `35323362751` SUCCESS. Production'да `SchoolRead.is_review_demo` бар, `SchoolUpdate`та жок — API аркылуу мектепти «ачууга» болбойт.
 - [x] CI `35317084366` толугу менен SUCCESS (backend, postgres-integration, контейнер, mobile, web_admin, iOS).
 
 ### Деплойдон кийин калгандар
@@ -552,6 +553,7 @@ Optional:
   - `scripts/print_review_demo_qr.py` — рецензенттин QR payload'ын чыгарат (токен кокустан жаралат, ошондуктан документте hardcode кылынбайт).
   - `docs/APP_STORE_GUIDE.md` кайра жазылды: эскирген «is_demo bypass flag» түшүндүрмөсү жана репозиторийде жаткан `demo123` сырсөзү алынды; сырсөз/токен App Store Connect review notes аркылуу берилет.
   - Backend 107 → 112 тест.
+- [ ] Production'да demo tenant даярбы текшерүү: `python scripts/print_review_demo_qr.py`. Эгер `DEMO-001` сабы жок болсо (seed эч качан жүргүзүлбөсө), migration аны түзбөйт — `scripts/seed.py` жүргүзүү керек. Чыккан `school_id`/`qr_token` App Store Connect review notes'ко жазылат.
 - [ ] Түзмөк чектөөсүн (`device_binding_enabled`) качан күйгүзүү — азыр өчүк. Мугалимдер 1.1.3+5 версиясына өткөндөн кийин гана күйгүзүү керек.
 
 # POST-MVP
