@@ -235,7 +235,6 @@ class HomeClock extends StatelessWidget {
 }
 
 /// The check-in / check-out pair.
-/// The check-in / check-out pair.
 class HomeStamps extends StatelessWidget {
   const HomeStamps({super.key, required this.today});
 
