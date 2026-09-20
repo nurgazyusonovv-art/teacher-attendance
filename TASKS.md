@@ -545,7 +545,13 @@ Optional:
 - [ ] `attendance_service.py` ~900 сап; `DailyAttendanceRead` 6 жолу, `LessonDelayRead` 5 жолу кол менен түзүлөт — mapper'лерге чыгаруу.
 - [ ] Өлүк код: `AppConstants.defaultBaseUrl` setter жана `keyBaseUrl` эч жерде колдонулбайт.
 - [ ] Default'тордун карама-каршылыгы: `SchoolBase.grace_minutes`=5 жана `ScheduleCreate.grace_minutes`=15, ал эми модель default'у 0 жана PROJECT.md 0. Бул кимдин LATE экенин үнсүз өзгөртөт — админ менен макулдашып чечүү керек.
-- [ ] Mobile ичиндеги админ панели (5 519 сап, `lib`'тин 44%) web_admin менен кайталанат — продукт чечими же жалпы пакетке чыгаруу.
+- [x] **Продукт чечими (2026-09-18): эки панель тең калат.** Админ негизинен телефондон иштейт, ошондуктан mobile панели — негизги курал. Салыштыруу кайталануу ~70% экенин көрсөттү, калган 30% ар биринде экинчисинде **жок**: mobile'да сабакка кечигүү жана Telegram отчет, web'де түзмөк ырастоо, attendance reset, пагинацияланган отчеттор жана толук settings. Web admin телефондо иштебейт (240px sidebar `Row` ичинде, бүт долбоордо бир да breakpoint жок), ошондуктан mobile панелин алып салуу реалдуу вариант эмес эле.
+- [x] `packages/admin_core` түзүлдү: `Teacher`/`TeacherPage` моделдери (API талааларынын аттары менен), `TeachersRepository` (ар бир тиркеме өз `Dio`сун берет — телефондун refresh interceptor'у, браузердин singleton'у), `AdminApiException` (API'дин `{code, message, details}` денесин бир жерде окуйт), `basePath` (эки тиркеменин URL формасы сакталат). UI атайын бөлүнбөйт — телефон менен десктоптун UX'и башка продукт.
+- [x] Эки тиркеме тең көчтү, экрандар `typedef` аркылуу эски аттарын сактады; бир гана `phone` → `phoneNumber` аталышы алмашты. Web'дин «400/409 гана verbatim» эрежеси сакталды.
+- [x] CI'га `admin-core` job'у кошулду (`dart analyze --fatal-infos` + 12 тест). Таза clone'до эки тиркеме тең текшерилди.
+- [ ] Калган домендерди көчүрүү: schedules, attendance/dashboard, school settings, QR, lesson delays, leaves, devices.
+- [ ] Mobile'да түзмөк ырастоо экраны жок — админ телефондон иштегендиктен бул боштук (азыр web'де гана).
+- [ ] Mobile'дын `deleteTeacher`и `hardDelete: true` менен чакырат, UI'де ырастоо сөзүн киргизүү жолу жок; API 409 кайтарып, билдирүү көрсөтүлөт.
 - [ ] `attendance_start_date`'ти орнотуу үчүн web admin settings экранына талаа кошуу (азыр `PATCH /schools/{id}` аркылуу гана).
 
 ### Deploy — 2026-09-18 аткарылды
