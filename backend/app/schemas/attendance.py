@@ -102,6 +102,10 @@ class TodayStatusResponse(SchoolLocalTimes):
     # The school's offset from UTC right now, so the client renders and
     # expires its cache against the school's day rather than guessing.
     utc_offset_minutes: int = 0
+    # The school's clock at the moment of the response. A teacher deciding
+    # whether they are late must not be reading their phone's clock, which
+    # can be minutes off; the app ticks forward from this instead.
+    server_time: Optional[datetime] = None
     display_status: Literal['ON_TIME', 'LATE', 'ABSENT', 'EXCUSED', 'DAY_OFF', 'PENDING', 'NO_SCHEDULE']
     has_checked_in: bool
     has_checked_out: bool

@@ -465,6 +465,7 @@ class AttendanceService:
             school_name=school.name,
             date=today,
             utc_offset_minutes=int(offset.total_seconds() // 60) if offset else 0,
+            server_time=server_now,
             display_status=display_status,
             has_checked_in=daily is not None and daily.check_in_time is not None,
             has_checked_out=daily is not None and daily.check_out_time is not None,

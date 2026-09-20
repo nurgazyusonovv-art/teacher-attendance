@@ -175,3 +175,30 @@ async def test_today_status_is_localized_too(
 
     await db_session.delete(existing)
     await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_today_reports_the_school_clock(
+    async_client: AsyncClient, teacher_auth_headers: dict
+):
+    """The app shows this instead of the phone's clock.
+
+    A teacher judging whether they are late must not be reading a device
+    clock that can be minutes off from the one the server records against.
+    """
+    response = await async_client.get(
+        "/api/v1/attendance/today", headers=teacher_auth_headers
+    )
+    assert response.status_code == 200
+    raw = response.json()["server_time"]
+
+    assert raw is not None
+    assert not raw.endswith("Z"), f"{raw} is UTC, not the school's clock"
+    parsed = datetime.fromisoformat(raw)
+    assert parsed.utcoffset() == BISHKEK.utcoffset(parsed)
+
+    # It is the clock now, not the start of the day or some stored value.
+    drift = abs(
+        (parsed.astimezone(timezone.utc) - datetime.now(timezone.utc)).total_seconds()
+    )
+    assert drift < 60, f"server_time is {drift:.0f}s away from now"

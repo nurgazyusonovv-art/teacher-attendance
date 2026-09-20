@@ -76,6 +76,13 @@ class TodayStatusModel {
   /// The school's offset from UTC, as reported by the server. Used to decide
   /// whether a cached status still belongs to the school's current day.
   final int utcOffsetMinutes;
+
+  /// The school's clock when the server answered.
+  ///
+  /// The home screen ticks forward from this rather than reading the device
+  /// clock: a phone minutes behind would tell a teacher they are on time
+  /// while the server records them late.
+  final String? serverTime;
   final bool hasCheckedIn;
   final bool hasCheckedOut;
   final String? checkInTime;
@@ -95,6 +102,7 @@ class TodayStatusModel {
     this.displayStatus,
     required this.date,
     this.utcOffsetMinutes = 0,
+    this.serverTime,
     required this.hasCheckedIn,
     required this.hasCheckedOut,
     this.checkInTime,
@@ -127,6 +135,7 @@ class TodayStatusModel {
       displayStatus: json['display_status'] as String?,
       date: json['date'] as String,
       utcOffsetMinutes: json['utc_offset_minutes'] as int? ?? 0,
+      serverTime: json['server_time'] as String?,
       hasCheckedIn: json['has_checked_in'] as bool? ?? false,
       hasCheckedOut: json['has_checked_out'] as bool? ?? false,
       checkInTime: json['check_in_time'] as String?,
@@ -148,6 +157,7 @@ class TodayStatusModel {
     'display_status': displayStatus,
     'date': date,
     'utc_offset_minutes': utcOffsetMinutes,
+    'server_time': serverTime,
     'has_checked_in': hasCheckedIn,
     'has_checked_out': hasCheckedOut,
     'check_in_time': checkInTime,

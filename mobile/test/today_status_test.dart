@@ -56,6 +56,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text(todayStatusLabel(status)), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      // At this text scale the scan card sits below the fold, and a ListView
+      // does not build what is off-screen — scroll to it before asserting.
+      await tester.scrollUntilVisible(
+        find.byType(FilledButton),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
       final button = tester.widget<FilledButton>(find.byType(FilledButton));
       expect(
         button.onPressed != null,
