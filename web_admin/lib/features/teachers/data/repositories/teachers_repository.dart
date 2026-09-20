@@ -1,102 +1,41 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:dio/dio.dart';
 import 'package:teacher_admin/features/attendance/data/repositories/admin_attendance_repository.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_admin/core/constants/app_constants.dart';
 import 'package:teacher_admin/core/network/admin_api_client.dart';
 
-class TeacherItem {
-  final String id;
-  final String userId;
-  final String employeeCode;
-  final String? phoneNumber;
-  final String? subject;
-  final String fullName;
-  final String username;
-  final bool isActive;
-  final bool isDemo;
-
-  TeacherItem({
-    required this.id,
-    required this.userId,
-    required this.employeeCode,
-    this.phoneNumber,
-    this.subject,
-    required this.fullName,
-    required this.username,
-    required this.isActive,
-    required this.isDemo,
-  });
-
-  factory TeacherItem.fromJson(Map<String, dynamic> json) {
-    return TeacherItem(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
-      employeeCode: json['employee_code'] as String,
-      phoneNumber: json['phone_number'] as String?,
-      subject: json['subject'] as String?,
-      fullName: json['full_name'] as String,
-      username: json['username'] as String,
-      isActive: json['is_active'] as bool? ?? true,
-      isDemo: json['is_demo'] as bool? ?? false,
-    );
-  }
-}
+/// The shared teacher model; this app's screens keep their original name.
+typedef TeacherItem = core.Teacher;
 
 class TeachersRepository {
-  final Dio _dio;
-  final FlutterSecureStorage _storage;
-
-  TeachersRepository({Dio? dio, FlutterSecureStorage? storage})
+  TeachersRepository({Dio? dio})
     : _dio = dio ?? AdminApiClient.instance.dio,
-      _storage = storage ?? const FlutterSecureStorage();
-
-  Future<Options> _getAuthOptions() async {
-    final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(headers: {'Authorization': 'Bearer $token'});
-  }
-
-  Future<List<TeacherItem>> getTeachers({
-    String? search,
-    bool? isActive,
-  }) async {
-    try {
-      final options = await _getAuthOptions();
-      final queryParams = <String, dynamic>{};
-      if (search != null && search.isNotEmpty) queryParams['search'] = search;
-      if (isActive != null) queryParams['is_active'] = isActive;
-
-      final response = await _dio.get(
-        '${AppConstants.apiBaseUrl}/teachers',
-        queryParameters: queryParams,
-        options: options,
+      _teachers = core.TeachersRepository(
+        dio: dio ?? AdminApiClient.instance.dio,
+        basePath: AppConstants.apiBaseUrl,
       );
 
-      final items = (response.data['items'] as List)
-          .map((i) => TeacherItem.fromJson(i as Map<String, dynamic>))
-          .toList();
-      return items;
-    } catch (_) {
+  final Dio _dio;
+  final core.TeachersRepository _teachers;
+
+  Future<List<TeacherItem>> getTeachers({String? search, bool? isActive}) async {
+    try {
+      final page = await _teachers.list(search: search, isActive: isActive);
+      return page.items;
+    } on core.AdminApiException {
+      // Screens here render an empty table rather than an error state.
       return [];
     }
   }
 
-  Future<TeacherItem> getTeacher(String id) async {
-    final response = await _dio.get(
-      '${AppConstants.apiBaseUrl}/teachers/${Uri.encodeComponent(id)}',
-      options: await _getAuthOptions(),
-    );
-    return TeacherItem.fromJson(response.data as Map<String, dynamic>);
-  }
+  Future<TeacherItem> getTeacher(String id) => _teachers.getById(id);
 
   Future<List<AdminDailyAttendanceItem>> getHistory(String id) async {
     final response = await _dio.get(
       '${AppConstants.apiBaseUrl}/attendance/teacher/${Uri.encodeComponent(id)}/history',
-      options: await _getAuthOptions(),
     );
     return (response.data as List)
-        .map(
-          (r) => AdminDailyAttendanceItem.fromJson(r as Map<String, dynamic>),
-        )
+        .map((r) => AdminDailyAttendanceItem.fromJson(r as Map<String, dynamic>))
         .toList();
   }
 
@@ -109,35 +48,28 @@ class TeachersRepository {
     String? subject,
   }) async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.post(
-        '${AppConstants.apiBaseUrl}/teachers',
-        data: {
-          'full_name': fullName,
-          'username': username,
-          'password': password,
-          'employee_code': employeeCode,
-          'phone_number': phoneNumber,
-          'subject': subject,
-        },
-        options: options,
+      await _teachers.create(
+        fullName: fullName,
+        username: username,
+        password: password,
+        employeeCode: employeeCode,
+        phoneNumber: phoneNumber,
+        subject: subject,
       );
-      return response.statusCode == 200 || response.statusCode == 201;
-    } on DioException catch (error) {
-      final data = error.response?.data;
-      final status = error.response?.statusCode;
-      if (status == 400 || status == 409) {
-        if (data is Map && data['message'] is String) {
-          throw Exception(data['message']);
-        }
-      }
-      if (status == 422) {
+      return true;
+    } on core.AdminApiException catch (error) {
+      if (error.statusCode == 422) {
         throw Exception(
           'Маалыматтарды текшериңиз: аты-жөнү кеминде 2, логин 3, сырсөз 8, табель номери 2 белгиден турушу керек.',
         );
       }
-      if (status == 401 || status == 403) {
+      if (error.isAuthFailure) {
         throw Exception('Админ сессиясын текшериңиз. Аккаунтка кайра кириңиз.');
+      }
+      // Only a rejection the API meant for a person is shown verbatim; a 500
+      // carries an internal message that would mean nothing to an administrator.
+      if (error.statusCode == 400 || error.statusCode == 409) {
+        throw Exception(error.message);
       }
       throw Exception(
         'Мугалимди кошуу ырасталган жок. Тизмени текшерип, кайра аракет кылыңыз.',
@@ -154,26 +86,20 @@ class TeachersRepository {
     bool? isActive,
   }) async {
     try {
-      final options = await _getAuthOptions();
-      final data = <String, dynamic>{};
-      if (fullName != null) data['full_name'] = fullName;
-      if (employeeCode != null) data['employee_code'] = employeeCode;
-      if (phoneNumber != null) data['phone_number'] = phoneNumber;
-      if (subject != null) data['subject'] = subject;
-      if (isActive != null) data['is_active'] = isActive;
-
-      final response = await _dio.patch(
-        '${AppConstants.apiBaseUrl}/teachers/$teacherId',
-        data: data,
-        options: options,
+      await _teachers.update(
+        teacherId: teacherId,
+        fullName: fullName,
+        employeeCode: employeeCode,
+        phoneNumber: phoneNumber,
+        subject: subject,
+        isActive: isActive,
       );
-      return response.statusCode == 200;
-    } catch (_) {
+      return true;
+    } on core.AdminApiException {
       return false;
     }
   }
 
-  Future<bool> toggleActive(String teacherId, bool currentlyActive) async {
-    return updateTeacher(teacherId: teacherId, isActive: !currentlyActive);
-  }
+  Future<bool> toggleActive(String teacherId, bool currentlyActive) =>
+      updateTeacher(teacherId: teacherId, isActive: !currentlyActive);
 }

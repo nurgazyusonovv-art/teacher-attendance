@@ -131,7 +131,7 @@ void main() {
       username: 'demo_teacher_long_name',
       subject: 'Математика',
       employeeCode: 'DEMO-001',
-      phone: '+996555123456',
+      phoneNumber: '+996555123456',
       isActive: true,
     );
 

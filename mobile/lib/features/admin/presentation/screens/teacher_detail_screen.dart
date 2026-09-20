@@ -123,7 +123,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen>
       text: _currentTeacher.subject ?? '',
     );
     final phoneController = TextEditingController(
-      text: _currentTeacher.phone ?? '',
+      text: _currentTeacher.phoneNumber ?? '',
     );
     final codeController = TextEditingController(
       text: _currentTeacher.employeeCode,
@@ -259,7 +259,7 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen>
                     _currentTeacher = _currentTeacher.copyWith(
                       fullName: name,
                       subject: subjectController.text.trim(),
-                      phone: phoneController.text.trim(),
+                      phoneNumber: phoneController.text.trim(),
                       employeeCode: code,
                       isActive: activeVal,
                     );
@@ -1246,12 +1246,12 @@ class _TeacherDetailScreenState extends State<TeacherDetailScreen>
                             ],
                           ),
                         ),
-                      if (_currentTeacher.phone != null &&
-                          _currentTeacher.phone!.isNotEmpty)
+                      if (_currentTeacher.phoneNumber != null &&
+                          _currentTeacher.phoneNumber!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            'Тел: ${_currentTeacher.phone}',
+                            'Тел: ${_currentTeacher.phoneNumber}',
                             style: const TextStyle(
                               fontSize: 11.5,
                               color: Color(0xFF64748B),

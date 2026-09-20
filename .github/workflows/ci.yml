@@ -70,6 +70,20 @@ jobs:
       - run: python scripts/seed.py
       - run: python scripts/postgres_concurrency_check.py
 
+  admin-core:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/admin_core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart analyze --fatal-infos
+      - run: dart test
+
   flutter:
     runs-on: ubuntu-latest
     strategy:

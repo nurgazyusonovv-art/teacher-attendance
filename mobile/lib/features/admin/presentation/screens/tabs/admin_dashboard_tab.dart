@@ -462,7 +462,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                                     username: '',
                                     employeeCode: code,
                                     subject: subject,
-                                    phone: phone,
+                                    phoneNumber: phone,
                                     isActive: true,
                                   );
                                   context.push(
@@ -952,7 +952,7 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     username: '',
                     employeeCode: r['employee_code'] as String? ?? '',
                     subject: r['subject'] as String?,
-                    phone: r['phone_number'] as String?,
+                    phoneNumber: r['phone_number'] as String?,
                     isActive: true,
                   );
                   context.push('/admin/teacher-detail', extra: item);

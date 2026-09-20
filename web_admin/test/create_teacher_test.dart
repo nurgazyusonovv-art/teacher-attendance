@@ -14,10 +14,23 @@ void main() {
         dio.interceptors.add(
           InterceptorsWrapper(
             onRequest: (request, handler) {
+              // A success carries the created teacher, the way the API does;
+              // a failure carries the error body.
               final response = Response(
                 requestOptions: request,
                 statusCode: status,
-                data: {'message': 'Логин бош эмес: teacher'},
+                data: status < 300
+                    ? {
+                        'id': 't-1',
+                        'user_id': 'u-1',
+                        'school_id': 's-1',
+                        'employee_code': 'T1',
+                        'full_name': 'Test Teacher',
+                        'username': 'teacher',
+                        'is_active': true,
+                        'is_demo': false,
+                      }
+                    : {'message': 'Логин бош эмес: teacher'},
               );
               if (status < 300) {
                 handler.resolve(response);

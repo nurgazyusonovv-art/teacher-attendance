@@ -1,78 +1,10 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 
-class TeacherItemModel {
-  final String id;
-  final String userId;
-  final String schoolId;
-  final String fullName;
-  final String email;
-  final String username;
-  final String? phone;
-  final String? subject;
-  final String employeeCode;
-  final bool isActive;
-
-  TeacherItemModel({
-    required this.id,
-    required this.userId,
-    required this.schoolId,
-    required this.fullName,
-    required this.email,
-    required this.username,
-    this.phone,
-    this.subject,
-    required this.employeeCode,
-    required this.isActive,
-  });
-
-  factory TeacherItemModel.fromJson(Map<String, dynamic> json) {
-    final user = json['user'] as Map<String, dynamic>?;
-    return TeacherItemModel(
-      id: json['id'] as String,
-      userId: json['user_id'] as String? ?? user?['id'] as String? ?? '',
-      schoolId: json['school_id'] as String? ?? '',
-      fullName:
-          json['full_name'] as String? ??
-          user?['full_name'] as String? ??
-          'Мугалим',
-      email: json['email'] as String? ?? user?['email'] as String? ?? '',
-      username:
-          json['username'] as String? ?? user?['username'] as String? ?? '',
-      phone: json['phone_number'] as String? ?? json['phone'] as String?,
-      subject: json['subject'] as String?,
-      employeeCode: json['employee_code'] as String? ?? '',
-      isActive: json['is_active'] as bool? ?? true,
-    );
-  }
-
-  TeacherItemModel copyWith({
-    String? id,
-    String? userId,
-    String? schoolId,
-    String? fullName,
-    String? email,
-    String? username,
-    String? phone,
-    String? subject,
-    String? employeeCode,
-    bool? isActive,
-  }) {
-    return TeacherItemModel(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      schoolId: schoolId ?? this.schoolId,
-      fullName: fullName ?? this.fullName,
-      email: email ?? this.email,
-      username: username ?? this.username,
-      phone: phone ?? this.phone,
-      subject: subject ?? this.subject,
-      employeeCode: employeeCode ?? this.employeeCode,
-      isActive: isActive ?? this.isActive,
-    );
-  }
-}
+/// The shared teacher model; this app's screens keep their original name.
+typedef TeacherItemModel = core.Teacher;
 
 class WorkScheduleItemModel {
   final String? id;
@@ -170,17 +102,13 @@ class AdminMobileRepository {
   }
 
   // 2. Teachers CRUD
+  core.TeachersRepository get _teachers => core.TeachersRepository(dio: _dio);
+
   Future<List<TeacherItemModel>> getTeachers() async {
     try {
-      final response = await _dio.get('/teachers');
-      final raw = response.data;
-      final List list = raw is Map
-          ? (raw['items'] as List? ?? [])
-          : (raw as List? ?? []);
-      return list
-          .map((i) => TeacherItemModel.fromJson(i as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
+      return (await _teachers.list()).items;
+    } on core.AdminApiException {
+      // The teachers tab shows an empty list rather than an error state.
       return [];
     }
   }
@@ -194,33 +122,17 @@ class AdminMobileRepository {
     String? phone,
   }) async {
     try {
-      final response = await _dio.post(
-        '/teachers',
-        data: {
-          'full_name': fullName,
-          'username': username,
-          'subject': subject,
-          'password': password,
-          'employee_code': employeeCode,
-          'phone_number': phone,
-        },
+      await _teachers.create(
+        fullName: fullName,
+        username: username,
+        subject: subject,
+        password: password,
+        employeeCode: employeeCode,
+        phoneNumber: phone,
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return (true, null);
-      }
-      return (false, 'Ката: ${response.statusCode}');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String? msg;
-      if (data is Map) {
-        msg = data['message'] as String? ?? data['detail'] as String?;
-      }
-      return (
-        false,
-        msg ?? 'Серверге туташуу катасы. Логин же сессияны текшериңиз.',
-      );
-    } catch (e) {
-      return (false, e.toString());
+      return (true, null);
+    } on core.AdminApiException catch (error) {
+      return (false, error.message);
     }
   }
 
@@ -234,73 +146,57 @@ class AdminMobileRepository {
     bool? isActive,
   }) async {
     try {
-      final data = <String, dynamic>{};
-      if (fullName != null && fullName.isNotEmpty) data['full_name'] = fullName;
-      if (subject != null) data['subject'] = subject;
-      if (phone != null) data['phone_number'] = phone;
-      if (employeeCode != null && employeeCode.isNotEmpty) {
-        data['employee_code'] = employeeCode;
-      }
-      if (password != null && password.trim().isNotEmpty) {
-        data['password'] = password.trim();
-      }
-      if (isActive != null) data['is_active'] = isActive;
-
-      final response = await _dio.patch('/teachers/$teacherId', data: data);
-      if (response.statusCode == 200) {
-        return (true, null);
-      }
-      return (false, 'Ката: ${response.statusCode}');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String? msg;
-      if (data is Map) {
-        msg = data['message'] as String? ?? data['detail'] as String?;
-      }
-      return (false, msg ?? 'Мугалимдин маалыматын өзгөртүүдө ката кетти');
-    } catch (e) {
-      return (false, e.toString());
+      await _teachers.update(
+        teacherId: teacherId,
+        fullName: fullName != null && fullName.isNotEmpty ? fullName : null,
+        subject: subject,
+        phoneNumber: phone,
+        employeeCode: employeeCode != null && employeeCode.isNotEmpty
+            ? employeeCode
+            : null,
+        password: password != null && password.trim().isNotEmpty
+            ? password.trim()
+            : null,
+        isActive: isActive,
+      );
+      return (true, null);
+    } on core.AdminApiException catch (error) {
+      return (false, error.message);
     }
   }
 
+  /// Removes a teacher.
+  ///
+  /// A hard delete destroys attendance history, so the API refuses one for a
+  /// teacher who has records unless [confirmation] carries its exact phrase
+  /// (`core.hardDeleteConfirmation`). Without it the refusal comes back as a
+  /// message for the administrator to read.
   Future<(bool, String?)> deleteTeacher(
     String teacherId, {
     bool hardDelete = true,
+    String? confirmation,
   }) async {
     try {
-      final response = await _dio.delete(
-        '/teachers/$teacherId',
-        queryParameters: {'hard_delete': hardDelete},
+      await _teachers.remove(
+        teacherId,
+        hardDelete: hardDelete,
+        confirmation: confirmation,
       );
-      if (response.statusCode == 200) {
-        return (true, null);
-      }
-      return (false, 'Ката: ${response.statusCode}');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String? msg;
-      if (data is Map) {
-        msg = data['message'] as String? ?? data['detail'] as String?;
-      }
-      return (false, msg ?? 'Мугалимди өчүрүүдө ката кетти');
-    } catch (e) {
-      return (false, e.toString());
+      return (true, null);
+    } on core.AdminApiException catch (error) {
+      return (false, error.message);
     }
   }
 
   Future<bool> toggleTeacherActive(String teacherId, bool isActive) async {
     try {
-      final response = await _dio.patch(
-        '/teachers/$teacherId',
-        data: {'is_active': isActive},
-      );
-      return response.statusCode == 200;
-    } catch (_) {
+      await _teachers.setActive(teacherId, isActive);
+      return true;
+    } on core.AdminApiException {
       return false;
     }
   }
 
-  // 3. Lesson Delays (Сабактардагы кечигүүлөр)
   Future<(bool, String?)> addLessonDelay({
     required String teacherId,
     required String date,

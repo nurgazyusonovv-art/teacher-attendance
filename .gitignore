@@ -80,3 +80,7 @@ Thumbs.db
 
 # Generated review artifacts (contain reusable attendance credentials)
 /demo_school_qr.png
+
+# Shared Dart package
+packages/*/.dart_tool/
+packages/*/pubspec.lock

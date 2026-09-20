@@ -204,11 +204,11 @@ class _AdminTeachersTabState extends State<AdminTeachersTab> {
                                             ],
                                           ),
                                         ),
-                                      if (t.phone != null && t.phone!.isNotEmpty)
+                                      if (t.phoneNumber != null && t.phoneNumber!.isNotEmpty)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 2),
                                           child: Text(
-                                            'Тел: ${t.phone}',
+                                            'Тел: ${t.phoneNumber}',
                                             style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
