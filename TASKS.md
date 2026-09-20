@@ -570,7 +570,11 @@ Optional:
   - Кол коюу схемасы мурункудай эле v2 (minSdk 24 болгондуктан v1 кереги жок) — регрессия жок.
   - `debuggable` желекчеси жок; production API URL билдге туура кирген.
 - [x] iOS: `flutter build ios --release --no-codesign` ийгиликтүү (20.1MB) — код iOS релизге компиляцияланат.
-- [ ] iOS IPA экспорту: локалда Apple **Development** сертификаты гана бар, Distribution жок. 1.1.1 билдиндегидей Cloud Managed Apple Distribution аркылуу Xcode'дон архив/экспорт талап кылынат (Apple аккаунтуна кирүү керек).
+- [ ] **iOS IPA экспорту — эки тоскоол бар, экөө тең Xcode GUI'син талап кылат:**
+  1. `Runner.xcodeproj` Release конфигурациясында `CODE_SIGN_IDENTITY[sdk=iphoneos*] = "iPhone Developer"` бекитилген (Flutter шаблонунан калган). Ошондуктан архив Distribution эмес, **Development** профилин издейт: `flutter build ipa` «Xcode couldn't find any iOS App Development provisioning profiles» деп кулайт. Бул файл user-owned деп белгиленгендиктен өзгөртүлгөн жок.
+  2. Ачкычта **Distribution сертификаты жок** — `security find-identity` бир гана «Apple Development» көрсөтөт. `com.school.teacher.teacherMobile` үчүн App Store профили бар (2027-08-22ге чейин), бирок ага тиешелүү жеке ачкыч бул машинада жок. Демек build setting'дерди кандай өзгөрткөн менен да кол коюу мүмкүн эмес.
+  - Буйрук сабынан `-allowProvisioningUpdates` менен аракет кылынды: Apple менен байланыш иштейт, бирок Development профилин сурагандыктан «team has no devices» деп токтойт.
+  - Чечим: Xcode'дон `Product → Archive`, андан соң `Distribute App → App Store Connect → Export`. Xcode automatic signing бекитилген identity'ди айланып өтөт жана керек болсо cloud-managed Distribution сертификатын түзөт. 1.1.1 билди так ушундай жасалган.
 
 ### Deploy — 2026-09-18 аткарылды
 - [x] `73f11b2` → `23fb5cd` `origin/main`'ге push кылынды, Render автоматтык деплой жүрдү. Үч migration (`e35f1cb7d005`, `f46a2dc8e006`, `a7b93ef1d007`) `preDeployCommand` аркылуу колдонулду.
