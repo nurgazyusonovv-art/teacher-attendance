@@ -6,5 +6,7 @@
 library;
 
 export 'src/api.dart';
+export 'src/models/device.dart';
 export 'src/models/teacher.dart';
+export 'src/repositories/devices_repository.dart';
 export 'src/repositories/teachers_repository.dart';

@@ -1,61 +1,8 @@
-import 'dart:convert';
-
 import 'package:admin_core/admin_core.dart';
 import 'package:dio/dio.dart';
 import 'package:test/test.dart';
 
-/// Answers requests from a canned table instead of the network.
-class _FakeAdapter implements HttpClientAdapter {
-  _FakeAdapter(this.respond);
-
-  final ResponseBody Function(RequestOptions options) respond;
-  final List<RequestOptions> received = [];
-
-  @override
-  Future<ResponseBody> fetch(
-    RequestOptions options,
-    Stream<List<int>>? requestStream,
-    Future<void>? cancelFuture,
-  ) async {
-    received.add(options);
-    return respond(options);
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
-
-Dio _dioReturning(
-  Object body, {
-  int status = 200,
-  List<RequestOptions>? capture,
-}) {
-  final dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
-  final adapter = _FakeAdapter(
-    (options) => ResponseBody.fromString(
-      _encode(body),
-      status,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    ),
-  );
-  dio.httpClientAdapter = adapter;
-  if (capture != null) {
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          capture.add(options);
-          handler.next(options);
-        },
-      ),
-    );
-  }
-  return dio;
-}
-
-String _encode(Object body) =>
-    body is String ? body : jsonEncode(body);
+import 'support/fake_dio.dart';
 
 const _teacherJson = {
   'id': 't-1',
@@ -110,7 +57,7 @@ void main() {
   group('TeachersRepository', () {
     test('list parses a page', () async {
       final repo = TeachersRepository(
-        dio: _dioReturning({
+        dio: dioReturning({
           'items': [_teacherJson],
           'total': 1,
         }),
@@ -123,7 +70,7 @@ void main() {
     test('basePath keeps each app\'s URL shape', () async {
       final captured = <RequestOptions>[];
       final repo = TeachersRepository(
-        dio: _dioReturning({'items': [], 'total': 0}, capture: captured),
+        dio: dioReturning({'items': [], 'total': 0}, capture: captured),
         basePath: '/api/v1',
       );
       await repo.list();
@@ -133,7 +80,7 @@ void main() {
     test('search and is_active reach the query string', () async {
       final captured = <RequestOptions>[];
       final repo = TeachersRepository(
-        dio: _dioReturning({'items': [], 'total': 0}, capture: captured),
+        dio: dioReturning({'items': [], 'total': 0}, capture: captured),
       );
       await repo.list(search: 'Асан', isActive: false);
       expect(captured.single.queryParameters['search'], 'Асан');
@@ -143,7 +90,7 @@ void main() {
     test('update sends only the fields that were passed', () async {
       final captured = <RequestOptions>[];
       final repo = TeachersRepository(
-        dio: _dioReturning(_teacherJson, capture: captured),
+        dio: dioReturning(_teacherJson, capture: captured),
       );
       await repo.update(teacherId: 't-1', subject: 'Химия');
       expect(captured.single.data, {'subject': 'Химия'});
@@ -152,7 +99,7 @@ void main() {
     test('a hard delete carries the confirmation only when given', () async {
       final captured = <RequestOptions>[];
       final repo = TeachersRepository(
-        dio: _dioReturning('', capture: captured),
+        dio: dioReturning('', capture: captured),
       );
       await repo.remove('t-1', hardDelete: true);
       expect(captured.single.queryParameters.containsKey('confirmation'), isFalse);
@@ -171,7 +118,7 @@ void main() {
 
     test('an API error keeps its code and message', () async {
       final repo = TeachersRepository(
-        dio: _dioReturning({
+        dio: dioReturning({
           'success': false,
           'code': 'VALIDATION_ERROR',
           'message': 'Бул мугалимде 12 катышуу жазуусу бар.',
@@ -197,7 +144,7 @@ void main() {
 
     test('a body without a message falls back to a readable one', () async {
       final repo = TeachersRepository(
-        dio: _dioReturning('gateway exploded', status: 502),
+        dio: dioReturning('gateway exploded', status: 502),
       );
       await expectLater(
         repo.list(),
@@ -211,7 +158,7 @@ void main() {
 
     test('a session failure is recognisable', () async {
       final repo = TeachersRepository(
-        dio: _dioReturning({'message': 'Сессия жараксыз.'}, status: 401),
+        dio: dioReturning({'message': 'Сессия жараксыз.'}, status: 401),
       );
       await expectLater(
         repo.list(),

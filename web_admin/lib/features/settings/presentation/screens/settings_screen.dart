@@ -1,3 +1,4 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:teacher_admin/core/theme/admin_theme.dart';
@@ -233,11 +234,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildDeviceRow(TeacherDeviceData device) {
     final busy = _busyDeviceId == device.id;
-    final (Color color, String label) = switch (device.status) {
-      'APPROVED' => (Colors.green, 'Ырасталган'),
-      'PENDING' => (Colors.amber, 'Күтүүдө'),
-      _ => (Colors.red, 'Жокко чыгарылган'),
+    // Wording comes from the shared model so both surfaces say the same thing.
+    final color = switch (device.status) {
+      core.DeviceStatus.approved => Colors.green,
+      core.DeviceStatus.pending => Colors.amber,
+      core.DeviceStatus.revoked => Colors.red,
     };
+    final label = device.status.label;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
