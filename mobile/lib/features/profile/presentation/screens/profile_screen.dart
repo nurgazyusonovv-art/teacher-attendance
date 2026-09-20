@@ -1,5 +1,7 @@
 import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter/material.dart';
+
+import '../widgets/change_password_sheet.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -249,6 +251,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
 
                 // Logout Button
+                OutlinedButton.icon(
+                  onPressed: () => ChangePasswordSheet.show(context),
+                  icon: const Icon(Icons.lock_reset_rounded),
+                  label: const Text(
+                    'Сырсөздү өзгөртүү',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () {
                     showDialog(

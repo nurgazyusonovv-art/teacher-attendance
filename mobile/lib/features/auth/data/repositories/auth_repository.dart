@@ -116,6 +116,36 @@ class AuthRepository {
     return null;
   }
 
+  /// Changes the signed-in user's own password.
+  ///
+  /// A teacher receives a password chosen by their administrator, who also
+  /// knows it; without this there is no way to replace it. The server revokes
+  /// every other session, so a device holding the old password is signed out.
+  ///
+  /// Returns null on success, or a message to show.
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await apiClient.dio.post(
+        '/auth/change-password',
+        data: {
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        },
+      );
+      return null;
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      final code = data is Map ? data['code'] as String? : null;
+      final message = data is Map ? data['message'] as String? : null;
+      return ErrorMessages.getKyrgyzMessage(code, message);
+    } catch (_) {
+      return 'Сырсөздү өзгөртүү ишке ашкан жок. Кайра аракет кылыңыз.';
+    }
+  }
+
   Future<void> logout() async {
     try {
       await apiClient.dio.post('/auth/logout');

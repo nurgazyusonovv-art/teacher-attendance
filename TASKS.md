@@ -561,6 +561,11 @@ Optional:
 - [ ] Mobile'дын `deleteTeacher`и `hardDelete: true` менен чакырат, UI'де ырастоо сөзүн киргизүү жолу жок; API 409 кайтарып, билдирүү көрсөтүлөт.
 - [ ] `attendance_start_date`'ти орнотуу үчүн web admin settings экранына талаа кошуу (азыр `PATCH /schools/{id}` аркылуу гана).
 
+### Mobile 1.2.0+6 релизи — 2026-09-18
+- [x] `POST /auth/change-password` backend'де Phase 2'де кошулган эле, бирок **кардарда UI жок болчу** — мугалим дагы деле админ койгон сырсөздү алмаштыра албай турган. Профиль экранына «Сырсөздү өзгөртүү» кошулду: учурдагы сырсөз текшерилет, жаңысы кеминде 8 белги жана эскисинен айырмаланышы керек, кайталоо дал келиши керек. Сервер калган бардык сессияны жокко чыгарат.
+- [x] 6 widget тест: ийгиликтүү алмаштыруу, кыска сырсөз, эскисин кайталоо, туура эмес кайталоо, сервердин катасы (лист ачык калат), 320px экран. Валидация кулаганда API'ге эч нерсе жөнөтүлбөйт.
+- [x] Версия 1.1.3+5 → **1.2.0+6**.
+
 ### Deploy — 2026-09-18 аткарылды
 - [x] `73f11b2` → `23fb5cd` `origin/main`'ге push кылынды, Render автоматтык деплой жүрдү. Үч migration (`e35f1cb7d005`, `f46a2dc8e006`, `a7b93ef1d007`) `preDeployCommand` аркылуу колдонулду.
 - [x] Production текшерилди: `/health` healthy, OpenAPI'де `/attendance/history`, `/auth/change-password`, `/attendance/admin/catch-up-absences`, `/devices/{id}/approve|revoke`, `/devices/me` бар; `TodayStatusResponse.utc_offset_minutes`, `AttendanceScanRequest.device_id`, `SchoolRead.attendance_start_date` жана `device_binding_enabled` схемада; авторизациясыз `/attendance/history` 401 кайтарат.
