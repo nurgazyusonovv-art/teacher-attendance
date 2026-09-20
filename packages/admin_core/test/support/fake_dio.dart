@@ -50,3 +50,15 @@ Dio dioReturning(
   }
   return dio;
 }
+
+/// An adapter that answers each request from [next], for paging tests.
+HttpClientAdapter pagingAdapter(Object Function() next) =>
+    _FakeAdapter((options) {
+      return ResponseBody.fromString(
+        jsonEncode(next()),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    });

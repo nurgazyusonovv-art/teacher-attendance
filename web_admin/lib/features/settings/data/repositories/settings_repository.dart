@@ -1,94 +1,21 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:teacher_admin/core/constants/app_constants.dart';
 import 'package:teacher_admin/core/network/admin_api_client.dart';
 
-class SchoolSettingsData {
-  final String id;
-  final String name;
-  final String code;
-  final double latitude;
-  final double longitude;
-  final double allowedRadiusMeters;
-  final double maxAccuracyMeters;
-  final int graceMinutes;
-  final String timezone;
-  final bool deviceBindingEnabled;
-  final bool isActive;
-
-  SchoolSettingsData({
-    required this.id,
-    required this.name,
-    required this.code,
-    required this.latitude,
-    required this.longitude,
-    required this.allowedRadiusMeters,
-    required this.maxAccuracyMeters,
-    required this.graceMinutes,
-    required this.timezone,
-    required this.deviceBindingEnabled,
-    required this.isActive,
-  });
-
-  factory SchoolSettingsData.fromJson(Map<String, dynamic> json) {
-    return SchoolSettingsData(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      code: json['code'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      allowedRadiusMeters: (json['allowed_radius_meters'] as num).toDouble(),
-      maxAccuracyMeters: (json['max_accuracy_meters'] as num).toDouble(),
-      graceMinutes: json['grace_minutes'] as int? ?? 5,
-      timezone: json['timezone'] as String? ?? 'Asia/Bishkek',
-      deviceBindingEnabled: json['device_binding_enabled'] as bool? ?? false,
-      isActive: json['is_active'] as bool? ?? true,
-    );
-  }
-}
-
-class QrPayloadData {
-  final String schoolId;
-  final String schoolName;
-  final String qrPayload;
-
-  QrPayloadData({
-    required this.schoolId,
-    required this.schoolName,
-    required this.qrPayload,
-  });
-
-  factory QrPayloadData.fromJson(Map<String, dynamic> json) {
-    return QrPayloadData(
-      schoolId: json['school_id'] as String,
-      schoolName: json['school_name'] as String,
-      qrPayload: json['qr_payload'] as String,
-    );
-  }
-}
+/// Shared models; this app's screens keep their original names.
+typedef SchoolSettingsData = core.SchoolSettings;
+typedef QrPayloadData = core.QrPayload;
 
 class SettingsRepository {
-  final Dio _dio;
-  final FlutterSecureStorage _storage;
+  SettingsRepository({Dio? dio})
+    : _school = core.SchoolRepository(dio: dio ?? AdminApiClient.instance.dio);
 
-  SettingsRepository({Dio? dio, FlutterSecureStorage? storage})
-    : _dio = dio ?? AdminApiClient.instance.dio,
-      _storage = storage ?? const FlutterSecureStorage();
-
-  Future<Options> _getAuthOptions() async {
-    final token = await _storage.read(key: AppConstants.keyAccessToken);
-    return Options(headers: {'Authorization': 'Bearer $token'});
-  }
+  final core.SchoolRepository _school;
 
   Future<SchoolSettingsData?> getSchoolSettings() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.apiBaseUrl}/schools/current',
-        options: options,
-      );
-      return SchoolSettingsData.fromJson(response.data as Map<String, dynamic>);
-    } catch (_) {
+      return await _school.current();
+    } on core.AdminApiException {
       return null;
     }
   }
@@ -105,69 +32,43 @@ class SettingsRepository {
     bool? deviceBindingEnabled,
   }) async {
     try {
-      final options = await _getAuthOptions();
-      final data = <String, dynamic>{};
-      if (name != null) data['name'] = name;
-      if (latitude != null) data['latitude'] = latitude;
-      if (longitude != null) data['longitude'] = longitude;
-      if (allowedRadiusMeters != null) {
-        data['allowed_radius_meters'] = allowedRadiusMeters;
-      }
-      if (maxAccuracyMeters != null) {
-        data['max_accuracy_meters'] = maxAccuracyMeters;
-      }
-      if (graceMinutes != null) data['grace_minutes'] = graceMinutes;
-      if (timezone != null) data['timezone'] = timezone;
-      if (deviceBindingEnabled != null) {
-        data['device_binding_enabled'] = deviceBindingEnabled;
-      }
-
-      final response = await _dio.patch(
-        '${AppConstants.apiBaseUrl}/schools/$schoolId',
-        data: data,
-        options: options,
+      await _school.update(
+        schoolId: schoolId,
+        name: name,
+        latitude: latitude,
+        longitude: longitude,
+        allowedRadiusMeters: allowedRadiusMeters,
+        maxAccuracyMeters: maxAccuracyMeters,
+        graceMinutes: graceMinutes,
+        timezone: timezone,
+        deviceBindingEnabled: deviceBindingEnabled,
       );
-      return response.statusCode == 200;
-    } catch (_) {
+      return true;
+    } on core.AdminApiException {
       return false;
     }
   }
 
   Future<QrPayloadData?> getSchoolQr() async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.get(
-        '${AppConstants.apiBaseUrl}/qr/current',
-        options: options,
-      );
-      return QrPayloadData.fromJson(response.data as Map<String, dynamic>);
-    } catch (_) {
+      return await _school.qr();
+    } on core.AdminApiException {
       return null;
     }
   }
 
   Future<QrPayloadData?> rotateSchoolQr(String schoolId) async {
     try {
-      final options = await _getAuthOptions();
-      final response = await _dio.post(
-        '${AppConstants.apiBaseUrl}/qr/$schoolId/rotate',
-        options: options,
-      );
-      return QrPayloadData.fromJson(response.data as Map<String, dynamic>);
-    } catch (_) {
+      return await _school.rotateQr(schoolId);
+    } on core.AdminApiException {
       return null;
     }
   }
 
   Future<int?> resetAttendance() async {
     try {
-      final response = await _dio.post(
-        '${AppConstants.apiBaseUrl}/attendance/admin/reset',
-        data: {'confirmation': 'RESET ATTENDANCE'},
-        options: await _getAuthOptions(),
-      );
-      return (response.data as Map<String, dynamic>)['deleted'] as int?;
-    } catch (_) {
+      return await _school.resetAttendance();
+    } on core.AdminApiException {
       return null;
     }
   }

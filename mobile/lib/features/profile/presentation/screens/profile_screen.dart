@@ -1,3 +1,4 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -21,7 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   TeacherProfileData? _profile;
   List<MobileScheduleItem> _schedules = [];
-  Map<String, dynamic>? _schoolData;
+  core.SchoolSettings? _schoolData;
   bool _isLoading = true;
 
   @override
@@ -64,8 +65,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final username = _profile?.username ?? user?.username ?? 'teacher';
           final email = user?.email ?? '$username@school.edu.kg';
           final isDemo = _profile?.isDemo ?? user?.isDemo ?? false;
-          final schoolName = _schoolData?['name'] as String? ?? 'Мектеп маалыматы жүктөлгөн жок';
-          final radius = (_schoolData?['allowed_radius_meters'] as num?)?.toDouble() ?? 80.0;
+          final schoolName = _schoolData?.name ?? 'Мектеп маалыматы жүктөлгөн жок';
+          final radius = _schoolData?.allowedRadiusMeters ?? 80.0;
           final subject = _profile?.subject ?? 'Жалпы предмет';
           final employeeCode = _profile?.employeeCode ?? 'TCH-001';
           final phone = _profile?.phoneNumber ?? 'Көрсөтүлгөн эмес';

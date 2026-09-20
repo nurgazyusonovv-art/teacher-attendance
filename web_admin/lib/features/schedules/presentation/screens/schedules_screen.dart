@@ -42,12 +42,16 @@ class _SchedulesScreenState extends State<SchedulesScreen> {
     }
   }
 
+  /// `HH:mm` from an API time, or null when the day carries no time.
+  static String? _hhmm(String? value) =>
+      value == null || value.length < 5 ? null : value.substring(0, 5);
+
   void _showEditScheduleDialog(int dayOfWeek, ScheduleItem? existing) {
     final startController = TextEditingController(
-      text: existing != null ? existing.startTime.substring(0, 5) : '08:00',
+      text: _hhmm(existing?.startTime) ?? '08:00',
     );
     final endController = TextEditingController(
-      text: existing != null ? existing.endTime.substring(0, 5) : '17:00',
+      text: _hhmm(existing?.endTime) ?? '17:00',
     );
     final graceController = TextEditingController(
       text: existing != null ? existing.graceMinutes.toString() : '5',
@@ -183,7 +187,7 @@ class _SchedulesScreenState extends State<SchedulesScreen> {
                         final isOff = schedule?.isDayOff ?? (index == 6);
                         final timeRange = isOff
                             ? 'Дем алыш күн'
-                            : '${schedule != null ? schedule.startTime.substring(0, 5) : "08:00"} — ${schedule != null ? schedule.endTime.substring(0, 5) : "17:00"}';
+                            : '${_hhmm(schedule?.startTime) ?? "08:00"} — ${_hhmm(schedule?.endTime) ?? "17:00"}';
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

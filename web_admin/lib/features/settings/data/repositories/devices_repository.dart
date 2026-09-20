@@ -1,6 +1,5 @@
 import 'package:admin_core/admin_core.dart' as core;
 import 'package:dio/dio.dart';
-import 'package:teacher_admin/core/constants/app_constants.dart';
 import 'package:teacher_admin/core/network/admin_api_client.dart';
 
 /// The shared device model; this app's screens keep their original name.
@@ -10,7 +9,6 @@ class DevicesRepository {
   DevicesRepository({Dio? dio})
     : _devices = core.DevicesRepository(
         dio: dio ?? AdminApiClient.instance.dio,
-        basePath: AppConstants.apiBaseUrl,
       );
 
   final core.DevicesRepository _devices;

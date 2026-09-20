@@ -6,7 +6,15 @@
 library;
 
 export 'src/api.dart';
+export 'src/models/attendance.dart';
 export 'src/models/device.dart';
+export 'src/models/leave_request.dart';
+export 'src/models/schedule.dart';
+export 'src/models/school.dart';
 export 'src/models/teacher.dart';
+export 'src/repositories/attendance_repository.dart';
 export 'src/repositories/devices_repository.dart';
+export 'src/repositories/leaves_repository.dart';
+export 'src/repositories/schedules_repository.dart';
+export 'src/repositories/school_repository.dart';
 export 'src/repositories/teachers_repository.dart';

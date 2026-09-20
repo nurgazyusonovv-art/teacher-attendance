@@ -1,3 +1,4 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -14,9 +15,9 @@ class AdminAnalyticsTab extends StatefulWidget {
 
 class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
   final AdminMobileRepository _repository = AdminMobileRepository();
-  Map<String, dynamic>? _qrData;
+  core.QrPayload? _qrData;
   Map<String, dynamic>? _dashboardData;
-  Map<String, dynamic>? _schoolData;
+  core.SchoolSettings? _schoolData;
   bool _isLoading = true;
   bool _isSendingTelegram = false;
 
@@ -44,21 +45,21 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
   // --- EDIT SCHOOL & GEOFENCE MODAL ---
   void _showEditSchoolDialog() {
     final schoolId =
-        _schoolData?['id'] as String? ?? _qrData?['school_id'] as String?;
+        _schoolData?.id ?? _qrData?.schoolId;
     if (schoolId == null) return;
 
     final currentName =
-        _schoolData?['name'] as String? ??
-        _qrData?['school_name'] as String? ??
+        _schoolData?.name ??
+        _qrData?.schoolName ??
         'Мектеп маалыматы жүктөлгөн жок';
     final currentLat =
-        (_schoolData?['latitude'] as num?)?.toDouble() ?? 42.8746;
+        _schoolData?.latitude ?? 42.8746;
     final currentLng =
-        (_schoolData?['longitude'] as num?)?.toDouble() ?? 74.5698;
+        _schoolData?.longitude ?? 74.5698;
     final currentRadius =
-        (_schoolData?['allowed_radius_meters'] as num?)?.toDouble() ?? 150.0;
+        _schoolData?.allowedRadiusMeters ?? 150.0;
     final currentMaxAccuracy =
-        (_schoolData?['max_accuracy_meters'] as num?)?.toDouble() ?? 50.0;
+        _schoolData?.maxAccuracyMeters ?? 50.0;
 
     final nameController = TextEditingController(text: currentName);
     final latController = TextEditingController(
@@ -501,18 +502,20 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
   // --- TELEGRAM SETTINGS MODAL ---
   void _showTelegramSettingsModal() {
     final schoolId =
-        _schoolData?['id'] as String? ?? _qrData?['school_id'] as String?;
+        _schoolData?.id ?? _qrData?.schoolId;
     if (schoolId == null) return;
 
-    final currentToken = _schoolData?['telegram_bot_token'] as String? ?? '';
-    final currentChatId = _schoolData?['telegram_chat_id'] as String? ?? '';
+    // The API never sends the bot token back — it is write-only — so this
+    // field starts empty and an empty value leaves the stored token alone.
+    const currentToken = '';
+    final currentChatId = _schoolData?.telegramChatId ?? '';
     bool enabled =
-        _schoolData?['telegram_enabled'] as bool? ??
+        _schoolData?.telegramEnabled ??
         (currentToken.isNotEmpty && currentChatId.isNotEmpty);
 
     // Parse initial report time
     TimeOfDay selectedReportTime = const TimeOfDay(hour: 17, minute: 30);
-    final rawTime = _schoolData?['telegram_report_time'] as String?;
+    final rawTime = _schoolData?.telegramReportTime;
     if (rawTime != null && rawTime.contains(':')) {
       final parts = rawTime.split(':');
       final h = int.tryParse(parts[0]) ?? 17;
@@ -800,7 +803,7 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
 
                           setModalState(() => isTesting = true);
                           final schoolName =
-                              _schoolData?['name'] as String? ??
+                              _schoolData?.name ??
                               'Мектеп маалыматы жүктөлгөн жок';
                           final (ok, msg) = await _repository
                               .testTelegramConnection(
@@ -1047,17 +1050,17 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
     }
 
     final schoolName =
-        _schoolData?['name'] as String? ??
-        _qrData?['school_name'] as String? ??
+        _schoolData?.name ??
+        _qrData?.schoolName ??
         'Мектеп маалыматы жүктөлгөн жок';
     final schoolId =
-        _schoolData?['id'] as String? ?? _qrData?['school_id'] as String? ?? '';
-    final lat = (_schoolData?['latitude'] as num?)?.toDouble() ?? 42.8746;
-    final lng = (_schoolData?['longitude'] as num?)?.toDouble() ?? 74.5698;
+        _schoolData?.id ?? _qrData?.schoolId ?? '';
+    final lat = _schoolData?.latitude ?? 42.8746;
+    final lng = _schoolData?.longitude ?? 74.5698;
     final radius =
-        (_schoolData?['allowed_radius_meters'] as num?)?.toDouble() ?? 150.0;
+        _schoolData?.allowedRadiusMeters ?? 150.0;
     final hasQrCredential =
-        (_qrData?['qr_payload'] as String?)?.isNotEmpty ?? false;
+        _qrData?.qrPayload.isNotEmpty ?? false;
 
     final total = _dashboardData?['total_teachers'] ?? 0;
     final checkedIn = _dashboardData?['checked_in_count'] ?? 0;
@@ -1071,12 +1074,15 @@ class _AdminAnalyticsTabState extends State<AdminAnalyticsTab> {
         ? ((onTime / total) * 100).toStringAsFixed(0)
         : '0';
 
-    final tgToken = _schoolData?['telegram_bot_token'] as String? ?? '';
-    final tgChatId = _schoolData?['telegram_chat_id'] as String? ?? '';
-    final tgEnabled = _schoolData?['telegram_enabled'] as bool? ?? false;
-    final isTgConfigured = tgToken.isNotEmpty && tgChatId.isNotEmpty;
+    final tgChatId = _schoolData?.telegramChatId ?? '';
+    final tgEnabled = _schoolData?.telegramEnabled ?? false;
+    // The bot token is write-only, so it can never be read back to decide
+    // this. Reading it here meant the check was always false and Telegram
+    // always looked unconfigured. The switch plus a chat id is what the API
+    // does expose.
+    final isTgConfigured = tgEnabled && tgChatId.isNotEmpty;
     final rawReportTime =
-        _schoolData?['telegram_report_time'] as String? ?? '17:30';
+        _schoolData?.telegramReportTime ?? '17:30';
     final reportTimeFormatted = rawReportTime.length >= 5
         ? rawReportTime.substring(0, 5)
         : rawReportTime;

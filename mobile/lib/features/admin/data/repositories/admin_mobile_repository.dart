@@ -5,73 +5,8 @@ import '../../../../core/storage/secure_storage_service.dart';
 
 /// The shared teacher model; this app's screens keep their original name.
 typedef TeacherItemModel = core.Teacher;
-
-class WorkScheduleItemModel {
-  final String? id;
-  final int dayOfWeek;
-  final String? startTime;
-  final String? endTime;
-  final int graceMinutes;
-  final bool isDayOff;
-
-  WorkScheduleItemModel({
-    this.id,
-    required this.dayOfWeek,
-    this.startTime,
-    this.endTime,
-    required this.graceMinutes,
-    required this.isDayOff,
-  });
-
-  factory WorkScheduleItemModel.fromJson(Map<String, dynamic> json) {
-    return WorkScheduleItemModel(
-      id: json['id'] as String?,
-      dayOfWeek: json['day_of_week'] as int,
-      startTime: json['start_time'] as String?,
-      endTime: json['end_time'] as String?,
-      graceMinutes: json['grace_minutes'] as int? ?? 15,
-      isDayOff: json['is_day_off'] as bool? ?? false,
-    );
-  }
-}
-
-class LessonDelayModel {
-  final String id;
-  final String teacherId;
-  final String schoolId;
-  final String date;
-  final int lessonNumber;
-  final int delayMinutes;
-  final String? reason;
-  final String? teacherName;
-  final String createdAt;
-
-  LessonDelayModel({
-    required this.id,
-    required this.teacherId,
-    required this.schoolId,
-    required this.date,
-    required this.lessonNumber,
-    required this.delayMinutes,
-    this.reason,
-    this.teacherName,
-    required this.createdAt,
-  });
-
-  factory LessonDelayModel.fromJson(Map<String, dynamic> json) {
-    return LessonDelayModel(
-      id: json['id'] as String? ?? '',
-      teacherId: json['teacher_id'] as String? ?? '',
-      schoolId: json['school_id'] as String? ?? '',
-      date: json['date'] as String? ?? '',
-      lessonNumber: json['lesson_number'] as int? ?? 1,
-      delayMinutes: json['delay_minutes'] as int? ?? 0,
-      reason: json['reason'] as String?,
-      teacherName: json['teacher_name'] as String?,
-      createdAt: json['created_at'] as String? ?? '',
-    );
-  }
-}
+typedef LessonDelayModel = core.LessonDelay;
+typedef WorkScheduleItemModel = core.WorkSchedule;
 
 class AdminMobileRepository {
   final ApiClient _apiClient;
@@ -197,6 +132,9 @@ class AdminMobileRepository {
     }
   }
 
+  core.AttendanceRepository get _attendance =>
+      core.AttendanceRepository(dio: _dio);
+
   Future<(bool, String?)> addLessonDelay({
     required String teacherId,
     required String date,
@@ -205,29 +143,16 @@ class AdminMobileRepository {
     String? reason,
   }) async {
     try {
-      final response = await _dio.post(
-        '/attendance/lesson-delays',
-        data: {
-          'teacher_id': teacherId,
-          'date': date,
-          'lesson_number': lessonNumber,
-          'delay_minutes': delayMinutes,
-          'reason': reason,
-        },
+      await _attendance.addLessonDelay(
+        teacherId: teacherId,
+        date: date,
+        lessonNumber: lessonNumber,
+        delayMinutes: delayMinutes,
+        reason: reason,
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return (true, null);
-      }
-      return (false, 'Ката: ${response.statusCode}');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String? msg;
-      if (data is Map) {
-        msg = data['message'] as String? ?? data['detail'] as String?;
-      }
-      return (false, msg ?? 'Сабак кечигүүсүн кошууда ката кетти');
-    } catch (e) {
-      return (false, e.toString());
+      return (true, null);
+    } on core.AdminApiException catch (error) {
+      return (false, error.message);
     }
   }
 
@@ -238,74 +163,50 @@ class AdminMobileRepository {
     int? month,
   }) async {
     try {
-      final response = await _dio.get(
-        '/attendance/lesson-delays',
-        queryParameters: {
-          'teacher_id': teacherId,
-          'target_date': ?date,
-          'year': ?year,
-          'month': ?month,
-        },
+      return await _attendance.lessonDelays(
+        teacherId: teacherId,
+        targetDate: date,
+        year: year,
+        month: month,
       );
-      final List list = response.data as List? ?? [];
-      return list
-          .map((i) => LessonDelayModel.fromJson(i as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
+    } on core.AdminApiException {
       return [];
     }
   }
 
   Future<bool> deleteLessonDelay(String delayId) async {
     try {
-      final response = await _dio.delete('/attendance/lesson-delays/$delayId');
-      return response.statusCode == 200;
-    } catch (_) {
+      await _attendance.deleteLessonDelay(delayId);
+      return true;
+    } on core.AdminApiException {
       return false;
     }
   }
 
   // 4. Schedules
+  core.SchedulesRepository get _schedules =>
+      core.SchedulesRepository(dio: _dio);
+
   Future<List<WorkScheduleItemModel>> getWeeklySchedules() async {
     try {
-      final response = await _dio.get('/schedules');
-      final raw = response.data;
-      final List list = raw is Map
-          ? (raw['schedules'] as List? ?? [])
-          : (raw is List ? raw : []);
-      return list
-          .map((i) => WorkScheduleItemModel.fromJson(i as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
+      return await _schedules.week();
+    } on core.AdminApiException {
       return [];
     }
   }
 
   Future<(bool, String?)> updateSchedule(WorkScheduleItemModel schedule) async {
     try {
-      final response = await _dio.post(
-        '/schedules',
-        data: {
-          'day_of_week': schedule.dayOfWeek,
-          'start_time': schedule.startTime ?? '08:00:00',
-          'end_time': schedule.endTime ?? '17:00:00',
-          'grace_minutes': schedule.graceMinutes,
-          'is_day_off': schedule.isDayOff,
-        },
+      await _schedules.save(
+        dayOfWeek: schedule.dayOfWeek,
+        startTime: schedule.startTime ?? '08:00:00',
+        endTime: schedule.endTime ?? '17:00:00',
+        graceMinutes: schedule.graceMinutes,
+        isDayOff: schedule.isDayOff,
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return (true, null);
-      }
-      return (false, 'Ката: ${response.statusCode}');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String? msg;
-      if (data is Map) {
-        msg = data['message'] as String? ?? data['detail'] as String?;
-      }
-      return (false, msg ?? 'Серверге туташуу катасы');
-    } catch (e) {
-      return (false, e.toString());
+      return (true, null);
+    } on core.AdminApiException catch (error) {
+      return (false, error.message);
     }
   }
 
@@ -319,47 +220,43 @@ class AdminMobileRepository {
     String? checkOutTime,
   }) async {
     try {
-      final response = await _dio.post(
-        '/attendance/manual-correction',
-        data: {
-          'teacher_id': teacherId,
-          'target_date': targetDate,
-          'status': status,
-          'reason': reason,
-          'check_in_time': checkInTime,
-          'check_out_time': checkOutTime,
-        },
+      await _attendance.manualCorrection(
+        teacherId: teacherId,
+        targetDate: targetDate,
+        status: status,
+        reason: reason,
+        checkInTime: checkInTime,
+        checkOutTime: checkOutTime,
       );
-      return response.statusCode == 200;
-    } catch (_) {
+      return true;
+    } on core.AdminApiException {
       return false;
     }
   }
 
   // 6. School QR & Settings
-  Future<Map<String, dynamic>?> getSchoolQr() async {
+  core.SchoolRepository get _school => core.SchoolRepository(dio: _dio);
+
+  Future<core.QrPayload?> getSchoolQr() async {
     try {
-      final response = await _dio.get('/qr/current');
-      return response.data as Map<String, dynamic>;
-    } catch (_) {
+      return await _school.qr();
+    } on core.AdminApiException {
       return null;
     }
   }
 
-  Future<Map<String, dynamic>?> rotateSchoolQr(String schoolId) async {
+  Future<core.QrPayload?> rotateSchoolQr(String schoolId) async {
     try {
-      final response = await _dio.post('/qr/$schoolId/rotate');
-      return response.data as Map<String, dynamic>;
-    } catch (_) {
+      return await _school.rotateQr(schoolId);
+    } on core.AdminApiException {
       return null;
     }
   }
 
-  Future<Map<String, dynamic>?> getSchoolSettings() async {
+  Future<core.SchoolSettings?> getSchoolSettings() async {
     try {
-      final response = await _dio.get('/schools/current');
-      return response.data as Map<String, dynamic>;
-    } catch (_) {
+      return await _school.current();
+    } on core.AdminApiException {
       return null;
     }
   }
@@ -377,39 +274,24 @@ class AdminMobileRepository {
     String? telegramReportTime,
   }) async {
     try {
-      final data = <String, dynamic>{};
-      if (name != null && name.isNotEmpty) data['name'] = name;
-      if (latitude != null) data['latitude'] = latitude;
-      if (longitude != null) data['longitude'] = longitude;
-      if (radius != null) data['allowed_radius_meters'] = radius;
-      if (maxAccuracy != null) data['max_accuracy_meters'] = maxAccuracy;
-      if (telegramBotToken != null) {
-        data['telegram_bot_token'] = telegramBotToken;
-      }
-      if (telegramChatId != null) data['telegram_chat_id'] = telegramChatId;
-      if (telegramEnabled != null) data['telegram_enabled'] = telegramEnabled;
-      if (telegramReportTime != null) {
-        data['telegram_report_time'] = telegramReportTime;
-      }
-
-      final response = await _dio.patch('/schools/$schoolId', data: data);
-      if (response.statusCode == 200) {
-        return (true, null);
-      }
-      return (false, 'Ката: ${response.statusCode}');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String? msg;
-      if (data is Map) {
-        msg = data['message'] as String? ?? data['detail'] as String?;
-      }
-      return (false, msg ?? 'Мектептин жөндөөлөрүн өзгөртүүдө ката кетти');
-    } catch (e) {
-      return (false, e.toString());
+      await _school.update(
+        schoolId: schoolId,
+        name: name != null && name.isNotEmpty ? name : null,
+        latitude: latitude,
+        longitude: longitude,
+        allowedRadiusMeters: radius,
+        maxAccuracyMeters: maxAccuracy,
+        telegramBotToken: telegramBotToken,
+        telegramChatId: telegramChatId,
+        telegramEnabled: telegramEnabled,
+        telegramReportTime: telegramReportTime,
+      );
+      return (true, null);
+    } on core.AdminApiException catch (error) {
+      return (false, error.message);
     }
   }
 
-  // 6.1 Telegram Reports
   Future<(bool, String, String?)> sendTelegramReport({
     String? targetDate,
     String? botToken,

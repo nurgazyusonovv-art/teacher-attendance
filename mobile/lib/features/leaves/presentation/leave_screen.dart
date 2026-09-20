@@ -1,3 +1,4 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../data/leave_repository.dart';
@@ -49,7 +50,7 @@ class _LeaveViewState extends State<_LeaveView> {
     super.dispose();
   }
 
-  Future<void> _decide(Map<String, dynamic> row, String status) async {
+  Future<void> _decide(core.LeaveRequest row, String status) async {
     var reason = '';
     final form = GlobalKey<FormState>();
     final answer = await showDialog<String>(
@@ -88,7 +89,7 @@ class _LeaveViewState extends State<_LeaveView> {
     );
     if (answer != null && mounted) {
       await context.read<LeaveCubit>().decide(
-        row['id'] as String,
+        row.id,
         status,
         answer,
       );
@@ -215,17 +216,15 @@ class _LeaveViewState extends State<_LeaveView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (widget.admin)
-                        Text(row['teacher_name'] as String? ?? 'Мугалим'),
-                      Text(row['target_date'] as String),
-                      Text(switch (row['status']) {
-                        'APPROVED' => 'Бекитилди',
-                        'REJECTED' => 'Четке кагылды',
-                        _ => 'Администратордун чечимин күтүүдө',
-                      }),
-                      Text(row['reason'] as String),
-                      if (row['decision_reason'] != null)
-                        Text('Чечим: ${row['decision_reason']}'),
-                      if (widget.admin && row['status'] == 'PENDING')
+                        Text(row.teacherName ?? 'Мугалим'),
+                      Text(row.targetDate),
+                      // Wording comes from the shared model, so the phone and the browser
+                      // describe a request the same way.
+                      Text(row.status.label),
+                      Text(row.reason),
+                      if (row.decisionReason != null)
+                        Text('Чечим: ${row.decisionReason}'),
+                      if (widget.admin && row.isPending)
                         Wrap(
                           spacing: 12,
                           children: [

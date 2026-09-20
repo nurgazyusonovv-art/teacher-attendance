@@ -1,7 +1,6 @@
 import 'package:admin_core/admin_core.dart' as core;
 import 'package:dio/dio.dart';
 import 'package:teacher_admin/features/attendance/data/repositories/admin_attendance_repository.dart';
-import 'package:teacher_admin/core/constants/app_constants.dart';
 import 'package:teacher_admin/core/network/admin_api_client.dart';
 
 /// The shared teacher model; this app's screens keep their original name.
@@ -12,7 +11,6 @@ class TeachersRepository {
     : _dio = dio ?? AdminApiClient.instance.dio,
       _teachers = core.TeachersRepository(
         dio: dio ?? AdminApiClient.instance.dio,
-        basePath: AppConstants.apiBaseUrl,
       );
 
   final Dio _dio;
@@ -31,12 +29,7 @@ class TeachersRepository {
   Future<TeacherItem> getTeacher(String id) => _teachers.getById(id);
 
   Future<List<AdminDailyAttendanceItem>> getHistory(String id) async {
-    final response = await _dio.get(
-      '${AppConstants.apiBaseUrl}/attendance/teacher/${Uri.encodeComponent(id)}/history',
-    );
-    return (response.data as List)
-        .map((r) => AdminDailyAttendanceItem.fromJson(r as Map<String, dynamic>))
-        .toList();
+    return core.AttendanceRepository(dio: _dio).teacherHistory(id);
   }
 
   Future<bool> createTeacher({

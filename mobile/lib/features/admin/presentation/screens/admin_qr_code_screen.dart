@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +19,7 @@ class AdminQrCodeScreen extends StatefulWidget {
 class _AdminQrCodeScreenState extends State<AdminQrCodeScreen> {
   final AdminMobileRepository _repository = AdminMobileRepository();
   final GlobalKey _qrPosterKey = GlobalKey();
-  Map<String, dynamic>? _qrData;
+  core.QrPayload? _qrData;
   bool _isLoading = true;
   bool _isRotating = false;
   bool _isExporting = false;
@@ -63,7 +64,7 @@ class _AdminQrCodeScreenState extends State<AdminQrCodeScreen> {
 
       // Write to temp file
       final tempDir = await getTemporaryDirectory();
-      final schoolNameClean = (_qrData?['school_name'] as String? ?? 'mektep')
+      final schoolNameClean = (_qrData?.schoolName ?? 'mektep')
           .replaceAll(RegExp(r'[^\w\sа-яА-ЯөӨүҮңҢ]'), '')
           .replaceAll(' ', '_');
       final filePath =
@@ -73,7 +74,7 @@ class _AdminQrCodeScreenState extends State<AdminQrCodeScreen> {
 
       if (!mounted) return;
 
-      final schoolName = _qrData?['school_name'] as String? ?? 'Мектеп маалыматы жүктөлгөн жок';
+      final schoolName = _qrData?.schoolName ?? 'Мектеп маалыматы жүктөлгөн жок';
 
       // Open native save / share sheet (Allows saving to Photos, Files, AirDrop, Print, WhatsApp)
       final box = context.findRenderObject() as RenderBox?;
@@ -112,7 +113,7 @@ class _AdminQrCodeScreenState extends State<AdminQrCodeScreen> {
   }
 
   Future<void> _rotateQr() async {
-    final schoolId = _qrData?['school_id'] as String?;
+    final schoolId = _qrData?.schoolId;
     if (schoolId == null) return;
 
     final confirm = await showDialog<bool>(
@@ -254,8 +255,8 @@ class _AdminQrCodeScreenState extends State<AdminQrCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final schoolName = _qrData?['school_name'] as String? ?? 'Мектеп маалыматы жүктөлгөн жок';
-    final rawPayload = _qrData?['qr_payload'];
+    final schoolName = _qrData?.schoolName ?? 'Мектеп маалыматы жүктөлгөн жок';
+    final rawPayload = _qrData?.qrPayload;
     final qrString = rawPayload is String ? rawPayload : null;
 
     if (!_isLoading && (qrString == null || qrString.isEmpty)) {

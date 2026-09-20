@@ -1,9 +1,10 @@
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../data/leave_repository.dart';
 
 class LeaveState {
-  final List<Map<String, dynamic>> rows;
+  final List<core.LeaveRequest> rows;
   final bool busy;
   final bool hasMore;
   final String? error;

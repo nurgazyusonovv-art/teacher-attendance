@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:admin_core/admin_core.dart' as core;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:teacher_mobile/core/network/api_client.dart';
@@ -33,7 +34,7 @@ class PendingLeaves extends LeaveRepository {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> list(bool admin, int offset) async => [];
+  Future<List<core.LeaveRequest>> list(bool admin, int offset) async => [];
 }
 
 class PendingAttendance extends AttendanceRepository {
