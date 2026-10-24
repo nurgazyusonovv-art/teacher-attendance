@@ -36,9 +36,22 @@ from app.services.audit_service import AuditService
 from app.services.lesson_delay_service import LessonDelayService
 from app.services.school_service import SchoolService
 from app.services.rate_limit_service import RateLimitService
+from app.services.monthly_score_service import MonthlyScoreService
+from app.schemas.monthly_score import MonthlyScore
 from sqlalchemy import select
 
 router = APIRouter()
+
+
+@router.get('/my-monthly-score', response_model=MonthlyScore)
+async def get_my_monthly_score(
+    year: Optional[int] = Query(None, ge=2000, le=9998),
+    month: Optional[int] = Query(None, ge=1, le=12),
+    db: AsyncSession = Depends(get_db),
+    current_teacher: Teacher = Depends(get_current_active_teacher),
+):
+    school = await SchoolService.get_school_by_id(db, current_teacher.school_id)
+    return await MonthlyScoreService.get(db, current_teacher, school, year, month)
 
 _SUSPICIOUS_SCAN_CODES = {
     ErrorCode.QR_INVALID,
